@@ -39,14 +39,19 @@ app.use(
   cors({
     origin: (origin, callback) => {
       const allowed = [
-        process.env.FRONTEND_URL || 'http://localhost:3000',
+        'http://localhost:3000',
+        'http://localhost:3001',
+        'https://shoppin-five.vercel.app',
+        'https://shoppintrest.vercel.app',
         'https://shoppintrest.com',
         'https://www.shoppintrest.com',
-      ]
+        process.env.FRONTEND_URL,
+      ].filter(Boolean)
+
       if (!origin || allowed.includes(origin)) {
         callback(null, true)
       } else {
-        callback(new Error('Not allowed by CORS'))
+        callback(new Error(`CORS blocked: ${origin}`))
       }
     },
     credentials: true,
@@ -56,9 +61,10 @@ app.use(
       'Authorization',
       'x-clerk-auth-token',
     ],
+    optionsSuccessStatus: 200,
   })
 )
-
+app.options('*', cors())
 // ─── 3. BODY PARSERS ─────────────────────────────────────────────────────────
 // Stripe webhook needs raw body — registered BEFORE json parser
 app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }))
