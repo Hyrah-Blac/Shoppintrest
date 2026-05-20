@@ -22,9 +22,9 @@ const emptyForm = {
   brand: '',
   description: '',
   price: '',
-  originalPrice: '',
+  comparePrice: '',
   category: '',
-  sizes: [] as string[],
+  sizes: [] as { size: string; inventory: number }[],
   images: [] as string[],
   isPublished: false,
 }
@@ -70,9 +70,12 @@ export default function AdminProductsPage() {
       brand: product.brand || '',
       description: product.description || '',
       price: product.price?.toString() || '',
-      originalPrice: product.originalPrice?.toString() || '',
+      comparePrice: product.comparePrice?.toString() || '',
       category: product.category || '',
-      sizes: product.sizes || [],
+      sizes: product.variants?.map((v: any) => ({
+        size: v.size,
+        inventory: v.inventory,
+      })) || [],
       images: product.images?.map((i: any) => i.url || i) || [],
       isPublished: product.isPublished || false,
     })
@@ -106,27 +109,55 @@ export default function AdminProductsPage() {
   }
 
   const toggleSize = (size: string) => {
+    setForm((f) => {
+      const exists = f.sizes.find((s) => s.size === size)
+      return {
+        ...f,
+        sizes: exists
+          ? f.sizes.filter((s) => s.size !== size)
+          : [...f.sizes, { size, inventory: 10 }],
+      }
+    })
+  }
+
+  const updateInventory = (size: string, inventory: number) => {
     setForm((f) => ({
       ...f,
-      sizes: f.sizes.includes(size)
-        ? f.sizes.filter((s) => s !== size)
-        : [...f.sizes, size],
+      sizes: f.sizes.map((s) => s.size === size ? { ...s, inventory } : s),
     }))
   }
 
   const handleSave = async () => {
-    if (!form.title || !form.price || !form.category) {
-      toast.error('Title, price and category are required')
+    if (!form.title || !form.price || !form.category || !form.brand || !form.description) {
+      toast.error('Title, brand, description, price and category are required')
       return
     }
 
     setIsSaving(true)
     try {
       const payload = {
-        ...form,
+        title: form.title,
+        brand: form.brand,
+        description: form.description,
         price: parseFloat(form.price),
-        originalPrice: form.originalPrice ? parseFloat(form.originalPrice) : undefined,
-        images: form.images.map((url) => ({ url })),
+        comparePrice: form.comparePrice ? parseFloat(form.comparePrice) : undefined,
+        category: form.category,
+        isPublished: form.isPublished,
+        images: form.images.map((url) => ({
+          url,
+          publicId: url.includes('cloudinary.com')
+            ? url.split('/').pop()?.split('.')[0] || url
+            : url,
+          alt: form.title,
+        })),
+        variants: form.sizes.map((s) => ({
+          size: s.size,
+          inventory: s.inventory,
+          sku: `${form.brand}-${form.title}-${s.size}`
+            .toLowerCase()
+            .replace(/\s+/g, '-')
+            .replace(/[^a-z0-9-]/g, ''),
+        })),
       }
 
       if (editProduct) {
@@ -143,8 +174,8 @@ export default function AdminProductsPage() {
       }
 
       setShowModal(false)
-    } catch {
-      toast.error('Could not save product')
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Could not save product')
     } finally {
       setIsSaving(false)
     }
@@ -161,14 +192,10 @@ export default function AdminProductsPage() {
 
   const handleTogglePublish = async (product: any) => {
     try {
-      await apiClient.products.update(product._id, {
-        isPublished: !product.isPublished,
-      })
+      await apiClient.products.update(product._id, { isPublished: !product.isPublished })
       setProducts((prev) =>
         prev.map((p) =>
-          p._id === product._id
-            ? { ...p, isPublished: !p.isPublished }
-            : p
+          p._id === product._id ? { ...p, isPublished: !p.isPublished } : p
         )
       )
       toast.success(product.isPublished ? 'Product unpublished' : 'Product published')
@@ -185,19 +212,10 @@ export default function AdminProductsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight">
-            Products
-          </h1>
-          <p className="text-sm text-muted mt-0.5">
-            {total.toLocaleString()} total products
-          </p>
+          <h1 className="font-display text-2xl font-semibold tracking-tight">Products</h1>
+          <p className="text-sm text-muted mt-0.5">{total.toLocaleString()} total products</p>
         </div>
-        <Button
-          variant="primary"
-          size="md"
-          leftIcon={<Plus size={15} />}
-          onClick={openAdd}
-        >
+        <Button variant="primary" size="md" leftIcon={<Plus size={15} />} onClick={openAdd}>
           Add Product
         </Button>
       </div>
@@ -210,9 +228,8 @@ export default function AdminProductsPage() {
           placeholder="Search products..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full h-10 pl-9 pr-4 rounded-xl border border-input
-                     bg-background text-sm placeholder:text-muted
-                     focus:outline-none focus:ring-2 focus:ring-ring"
+          className="w-full h-10 pl-9 pr-4 rounded-xl border border-input bg-background
+                     text-sm placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-ring"
         />
       </div>
 
@@ -293,10 +310,7 @@ export default function AdminProductsPage() {
                       </span>
                     </td>
                     <td className="px-5 py-4">
-                      <Badge
-                        variant={product.isPublished ? 'success' : 'secondary'}
-                        size="sm"
-                      >
+                      <Badge variant={product.isPublished ? 'success' : 'secondary'} size="sm">
                         {product.isPublished ? 'Published' : 'Draft'}
                       </Badge>
                     </td>
@@ -338,7 +352,6 @@ export default function AdminProductsPage() {
       <AnimatePresence>
         {showModal && (
           <>
-            {/* Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -347,7 +360,6 @@ export default function AdminProductsPage() {
               className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
             />
 
-            {/* Modal */}
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -359,7 +371,8 @@ export default function AdminProductsPage() {
                               w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
 
                 {/* Modal Header */}
-                <div className="flex items-center justify-between p-6 border-b border-border sticky top-0 bg-background z-10">
+                <div className="flex items-center justify-between p-6 border-b border-border
+                                sticky top-0 bg-background z-10">
                   <h2 className="font-display text-lg font-semibold">
                     {editProduct ? 'Edit Product' : 'Add Product'}
                   </h2>
@@ -394,7 +407,9 @@ export default function AdminProductsPage() {
                   {/* Brand + Category */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-xs font-medium text-muted">Brand</label>
+                      <label className="text-xs font-medium text-muted">
+                        Brand <span className="text-destructive">*</span>
+                      </label>
                       <input
                         type="text"
                         value={form.brand}
@@ -423,7 +438,7 @@ export default function AdminProductsPage() {
                     </div>
                   </div>
 
-                  {/* Price + Original Price */}
+                  {/* Price + Compare Price */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <label className="text-xs font-medium text-muted">
@@ -441,12 +456,12 @@ export default function AdminProductsPage() {
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-xs font-medium text-muted">
-                        Original Price (KES)
+                        Compare Price (KES)
                       </label>
                       <input
                         type="number"
-                        value={form.originalPrice}
-                        onChange={(e) => setForm((f) => ({ ...f, originalPrice: e.target.value }))}
+                        value={form.comparePrice}
+                        onChange={(e) => setForm((f) => ({ ...f, comparePrice: e.target.value }))}
                         placeholder="e.g. 7000 (optional)"
                         className="w-full h-10 px-3 rounded-xl border border-input bg-background
                                    text-sm placeholder:text-muted focus:outline-none focus:ring-2
@@ -457,7 +472,9 @@ export default function AdminProductsPage() {
 
                   {/* Description */}
                   <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted">Description</label>
+                    <label className="text-xs font-medium text-muted">
+                      Description <span className="text-destructive">*</span>
+                    </label>
                     <textarea
                       value={form.description}
                       onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
@@ -469,32 +486,59 @@ export default function AdminProductsPage() {
                     />
                   </div>
 
-                  {/* Sizes */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted">Sizes</label>
+                  {/* Sizes + Inventory */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-muted">
+                      Sizes & Inventory
+                    </label>
                     <div className="flex flex-wrap gap-2">
-                      {SIZES.map((size) => (
-                        <button
-                          key={size}
-                          onClick={() => toggleSize(size)}
-                          className={cn(
-                            'px-3 py-1.5 rounded-lg text-xs font-medium border transition-all',
-                            form.sizes.includes(size)
-                              ? 'bg-foreground text-background border-foreground'
-                              : 'bg-background text-muted border-border hover:border-foreground/40'
-                          )}
-                        >
-                          {size}
-                        </button>
-                      ))}
+                      {SIZES.map((size) => {
+                        const selected = form.sizes.find((s) => s.size === size)
+                        return (
+                          <button
+                            key={size}
+                            onClick={() => toggleSize(size)}
+                            className={cn(
+                              'px-3 py-1.5 rounded-lg text-xs font-medium border transition-all',
+                              selected
+                                ? 'bg-foreground text-background border-foreground'
+                                : 'bg-background text-muted border-border hover:border-foreground/40'
+                            )}
+                          >
+                            {size}
+                          </button>
+                        )
+                      })}
                     </div>
+
+                    {form.sizes.length > 0 && (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
+                        {form.sizes.map((s) => (
+                          <div key={s.size} className="flex items-center gap-2 p-2 rounded-xl
+                                                        border border-border bg-surface">
+                            <span className="text-xs font-medium w-12">{s.size}</span>
+                            <input
+                              type="number"
+                              min={0}
+                              value={s.inventory}
+                              onChange={(e) =>
+                                updateInventory(s.size, parseInt(e.target.value) || 0)
+                              }
+                              className="flex-1 h-7 px-2 rounded-lg border border-input
+                                         bg-background text-xs focus:outline-none focus:ring-1
+                                         focus:ring-ring"
+                            />
+                            <span className="text-xs text-muted">pcs</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   {/* Images */}
                   <div className="space-y-1.5">
                     <label className="text-xs font-medium text-muted">Images</label>
 
-                    {/* Existing images */}
                     {form.images.length > 0 && (
                       <div className="flex flex-wrap gap-2 mb-2">
                         {form.images.map((url, idx) => (
@@ -517,7 +561,6 @@ export default function AdminProductsPage() {
                       </div>
                     )}
 
-                    {/* Upload file */}
                     <label className="flex items-center gap-2 w-fit cursor-pointer px-3 py-2
                                       rounded-xl border border-dashed border-border text-xs
                                       text-muted hover:border-foreground/40 hover:text-foreground
@@ -533,7 +576,6 @@ export default function AdminProductsPage() {
                       />
                     </label>
 
-                    {/* Or paste URL */}
                     <div className="flex gap-2 mt-2">
                       <input
                         type="text"
@@ -578,11 +620,7 @@ export default function AdminProductsPage() {
                 {/* Modal Footer */}
                 <div className="flex items-center justify-end gap-3 p-6 border-t border-border
                                 sticky bottom-0 bg-background">
-                  <Button
-                    variant="outline"
-                    size="md"
-                    onClick={() => setShowModal(false)}
-                  >
+                  <Button variant="outline" size="md" onClick={() => setShowModal(false)}>
                     Cancel
                   </Button>
                   <Button
