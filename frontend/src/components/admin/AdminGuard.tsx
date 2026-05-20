@@ -17,6 +17,7 @@ export function AdminGuard({ children }: { children: React.ReactNode }) {
     if (user && user.role !== 'admin') { router.push('/'); return }
   }, [isLoaded, isSignedIn, user, isLoading, router])
 
+  // Show spinner while Clerk or user store is still loading
   if (!isLoaded || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -33,7 +34,24 @@ export function AdminGuard({ children }: { children: React.ReactNode }) {
     )
   }
 
-  if (!user || user.role !== 'admin') return null
+  // Not signed in or not admin — don't flash content, redirect handled in useEffect
+  if (!isSignedIn || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="flex gap-1">
+          {[0, 1, 2].map((i) => (
+            <div
+              key={i}
+              className="w-2 h-2 rounded-full bg-muted animate-bounce"
+              style={{ animationDelay: `${i * 0.15}s` }}
+            />
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (user.role !== 'admin') return null
 
   return <>{children}</>
 }
