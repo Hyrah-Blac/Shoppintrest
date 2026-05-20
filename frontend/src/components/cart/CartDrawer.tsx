@@ -1,0 +1,274 @@
+'use client'
+
+import { Fragment } from 'react'
+import Link from 'next/link'
+import Image from 'next/image'
+import { motion, AnimatePresence } from 'framer-motion'
+import { X, ShoppingBag, Plus, Minus, Trash2, ArrowRight } from 'lucide-react'
+import { useCartStore } from '@/store/useCartStore'
+import { formatPrice } from '@/lib/utils'
+import { Button } from '@/components/ui/Button'
+import { toast } from 'sonner'
+
+export function CartDrawer() {
+  const {
+    isOpen, closeCart, items, total,
+    updateItem, removeItem, isLoading,
+  } = useCartStore()
+
+  const handleUpdate = async (
+    productId: string,
+    size: string,
+    quantity: number
+  ) => {
+    try {
+      await updateItem(productId, size, quantity)
+    } catch {
+      toast.error('Could not update cart')
+    }
+  }
+
+  const handleRemove = async (productId: string, size: string) => {
+    try {
+      await removeItem(productId, size)
+      toast.success('Removed from cart')
+    } catch {
+      toast.error('Could not remove item')
+    }
+  }
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[70] bg-foreground/20 backdrop-blur-sm"
+            onClick={closeCart}
+          />
+
+          {/* Drawer */}
+          <motion.div
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+            className="fixed right-0 top-0 bottom-0 z-[71] w-full max-w-md
+                       bg-background border-l border-border flex flex-col
+                       shadow-2xl"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-5
+                            border-b border-border">
+              <div className="flex items-center gap-3">
+                <ShoppingBag size={18} className="text-foreground" />
+                <h2 className="font-display font-semibold text-lg tracking-tight">
+                  Your Cart
+                </h2>
+                {items.length > 0 && (
+                  <span className="text-xs text-muted">
+                    ({items.length} {items.length === 1 ? 'item' : 'items'})
+                  </span>
+                )}
+              </div>
+              <button
+                onClick={closeCart}
+                className="p-2 rounded-xl hover:bg-accent text-muted
+                           hover:text-foreground transition-all duration-200"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Items */}
+            <div className="flex-1 overflow-y-auto px-6 py-4">
+              {items.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center
+                                text-center py-16">
+                  <div className="w-16 h-16 rounded-2xl bg-surface flex
+                                  items-center justify-center mb-4">
+                    <ShoppingBag size={24} className="text-muted" />
+                  </div>
+                  <p className="font-medium text-foreground mb-1">
+                    Your cart is empty
+                  </p>
+                  <p className="text-sm text-muted mb-6">
+                    Discover something beautiful
+                  </p>
+                 <Link href="/explore" onClick={closeCart}>
+  <Button
+    variant="secondary"
+    size="md"
+    rightIcon={<ArrowRight size={14} />}
+  >
+    Browse Products
+  </Button>
+</Link>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <AnimatePresence initial={false}>
+                    {items.map((item: any) => (
+                      <motion.div
+                        key={`${item.product?._id}-${item.size}`}
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="flex gap-4 py-4 border-b border-border
+                                   last:border-0"
+                      >
+                        {/* Image */}
+                        <Link
+                          href={`/product/${item.product?._id}`}
+                          onClick={closeCart}
+                          className="shrink-0"
+                        >
+                          <div className="w-20 h-24 rounded-xl overflow-hidden
+                                          bg-surface">
+                            {item.product?.images?.[0]?.url && (
+                              <Image
+                                src={item.product.images[0].url}
+                                alt={item.product.title}
+                                width={80}
+                                height={96}
+                                className="w-full h-full object-cover
+                                           hover:scale-105 transition-transform
+                                           duration-300"
+                              />
+                            )}
+                          </div>
+                        </Link>
+
+                        {/* Details */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex justify-between gap-2">
+                            <Link
+                              href={`/product/${item.product?._id}`}
+                              onClick={closeCart}
+                              className="text-sm font-medium text-foreground
+                                         line-clamp-2 hover:opacity-70
+                                         transition-opacity leading-snug"
+                            >
+                              {item.product?.title}
+                            </Link>
+                            <button
+                              onClick={() =>
+                                handleRemove(item.product?._id, item.size)
+                              }
+                              className="text-muted hover:text-destructive
+                                         transition-colors shrink-0 p-1"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+
+                          <p className="text-xs text-muted mt-1">
+                            {item.product?.brand}
+                          </p>
+
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-xs bg-surface border border-border
+                                             px-2 py-0.5 rounded-lg text-foreground">
+                              Size {item.size}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between mt-3">
+                            {/* Quantity */}
+                            <div className="flex items-center gap-2 bg-surface
+                                            rounded-xl border border-border p-0.5">
+                              <button
+                                onClick={() =>
+                                  handleUpdate(
+                                    item.product?._id,
+                                    item.size,
+                                    item.quantity - 1
+                                  )
+                                }
+                                className="w-7 h-7 rounded-lg flex items-center
+                                           justify-center text-muted hover:text-foreground
+                                           hover:bg-accent transition-all duration-200"
+                              >
+                                <Minus size={12} />
+                              </button>
+                              <span className="text-sm font-medium text-foreground
+                                               min-w-[1.25rem] text-center">
+                                {item.quantity}
+                              </span>
+                              <button
+                                onClick={() =>
+                                  handleUpdate(
+                                    item.product?._id,
+                                    item.size,
+                                    item.quantity + 1
+                                  )
+                                }
+                                className="w-7 h-7 rounded-lg flex items-center
+                                           justify-center text-muted hover:text-foreground
+                                           hover:bg-accent transition-all duration-200"
+                              >
+                                <Plus size={12} />
+                              </button>
+                            </div>
+
+                            {/* Price */}
+                            <span className="text-sm font-semibold text-foreground">
+                              {formatPrice(
+                                (item.product?.price || 0) * item.quantity,
+                                'KES'
+                              )}
+                            </span>
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            {items.length > 0 && (
+              <div className="px-6 py-5 border-t border-border space-y-4">
+                {/* Subtotal */}
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted">Subtotal</span>
+                    <span className="font-medium">{formatPrice(total, 'KES')}</span>
+                  </div>
+                  <div className="flex justify-between text-xs text-muted">
+                    <span>Shipping calculated at checkout</span>
+                  </div>
+                </div>
+
+                {/* CTA */}
+                <Link href="/checkout" onClick={closeCart}>
+                  <Button
+                    variant="primary"
+                    size="lg"
+                    className="w-full"
+                    rightIcon={<ArrowRight size={16} />}
+                    isLoading={isLoading}
+                  >
+                    Checkout
+                  </Button>
+                </Link>
+
+                <Link href="/cart" onClick={closeCart}>
+                  <Button variant="ghost" size="md" className="w-full">
+                    View full cart
+                  </Button>
+                </Link>
+              </div>
+            )}
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  )
+}
