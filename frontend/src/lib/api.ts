@@ -16,9 +16,10 @@ api.interceptors.request.use(
       if (typeof window !== 'undefined') {
         const clerk = (window as any).Clerk
 
-        // Get Clerk JWT token
-        if (clerk?.session) {
+        if (clerk && clerk.session) {
           const token = await clerk.session.getToken()
+
+          console.log('CLERK TOKEN:', token)
 
           if (token) {
             config.headers.Authorization = `Bearer ${token}`
