@@ -45,6 +45,7 @@ app.use(
         'https://shoppintrest.vercel.app',
         'https://shoppintrest.com',
         'https://www.shoppintrest.com',
+        'https://shoppin-git-main-hyrahs-projects.vercel.app',
         process.env.FRONTEND_URL,
       ].filter(Boolean)
 
@@ -61,7 +62,6 @@ app.use(
       'Authorization',
       'x-clerk-auth-token',
     ],
-    optionsSuccessStatus: 200,
   })
 )
 app.options('*', cors())
