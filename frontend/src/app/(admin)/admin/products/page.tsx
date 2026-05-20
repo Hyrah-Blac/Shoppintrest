@@ -37,7 +37,6 @@ export default function AdminProductsPage() {
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
 
-  // Modal state
   const [showModal, setShowModal] = useState(false)
   const [editProduct, setEditProduct] = useState<any>(null)
   const [form, setForm] = useState(emptyForm)
@@ -60,7 +59,6 @@ export default function AdminProductsPage() {
 
   useEffect(() => { fetchProducts() }, [page])
 
-  // Safe close — blocks dismissal while upload or save is in flight
   const handleCloseModal = () => {
     if (isUploading) { toast.error('Please wait for the upload to finish'); return }
     if (isSaving)    { toast.error('Please wait for the save to finish');   return }
@@ -333,6 +331,7 @@ export default function AdminProductsPage() {
                     <td className="px-5 py-4">
                       <div className="flex items-center justify-end gap-1">
                         <button
+                          type="button"
                           onClick={() => handleTogglePublish(product)}
                           className="p-2 rounded-lg text-muted hover:text-foreground
                                      hover:bg-accent transition-colors"
@@ -341,6 +340,7 @@ export default function AdminProductsPage() {
                           {product.isPublished ? <EyeOff size={14} /> : <Eye size={14} />}
                         </button>
                         <button
+                          type="button"
                           onClick={() => openEdit(product)}
                           className="p-2 rounded-lg text-muted hover:text-foreground
                                      hover:bg-accent transition-colors"
@@ -348,6 +348,7 @@ export default function AdminProductsPage() {
                           <Edit2 size={14} />
                         </button>
                         <button
+                          type="button"
                           onClick={() => handleDelete(product._id)}
                           className="p-2 rounded-lg text-muted hover:text-destructive
                                      hover:bg-destructive/10 transition-colors"
@@ -368,7 +369,6 @@ export default function AdminProductsPage() {
       <AnimatePresence>
         {showModal && (
           <>
-            {/* Backdrop — blocked while uploading or saving */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -393,8 +393,8 @@ export default function AdminProductsPage() {
                   <h2 className="font-display text-lg font-semibold">
                     {editProduct ? 'Edit Product' : 'Add Product'}
                   </h2>
-                  {/* X button — blocked while uploading or saving */}
                   <button
+                    type="button"
                     onClick={handleCloseModal}
                     className="p-2 rounded-xl text-muted hover:text-foreground
                                hover:bg-accent transition-colors"
@@ -514,6 +514,7 @@ export default function AdminProductsPage() {
                         const selected = form.sizes.find((s) => s.size === size)
                         return (
                           <button
+                            type="button"
                             key={size}
                             onClick={() => toggleSize(size)}
                             className={cn(
@@ -567,6 +568,7 @@ export default function AdminProductsPage() {
                               className="w-full h-full object-cover rounded-xl border border-border"
                             />
                             <button
+                              type="button"
                               onClick={() => handleRemoveImage(idx)}
                               className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-destructive
                                          text-white rounded-full flex items-center justify-center
@@ -605,9 +607,15 @@ export default function AdminProductsPage() {
                         className="flex-1 h-9 px-3 rounded-xl border border-input bg-background
                                    text-xs placeholder:text-muted focus:outline-none focus:ring-2
                                    focus:ring-ring"
-                        onKeyDown={(e) => e.key === 'Enter' && handleAddImageUrl()}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault()
+                            handleAddImageUrl()
+                          }
+                        }}
                       />
                       <button
+                        type="button"
                         onClick={handleAddImageUrl}
                         className="px-3 h-9 rounded-xl bg-surface border border-border
                                    text-xs font-medium hover:border-foreground/40 transition-colors"
@@ -620,6 +628,7 @@ export default function AdminProductsPage() {
                   {/* Published toggle */}
                   <div className="flex items-center gap-3">
                     <button
+                      type="button"
                       onClick={() => setForm((f) => ({ ...f, isPublished: !f.isPublished }))}
                       className={cn(
                         'relative w-10 h-6 rounded-full transition-colors duration-200',
@@ -640,7 +649,6 @@ export default function AdminProductsPage() {
                 {/* Modal Footer */}
                 <div className="flex items-center justify-end gap-3 p-6 border-t border-border
                                 sticky bottom-0 bg-background">
-                  {/* Cancel — blocked while uploading or saving */}
                   <Button variant="outline" size="md" onClick={handleCloseModal}>
                     Cancel
                   </Button>
