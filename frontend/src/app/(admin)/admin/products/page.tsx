@@ -32,6 +32,7 @@ const emptyForm = {
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
@@ -45,16 +46,26 @@ export default function AdminProductsPage() {
   const [isUploading, setIsUploading] = useState(false)
 
   const fetchProducts = async () => {
-    setIsLoading(true)
+    products.length ? setIsRefreshing(true) : setIsLoading(true)
     try {
       const { data } = await apiClient.products.getAll({ page, limit: 20 })
       setProducts(data.data || [])
       setTotal(data.total || 0)
     } catch { /* silent */ }
-    finally { setIsLoading(false) }
+    finally {
+      setIsLoading(false)
+      setIsRefreshing(false)
+    }
   }
 
   useEffect(() => { fetchProducts() }, [page])
+
+  // Safe close — blocks dismissal while upload or save is in flight
+  const handleCloseModal = () => {
+    if (isUploading) { toast.error('Please wait for the upload to finish'); return }
+    if (isSaving)    { toast.error('Please wait for the save to finish');   return }
+    setShowModal(false)
+  }
 
   const openAdd = () => {
     setEditProduct(null)
@@ -213,7 +224,12 @@ export default function AdminProductsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-display text-2xl font-semibold tracking-tight">Products</h1>
-          <p className="text-sm text-muted mt-0.5">{total.toLocaleString()} total products</p>
+          <p className="text-sm text-muted mt-0.5">
+            {total.toLocaleString()} total products
+            {isRefreshing && (
+              <span className="ml-2 text-xs opacity-50">Refreshing...</span>
+            )}
+          </p>
         </div>
         <Button variant="primary" size="md" leftIcon={<Plus size={15} />} onClick={openAdd}>
           Add Product
@@ -352,11 +368,12 @@ export default function AdminProductsPage() {
       <AnimatePresence>
         {showModal && (
           <>
+            {/* Backdrop — blocked while uploading or saving */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setShowModal(false)}
+              onClick={handleCloseModal}
               className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
             />
 
@@ -376,8 +393,9 @@ export default function AdminProductsPage() {
                   <h2 className="font-display text-lg font-semibold">
                     {editProduct ? 'Edit Product' : 'Add Product'}
                   </h2>
+                  {/* X button — blocked while uploading or saving */}
                   <button
-                    onClick={() => setShowModal(false)}
+                    onClick={handleCloseModal}
                     className="p-2 rounded-xl text-muted hover:text-foreground
                                hover:bg-accent transition-colors"
                   >
@@ -561,10 +579,12 @@ export default function AdminProductsPage() {
                       </div>
                     )}
 
-                    <label className="flex items-center gap-2 w-fit cursor-pointer px-3 py-2
-                                      rounded-xl border border-dashed border-border text-xs
-                                      text-muted hover:border-foreground/40 hover:text-foreground
-                                      transition-colors">
+                    <label className={cn(
+                      'flex items-center gap-2 w-fit cursor-pointer px-3 py-2',
+                      'rounded-xl border border-dashed border-border text-xs',
+                      'text-muted hover:border-foreground/40 hover:text-foreground transition-colors',
+                      isUploading && 'opacity-60 cursor-not-allowed pointer-events-none'
+                    )}>
                       <Upload size={13} />
                       {isUploading ? 'Uploading...' : 'Upload image'}
                       <input
@@ -620,7 +640,8 @@ export default function AdminProductsPage() {
                 {/* Modal Footer */}
                 <div className="flex items-center justify-end gap-3 p-6 border-t border-border
                                 sticky bottom-0 bg-background">
-                  <Button variant="outline" size="md" onClick={() => setShowModal(false)}>
+                  {/* Cancel — blocked while uploading or saving */}
+                  <Button variant="outline" size="md" onClick={handleCloseModal}>
                     Cancel
                   </Button>
                   <Button
