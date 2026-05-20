@@ -21,8 +21,6 @@ api.interceptors.request.use(
             template: 'backend',
           })
 
-          console.log('CLERK BACKEND TOKEN:', token)
-
           if (token) {
             config.headers.Authorization = `Bearer ${token}`
           }
