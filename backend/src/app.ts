@@ -6,7 +6,7 @@ import compression from 'compression'
 import mongoSanitize from 'express-mongo-sanitize'
 import morgan from 'morgan'
 import { clerkMiddleware } from '@clerk/express'
-
+import webhookRoutes from './routes/webhookRoutes'
 import { globalLimiter } from './config/rateLimiter'
 import globalErrorHandler from './middleware/errorHandler'
 import logger from './utils/logger'
@@ -35,7 +35,7 @@ app.use(
     contentSecurityPolicy: false,
   })
 )
-
+app.use('/api/webhooks', webhookRoutes)
 // ─── 2. CORS ─────────────────────────────────────────────────────────────────
 app.use(
   cors({

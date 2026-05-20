@@ -28,11 +28,13 @@ export const updateMe = asyncHandler(
       'isActive',
     ]
 
-    forbidden.forEach((field) => {
+    for (const field of forbidden) {
       if (req.body[field]) {
-        return next(new AppError(`You cannot update ${field}`, 400))
+        return next(
+          new AppError(`You cannot update ${field}`, 400)
+        )
       }
-    })
+    }
 
     const updated = await User.findByIdAndUpdate(
       req.user._id,
@@ -48,17 +50,28 @@ export const updateMe = asyncHandler(
       }
     )
 
-    sendSuccess(res, updated, 'Profile updated successfully')
+    sendSuccess(
+      res,
+      updated,
+      'Profile updated successfully'
+    )
   }
 )
 
 // ─── GET USER BY USERNAME ────────────────────────────────────────────────────
 export const getUserByUsername = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
+    if (!req.params.username || req.params.username === 'undefined') {
+      return next(new AppError('Username is required', 400))
+    }
+
     const user = await User.findOne({
       username: req.params.username,
     })
-      .populate('collections', 'title coverImage saves isPrivate')
+      .populate(
+        'collections',
+        'title coverImage saves isPrivate'
+      )
       .lean()
 
     if (!user) {
@@ -79,10 +92,14 @@ export const toggleFollow = asyncHandler(
     }
 
     if (targetUser._id.toString() === req.user._id.toString()) {
-      return next(new AppError('You cannot follow yourself', 400))
+      return next(
+        new AppError('You cannot follow yourself', 400)
+      )
     }
 
-    const isFollowing = req.user.following.includes(targetUser._id)
+    const isFollowing = req.user.following.includes(
+      targetUser._id
+    )
 
     if (isFollowing) {
       await User.findByIdAndUpdate(req.user._id, {
@@ -159,13 +176,17 @@ export const getFollowing = asyncHandler(
 // ─── SAVE / UNSAVE PRODUCT ───────────────────────────────────────────────────
 export const toggleSaveProduct = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
-    const product = await Product.findById(req.params.productId)
+    const product = await Product.findById(
+      req.params.productId
+    )
 
     if (!product) {
       return next(new AppError('Product not found', 404))
     }
 
-    const isSaved = req.user.savedProducts.includes(product._id)
+    const isSaved = req.user.savedProducts.includes(
+      product._id
+    )
 
     if (isSaved) {
       await User.findByIdAndUpdate(req.user._id, {
@@ -260,6 +281,16 @@ export const searchUsers = asyncHandler(
 // ─── SYNC CLERK USER ─────────────────────────────────────────────────────────
 export const syncClerkUser = asyncHandler(
   async (req: Request, res: Response) => {
+    const event = req.body
+    const data = event.data || req.body
+
+    if (!data) {
+      return res.status(400).json({
+        success: false,
+        message: 'No webhook data received',
+      })
+    }
+
     const {
       id,
       email_addresses,
@@ -267,14 +298,14 @@ export const syncClerkUser = asyncHandler(
       image_url,
       first_name,
       last_name,
-    } = req.body?.data || req.body
+    } = data
 
     const email = email_addresses?.[0]?.email_address
 
     if (!id || !email) {
       return res.status(400).json({
         success: false,
-        message: 'Missing user data',
+        message: 'Missing required Clerk data',
       })
     }
 
@@ -285,66 +316,68 @@ export const syncClerkUser = asyncHandler(
 
     const generatedUsername =
       username ||
-      email
+      `${email
         .split('@')[0]
         .toLowerCase()
-        .replace(/[^a-z0-9]/g, '') +
-        Math.floor(Math.random() * 1000)
+        .replace(/[^a-z0-9]/g, '')}${Math.floor(
+        Math.random() * 1000
+      )}`
 
     try {
-      // First check if user already exists
-      let user = await User.findOne({ clerkId: id })
-
-      if (user) {
-        // Update existing user safely
-        user.avatar = image_url || user.avatar
-        user.displayName = displayName || user.displayName
-
-        await user.save()
-
-        return res.status(200).json({
-          success: true,
-          data: user,
-        })
-      }
-
-      // Create new user
-      user = await User.create({
-        clerkId: id,
-        email,
-        username: generatedUsername,
-        displayName,
-        avatar: image_url,
-        role: 'user',
-        isActive: true,
-        isVerified: false,
-      })
+      const user = await User.findOneAndUpdate(
+        {
+          clerkId: id,
+        },
+        {
+          clerkId: id,
+          email,
+          username: generatedUsername,
+          displayName,
+          avatar: image_url,
+          role: 'user',
+          isActive: true,
+          isVerified: false,
+        },
+        {
+          upsert: true,
+          new: true,
+          setDefaultsOnInsert: true,
+        }
+      )
 
       return res.status(200).json({
         success: true,
         data: user,
       })
     } catch (error: any) {
-      // Handle duplicate username
       if (error.code === 11000) {
-        const existingUser = await User.findOne({
-          clerkId: id,
+        const fallbackUsername = `${generatedUsername}${Date.now()}`
+
+        const user = await User.findOneAndUpdate(
+          {
+            clerkId: id,
+          },
+          {
+            clerkId: id,
+            email,
+            username: fallbackUsername,
+            displayName,
+            avatar: image_url,
+            role: 'user',
+            isActive: true,
+            isVerified: false,
+          },
+          {
+            upsert: true,
+            new: true,
+            setDefaultsOnInsert: true,
+          }
+        )
+
+        return res.status(200).json({
+          success: true,
+          data: user,
         })
-
-        if (existingUser) {
-          existingUser.avatar =
-            image_url || existingUser.avatar
-
-          existingUser.displayName =
-            displayName || existingUser.displayName
-
-          await existingUser.save()
-
-          return res.status(200).json({
-            success: true,
-            data: existingUser,
-          })
-        }
       }
 
       throw error
