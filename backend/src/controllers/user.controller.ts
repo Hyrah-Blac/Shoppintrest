@@ -11,26 +11,40 @@ export const getMe = asyncHandler(async (req: Request, res: Response) => {
   const user = await User.findById(req.user._id)
     .populate('collections', 'title coverImage saves')
     .lean()
+
   sendSuccess(res, user)
 })
 
 // ─── UPDATE PROFILE ──────────────────────────────────────────────────────────
-export const updateMe = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
-  const { displayName, bio, website, avatar } = req.body
+export const updateMe = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { displayName, bio, website, avatar } = req.body
 
-  const forbidden = ['role', 'clerkId', 'email', 'isVerified', 'isActive']
-  forbidden.forEach((field) => {
-    if (req.body[field]) return next(new AppError(`You cannot update ${field}`, 400))
-  })
+    const forbidden = ['role', 'clerkId', 'email', 'isVerified', 'isActive']
 
-  const updated = await User.findByIdAndUpdate(
-    req.user._id,
-    { displayName, bio, website, avatar },
-    { new: true, runValidators: true }
-  )
+    for (const field of forbidden) {
+      if (req.body[field]) {
+        return next(new AppError(`You cannot update ${field}`, 400))
+      }
+    }
 
-  sendSuccess(res, updated, 'Profile updated successfully')
-})
+    const updated = await User.findByIdAndUpdate(
+      req.user._id,
+      {
+        displayName,
+        bio,
+        website,
+        avatar,
+      },
+      {
+        new: true,
+        runValidators: true,
+      }
+    )
+
+    sendSuccess(res, updated, 'Profile updated successfully')
+  }
+)
 
 // ─── GET USER BY USERNAME ────────────────────────────────────────────────────
 export const getUserByUsername = asyncHandler(
@@ -49,7 +63,10 @@ export const getUserByUsername = asyncHandler(
 export const toggleFollow = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     const targetUser = await User.findById(req.params.userId)
-    if (!targetUser) return next(new AppError('User not found', 404))
+
+    if (!targetUser) {
+      return next(new AppError('User not found', 404))
+    }
 
     if (targetUser._id.toString() === req.user._id.toString()) {
       return next(new AppError('You cannot follow yourself', 400))
@@ -61,14 +78,17 @@ export const toggleFollow = asyncHandler(
       await User.findByIdAndUpdate(req.user._id, {
         $pull: { following: targetUser._id },
       })
+
       await User.findByIdAndUpdate(targetUser._id, {
         $pull: { followers: req.user._id },
       })
+
       sendSuccess(res, { isFollowing: false }, 'Unfollowed successfully')
     } else {
       await User.findByIdAndUpdate(req.user._id, {
         $addToSet: { following: targetUser._id },
       })
+
       await User.findByIdAndUpdate(targetUser._id, {
         $addToSet: { followers: req.user._id },
       })
@@ -87,28 +107,35 @@ export const toggleFollow = asyncHandler(
 )
 
 // ─── GET FOLLOWERS ───────────────────────────────────────────────────────────
-export const getFollowers = asyncHandler(async (req: Request, res: Response) => {
-  const user = await User.findOne({ username: req.params.username })
-    .populate('followers', 'username displayName avatar isVerified')
-    .lean()
+export const getFollowers = asyncHandler(
+  async (req: Request, res: Response) => {
+    const user = await User.findOne({ username: req.params.username })
+      .populate('followers', 'username displayName avatar isVerified')
+      .lean()
 
-  sendSuccess(res, user?.followers || [])
-})
+    sendSuccess(res, user?.followers || [])
+  }
+)
 
 // ─── GET FOLLOWING ───────────────────────────────────────────────────────────
-export const getFollowing = asyncHandler(async (req: Request, res: Response) => {
-  const user = await User.findOne({ username: req.params.username })
-    .populate('following', 'username displayName avatar isVerified')
-    .lean()
+export const getFollowing = asyncHandler(
+  async (req: Request, res: Response) => {
+    const user = await User.findOne({ username: req.params.username })
+      .populate('following', 'username displayName avatar isVerified')
+      .lean()
 
-  sendSuccess(res, user?.following || [])
-})
+    sendSuccess(res, user?.following || [])
+  }
+)
 
 // ─── SAVE / UNSAVE PRODUCT ───────────────────────────────────────────────────
 export const toggleSaveProduct = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     const product = await Product.findById(req.params.productId)
-    if (!product) return next(new AppError('Product not found', 404))
+
+    if (!product) {
+      return next(new AppError('Product not found', 404))
+    }
 
     const isSaved = req.user.savedProducts.includes(product._id)
 
@@ -116,81 +143,131 @@ export const toggleSaveProduct = asyncHandler(
       await User.findByIdAndUpdate(req.user._id, {
         $pull: { savedProducts: product._id },
       })
-      await Product.findByIdAndUpdate(product._id, { $inc: { saves: -1 } })
+
+      await Product.findByIdAndUpdate(product._id, {
+        $inc: { saves: -1 },
+      })
+
       sendSuccess(res, { isSaved: false }, 'Product unsaved')
     } else {
       await User.findByIdAndUpdate(req.user._id, {
         $addToSet: { savedProducts: product._id },
       })
-      await Product.findByIdAndUpdate(product._id, { $inc: { saves: 1 } })
+
+      await Product.findByIdAndUpdate(product._id, {
+        $inc: { saves: 1 },
+      })
+
       sendSuccess(res, { isSaved: true }, 'Product saved')
     }
   }
 )
 
 // ─── GET SAVED PRODUCTS ──────────────────────────────────────────────────────
-export const getSavedProducts = asyncHandler(async (req: Request, res: Response) => {
-  const page = parseInt(req.query.page as string) || 1
-  const limit = parseInt(req.query.limit as string) || 24
-  const skip = (page - 1) * limit
+export const getSavedProducts = asyncHandler(
+  async (req: Request, res: Response) => {
+    const page = parseInt(req.query.page as string) || 1
+    const limit = parseInt(req.query.limit as string) || 24
+    const skip = (page - 1) * limit
 
-  const user = await User.findById(req.user._id).select('savedProducts')
-  const total = user?.savedProducts.length || 0
+    const user = await User.findById(req.user._id).select('savedProducts')
 
-  const products = await Product.find({
-    _id: { $in: user?.savedProducts },
-    isPublished: true,
-  })
-    .skip(skip)
-    .limit(limit)
-    .lean()
+    const total = user?.savedProducts.length || 0
 
-  sendPaginated(res, products, total, page, limit)
-})
+    const products = await Product.find({
+      _id: { $in: user?.savedProducts },
+      isPublished: true,
+    })
+      .skip(skip)
+      .limit(limit)
+      .lean()
+
+    sendPaginated(res, products, total, page, limit)
+  }
+)
 
 // ─── SEARCH USERS ────────────────────────────────────────────────────────────
-export const searchUsers = asyncHandler(async (req: Request, res: Response) => {
-  const { q } = req.query
-  if (!q) return sendSuccess(res, [])
+export const searchUsers = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { q } = req.query
 
-  const users = await User.find({
-    $or: [
-      { username: { $regex: q, $options: 'i' } },
-      { displayName: { $regex: q, $options: 'i' } },
-    ],
-    isActive: true,
-  })
-    .select('username displayName avatar isVerified')
-    .limit(20)
-    .lean()
+    if (!q) {
+      return sendSuccess(res, [])
+    }
 
-  sendSuccess(res, users)
-})
-export const syncClerkUser = asyncHandler(async (req: Request, res: Response) => {
-  const { id, email_addresses, username, image_url, first_name, last_name } =
-    req.body?.data || req.body
+    const users = await User.find({
+      $or: [
+        { username: { $regex: q, $options: 'i' } },
+        { displayName: { $regex: q, $options: 'i' } },
+      ],
+      isActive: true,
+    })
+      .select('username displayName avatar isVerified')
+      .limit(20)
+      .lean()
 
-  const email = email_addresses?.[0]?.email_address
-
-  if (!id || !email) {
-    return res.status(400).json({ success: false, message: 'Missing user data' })
+    sendSuccess(res, users)
   }
+)
 
-  const displayName =
-    `${first_name || ''} ${last_name || ''}`.trim() ||
-    username ||
-    email.split('@')[0]
+// ─── SYNC CLERK USER ─────────────────────────────────────────────────────────
+export const syncClerkUser = asyncHandler(
+  async (req: Request, res: Response) => {
+    const {
+      id,
+      email_addresses,
+      username,
+      image_url,
+      first_name,
+      last_name,
+    } = req.body?.data || req.body
 
-  const generatedUsername =
-    username ||
-    email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '') +
-      Math.floor(Math.random() * 1000)
+    const email = email_addresses?.[0]?.email_address
 
-  try {
-    const user = await User.findOneAndUpdate(
-      { clerkId: id },
-      {
-        $setOnInsert: {
+    if (!id || !email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing user data',
+      })
+    }
+
+    const displayName =
+      `${first_name || ''} ${last_name || ''}`.trim() ||
+      username ||
+      email.split('@')[0]
+
+    const generatedUsername =
+      username ||
+      email
+        .split('@')[0]
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '') +
+        Math.floor(Math.random() * 1000)
+
+    try {
+      // Check if user already exists
+      const existingUser = await User.findOne({ clerkId: id })
+
+      let user
+
+      if (existingUser) {
+        // UPDATE EXISTING USER
+        user = await User.findOneAndUpdate(
+          { clerkId: id },
+          {
+            $set: {
+              avatar: image_url,
+              displayName: displayName,
+            },
+          },
+          {
+            new: true,
+            runValidators: false,
+          }
+        )
+      } else {
+        // CREATE NEW USER
+        user = await User.create({
           clerkId: id,
           email,
           username: generatedUsername,
@@ -199,27 +276,36 @@ export const syncClerkUser = asyncHandler(async (req: Request, res: Response) =>
           role: 'user',
           isActive: true,
           isVerified: false,
-        },
-        $set: {
-          avatar: image_url,
-          displayName,
-        },
-      },
-      { upsert: true, new: true, runValidators: false }
-    )
+        })
+      }
 
-    res.status(200).json({ success: true, data: user })
-  } catch (error: any) {
-    // Handle duplicate username
-    if (error.code === 11000) {
-      const user = await User.findOneAndUpdate(
-        { clerkId: id },
-        { $set: { avatar: image_url, displayName } },
-        { new: true }
-      )
-      res.status(200).json({ success: true, data: user })
-    } else {
-      throw error
+      res.status(200).json({
+        success: true,
+        data: user,
+      })
+    } catch (error: any) {
+      // Handle duplicate username
+      if (error.code === 11000) {
+        const user = await User.findOneAndUpdate(
+          { clerkId: id },
+          {
+            $set: {
+              avatar: image_url,
+              displayName: displayName,
+            },
+          },
+          {
+            new: true,
+          }
+        )
+
+        res.status(200).json({
+          success: true,
+          data: user,
+        })
+      } else {
+        throw error
+      }
     }
   }
-})
+)
