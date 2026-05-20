@@ -23,8 +23,10 @@ import notificationRoutes from './routes/notification.routes'
 import uploadRoutes from './routes/upload.routes'
 import stripeRoutes from './routes/stripe.routes'
 import adminRoutes from './routes/admin.routes'
-
 const app = express()
+
+// TRUST PROXY (Render / Railway / Vercel / Nginx)
+app.set('trust proxy', 1)
 
 // ─── 1. HELMET ───────────────────────────────────────────────────────────────
 app.use(
