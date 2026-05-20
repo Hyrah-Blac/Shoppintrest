@@ -6,8 +6,7 @@ import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Lock, Globe, Plus, Trash2,
-  ArrowLeft, BookmarkPlus, Share2,
-  Heart,
+  ArrowLeft, BookmarkPlus, Share2, Heart,
 } from 'lucide-react'
 import { useAuth } from '@clerk/nextjs'
 import { toast } from 'sonner'
@@ -84,8 +83,6 @@ export default function CollectionDetailPage({
     toast.success(isSaved ? 'Removed from saved' : 'Collection saved')
   }
 
-  // ── Loading ──────────────────────────────────────────────────────────────
-
   if (isLoading) {
     return (
       <div className="min-h-screen">
@@ -101,8 +98,7 @@ export default function CollectionDetailPage({
           </div>
         </div>
         <div className="container-wide py-10">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4
-                          xl:grid-cols-5 gap-4 lg:gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 lg:gap-6">
             {Array.from({ length: 10 }).map((_, i) => (
               <Skeleton key={i} className="aspect-[3/4] rounded-2xl" />
             ))}
@@ -112,16 +108,11 @@ export default function CollectionDetailPage({
     )
   }
 
-  // ── Not Found ────────────────────────────────────────────────────────────
-
   if (!collection) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center
-                      text-center px-6 py-32">
+      <div className="min-h-screen flex flex-col items-center justify-center text-center px-6 py-32">
         <BookmarkPlus size={40} className="text-muted mb-4" />
-        <p className="font-medium text-foreground mb-2">
-          Collection not found
-        </p>
+        <p className="font-medium text-foreground mb-2">Collection not found</p>
         <p className="text-sm text-muted mb-6">
           This collection may have been removed or made private
         </p>
@@ -134,15 +125,11 @@ export default function CollectionDetailPage({
     )
   }
 
-  // ── Page ─────────────────────────────────────────────────────────────────
-
   return (
     <div className="min-h-screen">
 
-      {/* ── Hero Header ── */}
+      {/* Hero Header */}
       <div className="relative bg-surface border-b border-border overflow-hidden">
-
-        {/* Cover image blur background */}
         {collection.coverImage && (
           <div className="absolute inset-0">
             <Image
@@ -153,30 +140,23 @@ export default function CollectionDetailPage({
               sizes="100vw"
               priority
             />
-            <div className="absolute inset-0 bg-gradient-to-b from-surface/50
-                            to-surface" />
+            <div className="absolute inset-0 bg-gradient-to-b from-surface/50 to-surface" />
           </div>
         )}
 
         <div className="relative container-wide py-12">
-
-          {/* Back link */}
           <Link
             href="/collections"
-            className="inline-flex items-center gap-2 text-sm text-muted
-                       hover:text-foreground transition-colors mb-8"
+            className="inline-flex items-center gap-2 text-sm text-muted hover:text-foreground transition-colors mb-8"
           >
             <ArrowLeft size={14} />
             All Collections
           </Link>
 
-          <div className="flex flex-col sm:flex-row sm:items-end
-                          justify-between gap-6">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
 
             {/* Left info */}
             <div className="space-y-4 max-w-2xl">
-
-              {/* Privacy badge */}
               <div className="flex items-center gap-2">
                 {collection.isPrivate ? (
                   <Badge variant="secondary" size="sm">
@@ -197,20 +177,16 @@ export default function CollectionDetailPage({
                 )}
               </div>
 
-              {/* Title */}
-              <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl
-                             font-semibold tracking-tight">
+              <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl font-semibold tracking-tight">
                 {collection.title}
               </h1>
 
-              {/* Description */}
               {collection.description && (
                 <p className="text-muted text-sm sm:text-base leading-relaxed max-w-lg">
                   {collection.description}
                 </p>
               )}
 
-              {/* Creator + stats */}
               <div className="flex items-center gap-3">
                 <Avatar
                   src={collection.user?.avatar}
@@ -220,14 +196,12 @@ export default function CollectionDetailPage({
                 <div>
                   <Link
                     href={`/profile/${collection.user?.username}`}
-                    className="text-sm font-medium hover:opacity-70
-                               transition-opacity"
+                    className="text-sm font-medium hover:opacity-70 transition-opacity"
                   >
                     {collection.user?.displayName}
                   </Link>
                   <p className="text-xs text-muted mt-0.5">
-                    {collection.saves} saves ·{' '}
-                    {formatDate(collection.createdAt)}
+                    {collection.saves} saves · {formatDate(collection.createdAt)}
                   </p>
                 </div>
               </div>
@@ -235,34 +209,27 @@ export default function CollectionDetailPage({
 
             {/* Right actions */}
             <div className="flex items-center gap-2 shrink-0">
-              {/* Save collection */}
+
+              {/* Save collection — non-owners only */}
               {!isOwner && (
                 <button
                   onClick={handleSaveCollection}
                   className={cn(
-                    `w-10 h-10 rounded-xl flex items-center justify-center
-                     border transition-all duration-200`,
+                    'w-10 h-10 rounded-xl flex items-center justify-center border transition-all duration-200',
                     isSaved
                       ? 'bg-foreground text-background border-foreground'
-                      : 'border-border text-muted hover:text-foreground
-                         hover:border-foreground bg-background'
+                      : 'border-border text-muted hover:text-foreground hover:border-foreground bg-background'
                   )}
                   title={isSaved ? 'Unsave' : 'Save collection'}
                 >
-                  <Heart
-                    size={16}
-                    className={cn(isSaved && 'fill-current')}
-                  />
+                  <Heart size={16} className={cn(isSaved && 'fill-current')} />
                 </button>
               )}
 
               {/* Share */}
               <button
                 onClick={handleShare}
-                className="w-10 h-10 rounded-xl flex items-center justify-center
-                           border border-border text-muted hover:text-foreground
-                           hover:border-foreground bg-background
-                           transition-all duration-200"
+                className="w-10 h-10 rounded-xl flex items-center justify-center border border-border text-muted hover:text-foreground hover:border-foreground bg-background transition-all duration-200"
                 title="Share collection"
               >
                 <Share2 size={16} />
@@ -271,11 +238,7 @@ export default function CollectionDetailPage({
               {/* Owner — add products */}
               {isOwner && (
                 <Link href="/explore">
-                  <Button
-                    variant="primary"
-                    size="md"
-                    leftIcon={<Plus size={14} />}
-                  >
+                  <Button variant="primary" size="md" leftIcon={<Plus size={14} />}>
                     Add Products
                   </Button>
                 </Link>
@@ -285,19 +248,14 @@ export default function CollectionDetailPage({
         </div>
       </div>
 
-      {/* ── Products Grid ── */}
+      {/* Products Grid */}
       <div className="container-wide py-10">
         {collection.products?.length === 0 ? (
-
-          /* Empty state */
           <div className="py-24 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-surface border border-border
-                            flex items-center justify-center mx-auto mb-4">
+            <div className="w-16 h-16 rounded-2xl bg-surface border border-border flex items-center justify-center mx-auto mb-4">
               <BookmarkPlus size={24} className="text-muted" />
             </div>
-            <p className="font-medium text-foreground mb-2">
-              No products yet
-            </p>
+            <p className="font-medium text-foreground mb-2">No products yet</p>
             <p className="text-sm text-muted mb-6 max-w-xs mx-auto">
               {isOwner
                 ? 'Browse products and save them to this collection'
@@ -305,24 +263,18 @@ export default function CollectionDetailPage({
             </p>
             {isOwner && (
               <Link href="/explore">
-                <Button variant="primary" size="md">
-                  Browse Products
-                </Button>
+                <Button variant="primary" size="md">Browse Products</Button>
               </Link>
             )}
           </div>
-
         ) : (
-
-          /* Grid */
           <>
             <p className="text-sm text-muted mb-6">
               {collection.products.length}{' '}
               {collection.products.length === 1 ? 'product' : 'products'}
             </p>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4
-                            xl:grid-cols-5 gap-4 lg:gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 lg:gap-6">
               <AnimatePresence>
                 {collection.products.map((product: any, i: number) => (
                   <motion.div
@@ -335,26 +287,20 @@ export default function CollectionDetailPage({
                   >
                     <ProductCard product={product} priority={i < 5} />
 
-                    {/* Owner remove button */}
                     {isOwner && (
                       <button
                         onClick={() => handleRemoveProduct(product._id)}
                         disabled={isDeleting === product._id}
                         className={cn(
-                          `absolute top-3 left-3 z-20 w-7 h-7 rounded-lg
-                           flex items-center justify-center
-                           transition-all duration-200`,
+                          'absolute top-3 left-3 z-20 w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-200',
                           isDeleting === product._id
                             ? 'bg-destructive text-white opacity-100'
-                            : `bg-background/90 text-destructive
-                               opacity-0 group-hover:opacity-100
-                               hover:bg-destructive hover:text-white`
+                            : 'bg-background/90 text-destructive opacity-0 group-hover:opacity-100 hover:bg-destructive hover:text-white'
                         )}
                         title="Remove from collection"
                       >
                         {isDeleting === product._id ? (
-                          <div className="w-3 h-3 border border-white/50
-                                          border-t-white rounded-full animate-spin" />
+                          <div className="w-3 h-3 border border-white/50 border-t-white rounded-full animate-spin" />
                         ) : (
                           <Trash2 size={12} />
                         )}
