@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { motion } from 'framer-motion'
 import {
   TrendingUp, Users, Package, ShoppingCart,
@@ -145,7 +146,7 @@ export default function AdminDashboard() {
         ))}
       </div>
 
-      {/* Chart + Recent Orders */}
+      {/* Chart + Top Products */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Revenue Chart */}
         <div className="xl:col-span-2 bg-background rounded-2xl border border-border p-6">
@@ -229,10 +230,7 @@ export default function AdminDashboard() {
                   <span className="text-xs font-bold text-muted w-4">
                     {i + 1}
                   </span>
-                  <div
-                    className="w-10 h-10 rounded-xl bg-surface shrink-0
-                               overflow-hidden"
-                  >
+                  <div className="w-10 h-10 rounded-xl bg-surface shrink-0 overflow-hidden">
                     {product.images?.[0]?.url && (
                       <img
                         src={product.images[0].url}
@@ -263,13 +261,12 @@ export default function AdminDashboard() {
       <div className="bg-background rounded-2xl border border-border p-6">
         <div className="flex items-center justify-between mb-5">
           <h2 className="font-medium text-foreground">Recent Orders</h2>
-          
+          <Link
             href="/admin/orders"
-            className="text-xs text-muted hover:text-foreground
-                       transition-colors"
+            className="text-xs text-muted hover:text-foreground transition-colors"
           >
             View all
-          </a>
+          </Link>
         </div>
 
         {isLoading ? (
