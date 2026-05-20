@@ -13,10 +13,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const clearUser = useUserStore((s) => s.clearUser)
   const fetchCart = useCartStore((s) => s.fetchCart)
 
-  // Register token getter once so axios always has a fresh token
-  useEffect(() => {
-    setTokenGetter(() => getToken({ template: 'backend' }))
-  }, [getToken])
+  // Set token getter synchronously on every render so it's
+  // always available before any API call fires
+  setTokenGetter(() => getToken({ template: 'backend' }))
 
   useEffect(() => {
     if (!isLoaded) return
@@ -24,11 +23,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     if (isSignedIn && clerkUser) {
       const syncAndFetch = async () => {
         try {
-          // Wait for a valid token before making any API calls
           const token = await getToken({ template: 'backend' })
           if (!token) return
 
-          // Sync Clerk user to MongoDB
           try {
             await api.post('/api/users/sync', {
               type: 'user.created',
