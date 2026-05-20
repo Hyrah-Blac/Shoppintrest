@@ -3,17 +3,21 @@ import { ProductDetail } from '@/components/product/ProductDetail'
 import { RelatedProducts } from '@/components/product/RelatedProducts'
 
 interface Props {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }
 
-export default function ProductPage({ params }: Props) {
+export default async function ProductPage({ params }: Props) {
+  const { id } = await params
+
+  if (!id) return null
+
   return (
     <div className="min-h-screen">
       <Suspense fallback={<ProductDetailSkeleton />}>
-        <ProductDetail id={params.id} />
+        <ProductDetail id={id} />
       </Suspense>
       <Suspense fallback={null}>
-        <RelatedProducts id={params.id} />
+        <RelatedProducts id={id} />
       </Suspense>
     </div>
   )

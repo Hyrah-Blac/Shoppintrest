@@ -3,13 +3,15 @@
 import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   Lock, Globe, Plus, Trash2,
-  ArrowLeft, BookmarkPlus,
+  ArrowLeft, BookmarkPlus, Share2,
+  Heart,
 } from 'lucide-react'
 import { useAuth } from '@clerk/nextjs'
 import { toast } from 'sonner'
+import { use } from 'react'
 import { apiClient } from '@/lib/api'
 import { useUserStore } from '@/store/useUserStore'
 import { Avatar } from '@/components/ui/Avatar'
@@ -22,28 +24,31 @@ import { formatDate, cn } from '@/lib/utils'
 export default function CollectionDetailPage({
   params,
 }: {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }) {
+  const { id } = use(params)
   const { isSignedIn } = useAuth()
   const currentUser = useUserStore((s) => s.user)
 
   const [collection, setCollection] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
+  const [isSaved, setIsSaved] = useState(false)
 
   const isOwner = collection?.user?._id === currentUser?._id
 
   useEffect(() => {
-    apiClient.collections.getOne(params.id)
+    if (!id) return
+    apiClient.collections.getOne(id)
       .then(({ data }) => setCollection(data.data))
       .catch(() => toast.error('Collection not found'))
       .finally(() => setIsLoading(false))
-  }, [params.id])
+  }, [id])
 
   const handleRemoveProduct = async (productId: string) => {
     setIsDeleting(productId)
     try {
-      await apiClient.collections.toggleProduct(params.id, productId)
+      await apiClient.collections.toggleProduct(id, productId)
       setCollection((prev: any) => ({
         ...prev,
         products: prev.products.filter((p: any) => p._id !== productId),
@@ -56,52 +61,110 @@ export default function CollectionDetailPage({
     }
   }
 
+  const handleShare = async () => {
+    const url = window.location.href
+    if (navigator.share) {
+      await navigator.share({ title: collection?.title, url })
+    } else {
+      await navigator.clipboard.writeText(url)
+      toast.success('Link copied to clipboard')
+    }
+  }
+
+  const handleSaveCollection = () => {
+    if (!isSignedIn) {
+      toast.error('Sign in to save collections')
+      return
+    }
+    setIsSaved(!isSaved)
+    setCollection((prev: any) => ({
+      ...prev,
+      saves: isSaved ? prev.saves - 1 : prev.saves + 1,
+    }))
+    toast.success(isSaved ? 'Removed from saved' : 'Collection saved')
+  }
+
+  // ── Loading ──────────────────────────────────────────────────────────────
+
   if (isLoading) {
     return (
-      <div className="container-wide py-12 space-y-8">
-        <Skeleton className="h-8 w-64 rounded-xl" />
-        <Skeleton className="h-4 w-96 rounded" />
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <Skeleton key={i} className="aspect-[3/4] rounded-2xl" />
-          ))}
+      <div className="min-h-screen">
+        <div className="bg-surface border-b border-border">
+          <div className="container-wide py-12 space-y-4">
+            <Skeleton className="h-4 w-32 rounded" />
+            <Skeleton className="h-10 w-80 rounded-xl" />
+            <Skeleton className="h-4 w-96 rounded" />
+            <div className="flex items-center gap-3">
+              <Skeleton className="w-8 h-8 rounded-full" />
+              <Skeleton className="h-4 w-40 rounded" />
+            </div>
+          </div>
+        </div>
+        <div className="container-wide py-10">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4
+                          xl:grid-cols-5 gap-4 lg:gap-6">
+            {Array.from({ length: 10 }).map((_, i) => (
+              <Skeleton key={i} className="aspect-[3/4] rounded-2xl" />
+            ))}
+          </div>
         </div>
       </div>
     )
   }
 
+  // ── Not Found ────────────────────────────────────────────────────────────
+
   if (!collection) {
     return (
-      <div className="container-wide py-32 text-center">
-        <p className="text-muted text-sm">Collection not found</p>
-        <Link href="/collections" className="text-foreground underline mt-2 text-sm">
-          Back to collections
+      <div className="min-h-screen flex flex-col items-center justify-center
+                      text-center px-6 py-32">
+        <BookmarkPlus size={40} className="text-muted mb-4" />
+        <p className="font-medium text-foreground mb-2">
+          Collection not found
+        </p>
+        <p className="text-sm text-muted mb-6">
+          This collection may have been removed or made private
+        </p>
+        <Link href="/collections">
+          <Button variant="outline" size="md" leftIcon={<ArrowLeft size={14} />}>
+            All Collections
+          </Button>
         </Link>
       </div>
     )
   }
 
+  // ── Page ─────────────────────────────────────────────────────────────────
+
   return (
     <div className="min-h-screen">
-      {/* Hero */}
-      <div className="relative bg-surface border-b border-border">
+
+      {/* ── Hero Header ── */}
+      <div className="relative bg-surface border-b border-border overflow-hidden">
+
+        {/* Cover image blur background */}
         {collection.coverImage && (
-          <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute inset-0">
             <Image
               src={collection.coverImage}
               alt={collection.title}
               fill
-              className="object-cover opacity-10"
+              className="object-cover opacity-[0.07] blur-sm scale-105"
               sizes="100vw"
+              priority
             />
+            <div className="absolute inset-0 bg-gradient-to-b from-surface/50
+                            to-surface" />
           </div>
         )}
 
         <div className="relative container-wide py-12">
+
+          {/* Back link */}
           <Link
             href="/collections"
             className="inline-flex items-center gap-2 text-sm text-muted
-                       hover:text-foreground transition-colors mb-6"
+                       hover:text-foreground transition-colors mb-8"
           >
             <ArrowLeft size={14} />
             All Collections
@@ -109,7 +172,11 @@ export default function CollectionDetailPage({
 
           <div className="flex flex-col sm:flex-row sm:items-end
                           justify-between gap-6">
-            <div className="space-y-3">
+
+            {/* Left info */}
+            <div className="space-y-4 max-w-2xl">
+
+              {/* Privacy badge */}
               <div className="flex items-center gap-2">
                 {collection.isPrivate ? (
                   <Badge variant="secondary" size="sm">
@@ -122,19 +189,28 @@ export default function CollectionDetailPage({
                     Public
                   </Badge>
                 )}
+                {collection.products?.length > 0 && (
+                  <span className="text-xs text-muted">
+                    {collection.products.length}{' '}
+                    {collection.products.length === 1 ? 'item' : 'items'}
+                  </span>
+                )}
               </div>
 
-              <h1 className="font-display text-3xl sm:text-4xl font-semibold
-                             tracking-tight">
+              {/* Title */}
+              <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl
+                             font-semibold tracking-tight">
                 {collection.title}
               </h1>
 
+              {/* Description */}
               {collection.description && (
-                <p className="text-muted text-sm max-w-xl leading-relaxed">
+                <p className="text-muted text-sm sm:text-base leading-relaxed max-w-lg">
                   {collection.description}
                 </p>
               )}
 
+              {/* Creator + stats */}
               <div className="flex items-center gap-3">
                 <Avatar
                   src={collection.user?.avatar}
@@ -144,12 +220,12 @@ export default function CollectionDetailPage({
                 <div>
                   <Link
                     href={`/profile/${collection.user?.username}`}
-                    className="text-sm font-medium hover:opacity-70 transition-opacity"
+                    className="text-sm font-medium hover:opacity-70
+                               transition-opacity"
                   >
                     {collection.user?.displayName}
                   </Link>
-                  <p className="text-xs text-muted">
-                    {collection.products?.length || 0} items ·{' '}
+                  <p className="text-xs text-muted mt-0.5">
                     {collection.saves} saves ·{' '}
                     {formatDate(collection.createdAt)}
                   </p>
@@ -157,30 +233,75 @@ export default function CollectionDetailPage({
               </div>
             </div>
 
-            {isOwner && (
-              <div className="flex gap-2">
-                <Button variant="outline" size="md"
-                        leftIcon={<Plus size={14} />}>
-                  Add Products
-                </Button>
-              </div>
-            )}
+            {/* Right actions */}
+            <div className="flex items-center gap-2 shrink-0">
+              {/* Save collection */}
+              {!isOwner && (
+                <button
+                  onClick={handleSaveCollection}
+                  className={cn(
+                    `w-10 h-10 rounded-xl flex items-center justify-center
+                     border transition-all duration-200`,
+                    isSaved
+                      ? 'bg-foreground text-background border-foreground'
+                      : 'border-border text-muted hover:text-foreground
+                         hover:border-foreground bg-background'
+                  )}
+                  title={isSaved ? 'Unsave' : 'Save collection'}
+                >
+                  <Heart
+                    size={16}
+                    className={cn(isSaved && 'fill-current')}
+                  />
+                </button>
+              )}
+
+              {/* Share */}
+              <button
+                onClick={handleShare}
+                className="w-10 h-10 rounded-xl flex items-center justify-center
+                           border border-border text-muted hover:text-foreground
+                           hover:border-foreground bg-background
+                           transition-all duration-200"
+                title="Share collection"
+              >
+                <Share2 size={16} />
+              </button>
+
+              {/* Owner — add products */}
+              {isOwner && (
+                <Link href="/explore">
+                  <Button
+                    variant="primary"
+                    size="md"
+                    leftIcon={<Plus size={14} />}
+                  >
+                    Add Products
+                  </Button>
+                </Link>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Products */}
+      {/* ── Products Grid ── */}
       <div className="container-wide py-10">
         {collection.products?.length === 0 ? (
+
+          /* Empty state */
           <div className="py-24 text-center">
-            <BookmarkPlus size={40} className="text-muted mx-auto mb-4" />
+            <div className="w-16 h-16 rounded-2xl bg-surface border border-border
+                            flex items-center justify-center mx-auto mb-4">
+              <BookmarkPlus size={24} className="text-muted" />
+            </div>
             <p className="font-medium text-foreground mb-2">
               No products yet
             </p>
-            <p className="text-sm text-muted mb-6">
+            <p className="text-sm text-muted mb-6 max-w-xs mx-auto">
               {isOwner
-                ? 'Start adding products to this collection'
-                : 'This collection is empty'}
+                ? 'Browse products and save them to this collection'
+                : 'This collection is empty for now'}
             </p>
             {isOwner && (
               <Link href="/explore">
@@ -190,34 +311,60 @@ export default function CollectionDetailPage({
               </Link>
             )}
           </div>
+
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4
-                          xl:grid-cols-5 gap-4 lg:gap-6">
-            {collection.products.map((product: any, i: number) => (
-              <motion.div
-                key={product._id}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.04 }}
-                className="relative group"
-              >
-                <ProductCard product={product} priority={i < 5} />
-                {isOwner && (
-                  <button
-                    onClick={() => handleRemoveProduct(product._id)}
-                    disabled={isDeleting === product._id}
-                    className="absolute top-3 left-3 z-20 w-7 h-7 rounded-lg
-                               bg-background/90 text-destructive flex items-center
-                               justify-center opacity-0 group-hover:opacity-100
-                               transition-all duration-200 hover:bg-destructive
-                               hover:text-white"
+
+          /* Grid */
+          <>
+            <p className="text-sm text-muted mb-6">
+              {collection.products.length}{' '}
+              {collection.products.length === 1 ? 'product' : 'products'}
+            </p>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4
+                            xl:grid-cols-5 gap-4 lg:gap-6">
+              <AnimatePresence>
+                {collection.products.map((product: any, i: number) => (
+                  <motion.div
+                    key={product._id}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ delay: i * 0.04, duration: 0.3 }}
+                    className="relative group"
                   >
-                    <Trash2 size={12} />
-                  </button>
-                )}
-              </motion.div>
-            ))}
-          </div>
+                    <ProductCard product={product} priority={i < 5} />
+
+                    {/* Owner remove button */}
+                    {isOwner && (
+                      <button
+                        onClick={() => handleRemoveProduct(product._id)}
+                        disabled={isDeleting === product._id}
+                        className={cn(
+                          `absolute top-3 left-3 z-20 w-7 h-7 rounded-lg
+                           flex items-center justify-center
+                           transition-all duration-200`,
+                          isDeleting === product._id
+                            ? 'bg-destructive text-white opacity-100'
+                            : `bg-background/90 text-destructive
+                               opacity-0 group-hover:opacity-100
+                               hover:bg-destructive hover:text-white`
+                        )}
+                        title="Remove from collection"
+                      >
+                        {isDeleting === product._id ? (
+                          <div className="w-3 h-3 border border-white/50
+                                          border-t-white rounded-full animate-spin" />
+                        ) : (
+                          <Trash2 size={12} />
+                        )}
+                      </button>
+                    )}
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+          </>
         )}
       </div>
     </div>

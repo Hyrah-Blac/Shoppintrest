@@ -79,25 +79,16 @@ export const apiClient = {
 
   // Users
   users: {
-    getMe: () =>
-      api.get('/api/users/me'),
-    updateMe: (data: any) =>
-      api.patch('/api/users/me', data),
-    getByUsername: (username: string) =>
-      api.get(`/api/users/${username}`),
-    follow: (userId: string) =>
-      api.post(`/api/users/${userId}/follow`),
-    getSaved: (params?: any) =>
-      api.get('/api/users/me/saved', { params }),
-    saveProduct: (productId: string) =>
-      api.post(`/api/users/me/save/${productId}`),
-    search: (q: string) =>
-      api.get('/api/users/search', { params: { q } }),
-    getFollowers: (username: string) =>
-      api.get(`/api/users/${username}/followers`),
-    getFollowing: (username: string) =>
-      api.get(`/api/users/${username}/following`),
-  },
+  getMe: () => api.get('/api/users/me'),
+  updateMe: (data: any) => api.patch('/api/users/me', data),
+  getByUsername: (username: string) => api.get(`/api/users/${username}`),
+  follow: (userId: string) => api.post(`/api/users/${userId}/follow`),
+  getSaved: (params?: any) => api.get('/api/users/me/saved', { params }),  // ← fix this
+  saveProduct: (productId: string) => api.post(`/api/users/me/save/${productId}`),
+  search: (q: string) => api.get('/api/users/search', { params: { q } }),
+  getFollowers: (username: string) => api.get(`/api/users/${username}/followers`),
+  getFollowing: (username: string) => api.get(`/api/users/${username}/following`),
+},
 
   // Cart
   cart: {
