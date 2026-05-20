@@ -16,10 +16,12 @@ api.interceptors.request.use(
       if (typeof window !== 'undefined') {
         const clerk = (window as any).Clerk
 
-        if (clerk && clerk.session) {
-          const token = await clerk.session.getToken()
+        if (clerk?.session) {
+          const token = await clerk.session.getToken({
+            template: 'backend',
+          })
 
-          console.log('CLERK TOKEN:', token)
+          console.log('CLERK BACKEND TOKEN:', token)
 
           if (token) {
             config.headers.Authorization = `Bearer ${token}`
