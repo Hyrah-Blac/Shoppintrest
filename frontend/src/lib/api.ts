@@ -1,5 +1,4 @@
 import axios from 'axios'
-import { useAuth } from '@clerk/nextjs'
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
@@ -15,22 +14,14 @@ api.interceptors.request.use(
   async (config) => {
     try {
       if (typeof window !== 'undefined') {
-        const clerk = await import('@clerk/nextjs')
+        const clerk = (window as any).Clerk
 
-        // Get Clerk session token
-        const token =
-          typeof clerk.useAuth === 'function'
-            ? undefined
-            : null
+        // Get Clerk JWT token
+        if (clerk?.session) {
+          const token = await clerk.session.getToken()
 
-        // Fallback using Clerk global
-        const clerkClient = (window as any).Clerk
-
-        if (clerkClient?.session) {
-          const sessionToken = await clerkClient.session.getToken()
-
-          if (sessionToken) {
-            config.headers.Authorization = `Bearer ${sessionToken}`
+          if (token) {
+            config.headers.Authorization = `Bearer ${token}`
           }
         }
       }
@@ -50,7 +41,6 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       console.error('Unauthorized request')
 
-      // Prevent infinite redirect loop
       if (
         typeof window !== 'undefined' &&
         !window.location.pathname.includes('/sign-in')
@@ -137,7 +127,8 @@ export const apiClient = {
       productId: string
       size: string
       quantity?: number
-    }) => api.post('/api/cart', data),
+    }) =>
+      api.post('/api/cart', data),
 
     update: (
       productId: string,
@@ -153,7 +144,7 @@ export const apiClient = {
       api.delete('/api/cart'),
   },
 
-  // Orders — M-Pesa
+  // Orders
   orders: {
     initiateMpesa: (data: {
       shippingAddress: any
@@ -189,13 +180,17 @@ export const apiClient = {
       api.delete(`/api/collections/${id}`),
 
     toggleProduct: (id: string, productId: string) =>
-      api.post(`/api/collections/${id}/products`, { productId }),
+      api.post(`/api/collections/${id}/products`, {
+        productId,
+      }),
   },
 
   // Reviews
   reviews: {
     getForProduct: (productId: string, params?: any) =>
-      api.get(`/api/reviews/product/${productId}`, { params }),
+      api.get(`/api/reviews/product/${productId}`, {
+        params,
+      }),
 
     create: (productId: string, data: any) =>
       api.post(`/api/reviews/product/${productId}`, data),
@@ -215,14 +210,21 @@ export const apiClient = {
     getOrCreate: (userId: string) =>
       api.get(`/api/messages/conversations/user/${userId}`),
 
-    getMessages: (conversationId: string, params?: any) =>
-      api.get(`/api/messages/${conversationId}`, { params }),
+    getMessages: (
+      conversationId: string,
+      params?: any
+    ) =>
+      api.get(`/api/messages/${conversationId}`, {
+        params,
+      }),
 
     send: (conversationId: string, data: any) =>
       api.post(`/api/messages/${conversationId}`, data),
 
     react: (messageId: string, emoji: string) =>
-      api.post(`/api/messages/${messageId}/react`, { emoji }),
+      api.post(`/api/messages/${messageId}/react`, {
+        emoji,
+      }),
   },
 
   // Notifications
@@ -244,6 +246,7 @@ export const apiClient = {
   upload: {
     image: (file: File, folder?: string) => {
       const form = new FormData()
+
       form.append('image', file)
 
       return api.post(
@@ -293,7 +296,9 @@ export const apiClient = {
       api.patch(`/api/admin/users/${id}/toggle-active`),
 
     updateUserRole: (id: string, role: string) =>
-      api.patch(`/api/admin/users/${id}/role`, { role }),
+      api.patch(`/api/admin/users/${id}/role`, {
+        role,
+      }),
 
     getOrders: (params?: any) =>
       api.get('/api/orders', { params }),
