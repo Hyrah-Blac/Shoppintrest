@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { motion } from 'framer-motion'
-import { Plus, Search, Edit2, Trash2, Eye, EyeOff } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Plus, Search, Edit2, Trash2, Eye, EyeOff, X, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 import { apiClient } from '@/lib/api'
 import { formatPrice, cn } from '@/lib/utils'
@@ -10,12 +10,39 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Skeleton } from '@/components/ui/Skeleton'
 
+const CATEGORIES = [
+  'womenswear', 'menswear', 'shoes', 'bags',
+  'jewelry', 'accessories', 'beauty', 'home',
+]
+
+const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'One Size']
+
+const emptyForm = {
+  title: '',
+  brand: '',
+  description: '',
+  price: '',
+  originalPrice: '',
+  category: '',
+  sizes: [] as string[],
+  images: [] as string[],
+  isPublished: false,
+}
+
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
+
+  // Modal state
+  const [showModal, setShowModal] = useState(false)
+  const [editProduct, setEditProduct] = useState<any>(null)
+  const [form, setForm] = useState(emptyForm)
+  const [isSaving, setIsSaving] = useState(false)
+  const [imageUrl, setImageUrl] = useState('')
+  const [isUploading, setIsUploading] = useState(false)
 
   const fetchProducts = async () => {
     setIsLoading(true)
@@ -28,6 +55,100 @@ export default function AdminProductsPage() {
   }
 
   useEffect(() => { fetchProducts() }, [page])
+
+  const openAdd = () => {
+    setEditProduct(null)
+    setForm(emptyForm)
+    setImageUrl('')
+    setShowModal(true)
+  }
+
+  const openEdit = (product: any) => {
+    setEditProduct(product)
+    setForm({
+      title: product.title || '',
+      brand: product.brand || '',
+      description: product.description || '',
+      price: product.price?.toString() || '',
+      originalPrice: product.originalPrice?.toString() || '',
+      category: product.category || '',
+      sizes: product.sizes || [],
+      images: product.images?.map((i: any) => i.url || i) || [],
+      isPublished: product.isPublished || false,
+    })
+    setImageUrl('')
+    setShowModal(true)
+  }
+
+  const handleAddImageUrl = () => {
+    if (!imageUrl.trim()) return
+    setForm((f) => ({ ...f, images: [...f.images, imageUrl.trim()] }))
+    setImageUrl('')
+  }
+
+  const handleUploadImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setIsUploading(true)
+    try {
+      const { data } = await apiClient.upload.image(file, 'products')
+      setForm((f) => ({ ...f, images: [...f.images, data.data.url] }))
+      toast.success('Image uploaded')
+    } catch {
+      toast.error('Image upload failed')
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  const handleRemoveImage = (idx: number) => {
+    setForm((f) => ({ ...f, images: f.images.filter((_, i) => i !== idx) }))
+  }
+
+  const toggleSize = (size: string) => {
+    setForm((f) => ({
+      ...f,
+      sizes: f.sizes.includes(size)
+        ? f.sizes.filter((s) => s !== size)
+        : [...f.sizes, size],
+    }))
+  }
+
+  const handleSave = async () => {
+    if (!form.title || !form.price || !form.category) {
+      toast.error('Title, price and category are required')
+      return
+    }
+
+    setIsSaving(true)
+    try {
+      const payload = {
+        ...form,
+        price: parseFloat(form.price),
+        originalPrice: form.originalPrice ? parseFloat(form.originalPrice) : undefined,
+        images: form.images.map((url) => ({ url })),
+      }
+
+      if (editProduct) {
+        const { data } = await apiClient.products.update(editProduct._id, payload)
+        setProducts((prev) =>
+          prev.map((p) => (p._id === editProduct._id ? data.data : p))
+        )
+        toast.success('Product updated')
+      } else {
+        const { data } = await apiClient.products.create(payload)
+        setProducts((prev) => [data.data, ...prev])
+        setTotal((t) => t + 1)
+        toast.success('Product created')
+      }
+
+      setShowModal(false)
+    } catch {
+      toast.error('Could not save product')
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this product?')) return
@@ -50,9 +171,7 @@ export default function AdminProductsPage() {
             : p
         )
       )
-      toast.success(
-        product.isPublished ? 'Product unpublished' : 'Product published'
-      )
+      toast.success(product.isPublished ? 'Product unpublished' : 'Product published')
     } catch { toast.error('Could not update product') }
   }
 
@@ -77,6 +196,7 @@ export default function AdminProductsPage() {
           variant="primary"
           size="md"
           leftIcon={<Plus size={15} />}
+          onClick={openAdd}
         >
           Add Product
         </Button>
@@ -84,10 +204,7 @@ export default function AdminProductsPage() {
 
       {/* Search */}
       <div className="relative max-w-sm">
-        <Search
-          size={14}
-          className="absolute left-3 top-1/2 -translate-y-1/2 text-muted"
-        />
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
         <input
           type="text"
           placeholder="Search products..."
@@ -126,10 +243,7 @@ export default function AdminProductsPage() {
                 ))
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td
-                    colSpan={6}
-                    className="px-5 py-16 text-center text-muted text-sm"
-                  >
+                  <td colSpan={6} className="px-5 py-16 text-center text-muted text-sm">
                     No products found
                   </td>
                 </tr>
@@ -143,8 +257,7 @@ export default function AdminProductsPage() {
                   >
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-surface
-                                        overflow-hidden shrink-0">
+                        <div className="w-10 h-10 rounded-xl bg-surface overflow-hidden shrink-0">
                           {product.images?.[0]?.url && (
                             <img
                               src={product.images[0].url}
@@ -154,8 +267,7 @@ export default function AdminProductsPage() {
                           )}
                         </div>
                         <div className="min-w-0">
-                          <p className="font-medium text-foreground truncate
-                                        max-w-[200px]">
+                          <p className="font-medium text-foreground truncate max-w-[200px]">
                             {product.title}
                           </p>
                           <p className="text-xs text-muted">{product.brand}</p>
@@ -163,9 +275,7 @@ export default function AdminProductsPage() {
                       </div>
                     </td>
                     <td className="px-5 py-4">
-                      <Badge variant="secondary" size="sm">
-                        {product.category}
-                      </Badge>
+                      <Badge variant="secondary" size="sm">{product.category}</Badge>
                     </td>
                     <td className="px-5 py-4 font-medium">
                       {formatPrice(product.price, 'KES')}
@@ -198,11 +308,10 @@ export default function AdminProductsPage() {
                                      hover:bg-accent transition-colors"
                           title={product.isPublished ? 'Unpublish' : 'Publish'}
                         >
-                          {product.isPublished
-                            ? <EyeOff size={14} />
-                            : <Eye size={14} />}
+                          {product.isPublished ? <EyeOff size={14} /> : <Eye size={14} />}
                         </button>
                         <button
+                          onClick={() => openEdit(product)}
                           className="p-2 rounded-lg text-muted hover:text-foreground
                                      hover:bg-accent transition-colors"
                         >
@@ -224,6 +333,272 @@ export default function AdminProductsPage() {
           </table>
         </div>
       </div>
+
+      {/* Add / Edit Modal */}
+      <AnimatePresence>
+        {showModal && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowModal(false)}
+              className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
+            />
+
+            {/* Modal */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: 'spring', duration: 0.3 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            >
+              <div className="bg-background rounded-2xl border border-border
+                              w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
+
+                {/* Modal Header */}
+                <div className="flex items-center justify-between p-6 border-b border-border sticky top-0 bg-background z-10">
+                  <h2 className="font-display text-lg font-semibold">
+                    {editProduct ? 'Edit Product' : 'Add Product'}
+                  </h2>
+                  <button
+                    onClick={() => setShowModal(false)}
+                    className="p-2 rounded-xl text-muted hover:text-foreground
+                               hover:bg-accent transition-colors"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+
+                {/* Modal Body */}
+                <div className="p-6 space-y-5">
+
+                  {/* Title */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted">
+                      Title <span className="text-destructive">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={form.title}
+                      onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+                      placeholder="e.g. Silk Evening Gown"
+                      className="w-full h-10 px-3 rounded-xl border border-input bg-background
+                                 text-sm placeholder:text-muted focus:outline-none focus:ring-2
+                                 focus:ring-ring"
+                    />
+                  </div>
+
+                  {/* Brand + Category */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-muted">Brand</label>
+                      <input
+                        type="text"
+                        value={form.brand}
+                        onChange={(e) => setForm((f) => ({ ...f, brand: e.target.value }))}
+                        placeholder="e.g. Gucci"
+                        className="w-full h-10 px-3 rounded-xl border border-input bg-background
+                                   text-sm placeholder:text-muted focus:outline-none focus:ring-2
+                                   focus:ring-ring"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-muted">
+                        Category <span className="text-destructive">*</span>
+                      </label>
+                      <select
+                        value={form.category}
+                        onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
+                        className="w-full h-10 px-3 rounded-xl border border-input bg-background
+                                   text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                      >
+                        <option value="">Select category</option>
+                        {CATEGORIES.map((c) => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Price + Original Price */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-muted">
+                        Price (KES) <span className="text-destructive">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        value={form.price}
+                        onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
+                        placeholder="e.g. 5000"
+                        className="w-full h-10 px-3 rounded-xl border border-input bg-background
+                                   text-sm placeholder:text-muted focus:outline-none focus:ring-2
+                                   focus:ring-ring"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-muted">
+                        Original Price (KES)
+                      </label>
+                      <input
+                        type="number"
+                        value={form.originalPrice}
+                        onChange={(e) => setForm((f) => ({ ...f, originalPrice: e.target.value }))}
+                        placeholder="e.g. 7000 (optional)"
+                        className="w-full h-10 px-3 rounded-xl border border-input bg-background
+                                   text-sm placeholder:text-muted focus:outline-none focus:ring-2
+                                   focus:ring-ring"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Description */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted">Description</label>
+                    <textarea
+                      value={form.description}
+                      onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                      placeholder="Product description..."
+                      rows={3}
+                      className="w-full px-3 py-2.5 rounded-xl border border-input bg-background
+                                 text-sm placeholder:text-muted focus:outline-none focus:ring-2
+                                 focus:ring-ring resize-none"
+                    />
+                  </div>
+
+                  {/* Sizes */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted">Sizes</label>
+                    <div className="flex flex-wrap gap-2">
+                      {SIZES.map((size) => (
+                        <button
+                          key={size}
+                          onClick={() => toggleSize(size)}
+                          className={cn(
+                            'px-3 py-1.5 rounded-lg text-xs font-medium border transition-all',
+                            form.sizes.includes(size)
+                              ? 'bg-foreground text-background border-foreground'
+                              : 'bg-background text-muted border-border hover:border-foreground/40'
+                          )}
+                        >
+                          {size}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Images */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted">Images</label>
+
+                    {/* Existing images */}
+                    {form.images.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-2">
+                        {form.images.map((url, idx) => (
+                          <div key={idx} className="relative group w-16 h-16">
+                            <img
+                              src={url}
+                              alt=""
+                              className="w-full h-full object-cover rounded-xl border border-border"
+                            />
+                            <button
+                              onClick={() => handleRemoveImage(idx)}
+                              className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-destructive
+                                         text-white rounded-full flex items-center justify-center
+                                         opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <X size={10} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Upload file */}
+                    <label className="flex items-center gap-2 w-fit cursor-pointer px-3 py-2
+                                      rounded-xl border border-dashed border-border text-xs
+                                      text-muted hover:border-foreground/40 hover:text-foreground
+                                      transition-colors">
+                      <Upload size={13} />
+                      {isUploading ? 'Uploading...' : 'Upload image'}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleUploadImage}
+                        disabled={isUploading}
+                      />
+                    </label>
+
+                    {/* Or paste URL */}
+                    <div className="flex gap-2 mt-2">
+                      <input
+                        type="text"
+                        value={imageUrl}
+                        onChange={(e) => setImageUrl(e.target.value)}
+                        placeholder="Or paste image URL..."
+                        className="flex-1 h-9 px-3 rounded-xl border border-input bg-background
+                                   text-xs placeholder:text-muted focus:outline-none focus:ring-2
+                                   focus:ring-ring"
+                        onKeyDown={(e) => e.key === 'Enter' && handleAddImageUrl()}
+                      />
+                      <button
+                        onClick={handleAddImageUrl}
+                        className="px-3 h-9 rounded-xl bg-surface border border-border
+                                   text-xs font-medium hover:border-foreground/40 transition-colors"
+                      >
+                        Add
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Published toggle */}
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setForm((f) => ({ ...f, isPublished: !f.isPublished }))}
+                      className={cn(
+                        'relative w-10 h-6 rounded-full transition-colors duration-200',
+                        form.isPublished ? 'bg-foreground' : 'bg-border'
+                      )}
+                    >
+                      <span className={cn(
+                        'absolute top-1 w-4 h-4 rounded-full bg-background transition-all duration-200',
+                        form.isPublished ? 'left-5' : 'left-1'
+                      )} />
+                    </button>
+                    <span className="text-sm text-muted">
+                      {form.isPublished ? 'Published' : 'Draft'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Modal Footer */}
+                <div className="flex items-center justify-end gap-3 p-6 border-t border-border
+                                sticky bottom-0 bg-background">
+                  <Button
+                    variant="outline"
+                    size="md"
+                    onClick={() => setShowModal(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="md"
+                    isLoading={isSaving}
+                    onClick={handleSave}
+                  >
+                    {editProduct ? 'Save Changes' : 'Create Product'}
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
