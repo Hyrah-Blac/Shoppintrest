@@ -1,12 +1,15 @@
 {
   "name": "@shoppintrest/backend",
   "version": "1.0.0",
-  "main": "dist/server.js",
+
+  "main": "dist/backend/src/server.js",
+
   "scripts": {
     "dev": "nodemon --exec ts-node -r tsconfig-paths/register src/server.ts",
     "build": "tsc",
-    "start": "node dist/server.js"
+    "start": "node dist/backend/src/server.js"
   },
+
   "dependencies": {
     "@clerk/express": "^2.1.19",
     "axios": "^1.16.1",
@@ -31,6 +34,7 @@
     "winston": "^3.13.0",
     "zod": "^3.23.8"
   },
+
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
     "@types/compression": "^1.7.5",
