@@ -5,6 +5,7 @@ import { Toaster } from 'sonner'
 import './globals.css'
 import { ThemeProvider } from '@/components/providers/ThemeProvider'
 import { UserProvider } from '@/components/providers/UserProvider'
+import ClerkTokenProvider from '@/components/ClerkTokenProvider'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -84,6 +85,7 @@ export default function RootLayout({
       <html lang="en" suppressHydrationWarning>
         <body className={`${inter.variable} font-sans antialiased`}>
           <ThemeProvider>
+            <ClerkTokenProvider />
             <UserProvider>
               {children}
               <Toaster

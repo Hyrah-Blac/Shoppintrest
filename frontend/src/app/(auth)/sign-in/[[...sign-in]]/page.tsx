@@ -1,33 +1,42 @@
 'use client'
 
-import { SignIn, useUser } from '@clerk/nextjs'
+import { SignIn, useUser, useAuth } from '@clerk/nextjs'
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import api from '@/lib/api'
 
 export default function SignInPage() {
   const { isSignedIn, user: clerkUser } = useUser()
+  const { getToken } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
     if (!isSignedIn || !clerkUser) return
 
     const syncAndRedirect = async () => {
+      // Get token and attach to header for all calls in this flow
+      const token = await getToken()
+      const authHeader = token ? { Authorization: `Bearer ${token}` } : {}
+
       // Step 1 — sync Clerk user to MongoDB
       try {
-        await api.post('/api/users/sync', {
-          type: 'user.created',
-          data: {
-            id: clerkUser.id,
-            email_addresses: clerkUser.emailAddresses.map((e) => ({
-              email_address: e.emailAddress,
-            })),
-            username: clerkUser.username,
-            image_url: clerkUser.imageUrl,
-            first_name: clerkUser.firstName,
-            last_name: clerkUser.lastName,
+        await api.post(
+          '/api/users/sync',
+          {
+            type: 'user.created',
+            data: {
+              id: clerkUser.id,
+              email_addresses: clerkUser.emailAddresses.map((e) => ({
+                email_address: e.emailAddress,
+              })),
+              username: clerkUser.username,
+              image_url: clerkUser.imageUrl,
+              first_name: clerkUser.firstName,
+              last_name: clerkUser.lastName,
+            },
           },
-        })
+          { headers: authHeader }
+        )
       } catch {
         // User likely already exists — continue
       }
@@ -38,16 +47,16 @@ export default function SignInPage() {
 
       while (attempts < maxAttempts) {
         try {
-          const res = await api.get('/api/users/me')
+          const res = await api.get('/api/users/me', { headers: authHeader })
           const user = res.data?.data
 
           if (user?.role === 'admin') {
-            router.push('/admin')
+            router.replace('/admin')
             return
           }
 
           if (user?.role) {
-            router.push('/')
+            router.replace('/')
             return
           }
         } catch {
@@ -59,11 +68,11 @@ export default function SignInPage() {
       }
 
       // Fallback after all retries
-      router.push('/')
+      router.replace('/')
     }
 
     syncAndRedirect()
-  }, [isSignedIn, clerkUser, router])
+  }, [isSignedIn, clerkUser, router, getToken])
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
