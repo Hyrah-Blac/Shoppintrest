@@ -109,11 +109,14 @@ export function Navbar() {
 
                 {/* Saved */}
                 <Link
-                  href="/profile/saved"
-                  className="p-2.5 rounded-xl text-muted hover:text-foreground
-                             hover:bg-accent transition-all duration-200"
+                  href="/saved"
+                  className={cn(
+                    'p-2.5 rounded-xl text-muted hover:text-foreground hover:bg-accent transition-all duration-200',
+                    pathname === '/saved' && 'text-foreground'
+                  )}
+                  aria-label="Saved"
                 >
-                  <Heart size={18} />
+                  <Heart size={18} className={cn(pathname === '/saved' && 'fill-current')} />
                 </Link>
 
                 {/* Cart */}
@@ -205,14 +208,25 @@ export function Navbar() {
                   </Link>
                 ))}
                 {isSignedIn && (
-                  <Link
-                    href="/messages"
-                    className="flex items-center gap-3 px-3 py-3 rounded-xl
-                               text-sm font-medium text-muted hover:text-foreground
-                               hover:bg-accent transition-all duration-200"
-                  >
-                    Messages
-                  </Link>
+                  <>
+                    <Link
+                      href="/saved"
+                      className="flex items-center gap-3 px-3 py-3 rounded-xl
+                                 text-sm font-medium text-muted hover:text-foreground
+                                 hover:bg-accent transition-all duration-200"
+                    >
+                      <Heart size={16} />
+                      Saved
+                    </Link>
+                    <Link
+                      href="/messages"
+                      className="flex items-center gap-3 px-3 py-3 rounded-xl
+                                 text-sm font-medium text-muted hover:text-foreground
+                                 hover:bg-accent transition-all duration-200"
+                    >
+                      Messages
+                    </Link>
+                  </>
                 )}
               </div>
             </motion.div>
