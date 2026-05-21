@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
 import { Plus, Search, Edit2, Trash2, Eye, EyeOff, X, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 import { apiClient } from '@/lib/api'
@@ -141,7 +140,6 @@ export default function AdminProductsPage() {
       toast.error('Title, brand, description, price and category are required')
       return
     }
-
     setIsSaving(true)
     try {
       const payload = {
@@ -171,9 +169,7 @@ export default function AdminProductsPage() {
 
       if (editProduct) {
         const { data } = await apiClient.products.update(editProduct._id, payload)
-        setProducts((prev) =>
-          prev.map((p) => (p._id === editProduct._id ? data.data : p))
-        )
+        setProducts((prev) => prev.map((p) => (p._id === editProduct._id ? data.data : p)))
         toast.success('Product updated')
       } else {
         const { data } = await apiClient.products.create(payload)
@@ -181,7 +177,6 @@ export default function AdminProductsPage() {
         setTotal((t) => t + 1)
         toast.success('Product created')
       }
-
       setShowModal(false)
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Could not save product')
@@ -203,9 +198,7 @@ export default function AdminProductsPage() {
     try {
       await apiClient.products.update(product._id, { isPublished: !product.isPublished })
       setProducts((prev) =>
-        prev.map((p) =>
-          p._id === product._id ? { ...p, isPublished: !p.isPublished } : p
-        )
+        prev.map((p) => p._id === product._id ? { ...p, isPublished: !p.isPublished } : p)
       )
       toast.success(product.isPublished ? 'Product unpublished' : 'Product published')
     } catch { toast.error('Could not update product') }
@@ -224,9 +217,7 @@ export default function AdminProductsPage() {
           <h1 className="font-display text-2xl font-semibold tracking-tight">Products</h1>
           <p className="text-sm text-muted mt-0.5">
             {total.toLocaleString()} total products
-            {isRefreshing && (
-              <span className="ml-2 text-xs opacity-50">Refreshing...</span>
-            )}
+            {isRefreshing && <span className="ml-2 text-xs opacity-50">Refreshing...</span>}
           </p>
         </div>
         <Button variant="primary" size="md" leftIcon={<Plus size={15} />} onClick={openAdd}>
@@ -280,10 +271,8 @@ export default function AdminProductsPage() {
                 </tr>
               ) : (
                 filtered.map((product) => (
-                  <motion.tr
+                  <tr
                     key={product._id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
                     className="hover:bg-surface transition-colors"
                   >
                     <td className="px-5 py-4">
@@ -333,8 +322,7 @@ export default function AdminProductsPage() {
                         <button
                           type="button"
                           onClick={() => handleTogglePublish(product)}
-                          className="p-2 rounded-lg text-muted hover:text-foreground
-                                     hover:bg-accent transition-colors"
+                          className="p-2 rounded-lg text-muted hover:text-foreground hover:bg-accent transition-colors"
                           title={product.isPublished ? 'Unpublish' : 'Publish'}
                         >
                           {product.isPublished ? <EyeOff size={14} /> : <Eye size={14} />}
@@ -342,22 +330,20 @@ export default function AdminProductsPage() {
                         <button
                           type="button"
                           onClick={() => openEdit(product)}
-                          className="p-2 rounded-lg text-muted hover:text-foreground
-                                     hover:bg-accent transition-colors"
+                          className="p-2 rounded-lg text-muted hover:text-foreground hover:bg-accent transition-colors"
                         >
                           <Edit2 size={14} />
                         </button>
                         <button
                           type="button"
                           onClick={() => handleDelete(product._id)}
-                          className="p-2 rounded-lg text-muted hover:text-destructive
-                                     hover:bg-destructive/10 transition-colors"
+                          className="p-2 rounded-lg text-muted hover:text-destructive hover:bg-destructive/10 transition-colors"
                         >
                           <Trash2 size={14} />
                         </button>
                       </div>
                     </td>
-                  </motion.tr>
+                  </tr>
                 ))
               )}
             </tbody>
@@ -365,307 +351,274 @@ export default function AdminProductsPage() {
         </div>
       </div>
 
-      {/* Add / Edit Modal */}
-      <AnimatePresence>
-        {showModal && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={handleCloseModal}
-              className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
-            />
+      {/* Modal — plain CSS, no framer-motion */}
+      {showModal && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
+            onClick={handleCloseModal}
+          />
 
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              transition={{ type: 'spring', duration: 0.3 }}
-              className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            >
-              <div className="bg-background rounded-2xl border border-border
-                              w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="bg-background rounded-2xl border border-border
+                            w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
 
-                {/* Modal Header */}
-                <div className="flex items-center justify-between p-6 border-b border-border
-                                sticky top-0 bg-background z-10">
-                  <h2 className="font-display text-lg font-semibold">
-                    {editProduct ? 'Edit Product' : 'Add Product'}
-                  </h2>
-                  <button
-                    type="button"
-                    onClick={handleCloseModal}
-                    className="p-2 rounded-xl text-muted hover:text-foreground
-                               hover:bg-accent transition-colors"
-                  >
-                    <X size={16} />
-                  </button>
+              {/* Modal Header */}
+              <div className="flex items-center justify-between p-6 border-b border-border sticky top-0 bg-background z-10">
+                <h2 className="font-display text-lg font-semibold">
+                  {editProduct ? 'Edit Product' : 'Add Product'}
+                </h2>
+                <button
+                  type="button"
+                  onClick={handleCloseModal}
+                  className="p-2 rounded-xl text-muted hover:text-foreground hover:bg-accent transition-colors"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-6 space-y-5">
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted">
+                    Title <span className="text-destructive">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={form.title}
+                    onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+                    placeholder="e.g. Silk Evening Gown"
+                    className="w-full h-10 px-3 rounded-xl border border-input bg-background
+                               text-sm placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
                 </div>
 
-                {/* Modal Body */}
-                <div className="p-6 space-y-5">
-
-                  {/* Title */}
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <label className="text-xs font-medium text-muted">
-                      Title <span className="text-destructive">*</span>
+                      Brand <span className="text-destructive">*</span>
                     </label>
                     <input
                       type="text"
-                      value={form.title}
-                      onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                      placeholder="e.g. Silk Evening Gown"
+                      value={form.brand}
+                      onChange={(e) => setForm((f) => ({ ...f, brand: e.target.value }))}
+                      placeholder="e.g. Gucci"
                       className="w-full h-10 px-3 rounded-xl border border-input bg-background
-                                 text-sm placeholder:text-muted focus:outline-none focus:ring-2
-                                 focus:ring-ring"
+                                 text-sm placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-ring"
                     />
                   </div>
-
-                  {/* Brand + Category */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-medium text-muted">
-                        Brand <span className="text-destructive">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={form.brand}
-                        onChange={(e) => setForm((f) => ({ ...f, brand: e.target.value }))}
-                        placeholder="e.g. Gucci"
-                        className="w-full h-10 px-3 rounded-xl border border-input bg-background
-                                   text-sm placeholder:text-muted focus:outline-none focus:ring-2
-                                   focus:ring-ring"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-medium text-muted">
-                        Category <span className="text-destructive">*</span>
-                      </label>
-                      <select
-                        value={form.category}
-                        onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-                        className="w-full h-10 px-3 rounded-xl border border-input bg-background
-                                   text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                      >
-                        <option value="">Select category</option>
-                        {CATEGORIES.map((c) => (
-                          <option key={c} value={c}>{c}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Price + Compare Price */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-medium text-muted">
-                        Price (KES) <span className="text-destructive">*</span>
-                      </label>
-                      <input
-                        type="number"
-                        value={form.price}
-                        onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
-                        placeholder="e.g. 5000"
-                        className="w-full h-10 px-3 rounded-xl border border-input bg-background
-                                   text-sm placeholder:text-muted focus:outline-none focus:ring-2
-                                   focus:ring-ring"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-medium text-muted">
-                        Compare Price (KES)
-                      </label>
-                      <input
-                        type="number"
-                        value={form.comparePrice}
-                        onChange={(e) => setForm((f) => ({ ...f, comparePrice: e.target.value }))}
-                        placeholder="e.g. 7000 (optional)"
-                        className="w-full h-10 px-3 rounded-xl border border-input bg-background
-                                   text-sm placeholder:text-muted focus:outline-none focus:ring-2
-                                   focus:ring-ring"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Description */}
                   <div className="space-y-1.5">
                     <label className="text-xs font-medium text-muted">
-                      Description <span className="text-destructive">*</span>
+                      Category <span className="text-destructive">*</span>
                     </label>
-                    <textarea
-                      value={form.description}
-                      onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                      placeholder="Product description..."
-                      rows={3}
-                      className="w-full px-3 py-2.5 rounded-xl border border-input bg-background
-                                 text-sm placeholder:text-muted focus:outline-none focus:ring-2
-                                 focus:ring-ring resize-none"
+                    <select
+                      value={form.category}
+                      onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
+                      className="w-full h-10 px-3 rounded-xl border border-input bg-background
+                                 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    >
+                      <option value="">Select category</option>
+                      {CATEGORIES.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted">
+                      Price (KES) <span className="text-destructive">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      value={form.price}
+                      onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
+                      placeholder="e.g. 5000"
+                      className="w-full h-10 px-3 rounded-xl border border-input bg-background
+                                 text-sm placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-ring"
                     />
                   </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted">Compare Price (KES)</label>
+                    <input
+                      type="number"
+                      value={form.comparePrice}
+                      onChange={(e) => setForm((f) => ({ ...f, comparePrice: e.target.value }))}
+                      placeholder="e.g. 7000 (optional)"
+                      className="w-full h-10 px-3 rounded-xl border border-input bg-background
+                                 text-sm placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                  </div>
+                </div>
 
-                  {/* Sizes + Inventory */}
-                  <div className="space-y-2">
-                    <label className="text-xs font-medium text-muted">
-                      Sizes & Inventory
-                    </label>
-                    <div className="flex flex-wrap gap-2">
-                      {SIZES.map((size) => {
-                        const selected = form.sizes.find((s) => s.size === size)
-                        return (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted">
+                    Description <span className="text-destructive">*</span>
+                  </label>
+                  <textarea
+                    value={form.description}
+                    onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                    placeholder="Product description..."
+                    rows={3}
+                    className="w-full px-3 py-2.5 rounded-xl border border-input bg-background
+                               text-sm placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-muted">Sizes & Inventory</label>
+                  <div className="flex flex-wrap gap-2">
+                    {SIZES.map((size) => {
+                      const selected = form.sizes.find((s) => s.size === size)
+                      return (
+                        <button
+                          type="button"
+                          key={size}
+                          onClick={() => toggleSize(size)}
+                          className={cn(
+                            'px-3 py-1.5 rounded-lg text-xs font-medium border transition-all',
+                            selected
+                              ? 'bg-foreground text-background border-foreground'
+                              : 'bg-background text-muted border-border hover:border-foreground/40'
+                          )}
+                        >
+                          {size}
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  {form.sizes.length > 0 && (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
+                      {form.sizes.map((s) => (
+                        <div key={s.size} className="flex items-center gap-2 p-2 rounded-xl border border-border bg-surface">
+                          <span className="text-xs font-medium w-12">{s.size}</span>
+                          <input
+                            type="number"
+                            min={0}
+                            value={s.inventory}
+                            onChange={(e) => updateInventory(s.size, parseInt(e.target.value) || 0)}
+                            className="flex-1 h-7 px-2 rounded-lg border border-input
+                                       bg-background text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                          />
+                          <span className="text-xs text-muted">pcs</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted">Images</label>
+
+                  {form.images.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {form.images.map((url, idx) => (
+                        <div key={idx} className="relative group w-16 h-16">
+                          <img
+                            src={url}
+                            alt=""
+                            className="w-full h-full object-cover rounded-xl border border-border"
+                          />
                           <button
                             type="button"
-                            key={size}
-                            onClick={() => toggleSize(size)}
-                            className={cn(
-                              'px-3 py-1.5 rounded-lg text-xs font-medium border transition-all',
-                              selected
-                                ? 'bg-foreground text-background border-foreground'
-                                : 'bg-background text-muted border-border hover:border-foreground/40'
-                            )}
+                            onClick={() => handleRemoveImage(idx)}
+                            className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-destructive
+                                       text-white rounded-full flex items-center justify-center
+                                       opacity-0 group-hover:opacity-100 transition-opacity"
                           >
-                            {size}
+                            <X size={10} />
                           </button>
-                        )
-                      })}
+                        </div>
+                      ))}
                     </div>
+                  )}
 
-                    {form.sizes.length > 0 && (
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
-                        {form.sizes.map((s) => (
-                          <div key={s.size} className="flex items-center gap-2 p-2 rounded-xl
-                                                        border border-border bg-surface">
-                            <span className="text-xs font-medium w-12">{s.size}</span>
-                            <input
-                              type="number"
-                              min={0}
-                              value={s.inventory}
-                              onChange={(e) =>
-                                updateInventory(s.size, parseInt(e.target.value) || 0)
-                              }
-                              className="flex-1 h-7 px-2 rounded-lg border border-input
-                                         bg-background text-xs focus:outline-none focus:ring-1
-                                         focus:ring-ring"
-                            />
-                            <span className="text-xs text-muted">pcs</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  <label className={cn(
+                    'flex items-center gap-2 w-fit cursor-pointer px-3 py-2',
+                    'rounded-xl border border-dashed border-border text-xs',
+                    'text-muted hover:border-foreground/40 hover:text-foreground transition-colors',
+                    isUploading && 'opacity-60 cursor-not-allowed pointer-events-none'
+                  )}>
+                    <Upload size={13} />
+                    {isUploading ? 'Uploading...' : 'Upload image'}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleUploadImage}
+                      disabled={isUploading}
+                    />
+                  </label>
 
-                  {/* Images */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted">Images</label>
-
-                    {form.images.length > 0 && (
-                      <div className="flex flex-wrap gap-2 mb-2">
-                        {form.images.map((url, idx) => (
-                          <div key={idx} className="relative group w-16 h-16">
-                            <img
-                              src={url}
-                              alt=""
-                              className="w-full h-full object-cover rounded-xl border border-border"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveImage(idx)}
-                              className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-destructive
-                                         text-white rounded-full flex items-center justify-center
-                                         opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                              <X size={10} />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    <label className={cn(
-                      'flex items-center gap-2 w-fit cursor-pointer px-3 py-2',
-                      'rounded-xl border border-dashed border-border text-xs',
-                      'text-muted hover:border-foreground/40 hover:text-foreground transition-colors',
-                      isUploading && 'opacity-60 cursor-not-allowed pointer-events-none'
-                    )}>
-                      <Upload size={13} />
-                      {isUploading ? 'Uploading...' : 'Upload image'}
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handleUploadImage}
-                        disabled={isUploading}
-                      />
-                    </label>
-
-                    <div className="flex gap-2 mt-2">
-                      <input
-                        type="text"
-                        value={imageUrl}
-                        onChange={(e) => setImageUrl(e.target.value)}
-                        placeholder="Or paste image URL..."
-                        className="flex-1 h-9 px-3 rounded-xl border border-input bg-background
-                                   text-xs placeholder:text-muted focus:outline-none focus:ring-2
-                                   focus:ring-ring"
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault()
-                            handleAddImageUrl()
-                          }
-                        }}
-                      />
-                      <button
-                        type="button"
-                        onClick={handleAddImageUrl}
-                        className="px-3 h-9 rounded-xl bg-surface border border-border
-                                   text-xs font-medium hover:border-foreground/40 transition-colors"
-                      >
-                        Add
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Published toggle */}
-                  <div className="flex items-center gap-3">
+                  <div className="flex gap-2 mt-2">
+                    <input
+                      type="text"
+                      value={imageUrl}
+                      onChange={(e) => setImageUrl(e.target.value)}
+                      placeholder="Or paste image URL..."
+                      className="flex-1 h-9 px-3 rounded-xl border border-input bg-background
+                                 text-xs placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-ring"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          handleAddImageUrl()
+                        }
+                      }}
+                    />
                     <button
                       type="button"
-                      onClick={() => setForm((f) => ({ ...f, isPublished: !f.isPublished }))}
-                      className={cn(
-                        'relative w-10 h-6 rounded-full transition-colors duration-200',
-                        form.isPublished ? 'bg-foreground' : 'bg-border'
-                      )}
+                      onClick={handleAddImageUrl}
+                      className="px-3 h-9 rounded-xl bg-surface border border-border
+                                 text-xs font-medium hover:border-foreground/40 transition-colors"
                     >
-                      <span className={cn(
-                        'absolute top-1 w-4 h-4 rounded-full bg-background transition-all duration-200',
-                        form.isPublished ? 'left-5' : 'left-1'
-                      )} />
+                      Add
                     </button>
-                    <span className="text-sm text-muted">
-                      {form.isPublished ? 'Published' : 'Draft'}
-                    </span>
                   </div>
                 </div>
 
-                {/* Modal Footer */}
-                <div className="flex items-center justify-end gap-3 p-6 border-t border-border
-                                sticky bottom-0 bg-background">
-                  <Button variant="outline" size="md" onClick={handleCloseModal}>
-                    Cancel
-                  </Button>
-                  <Button
-                    variant="primary"
-                    size="md"
-                    isLoading={isSaving}
-                    onClick={handleSave}
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setForm((f) => ({ ...f, isPublished: !f.isPublished }))}
+                    className={cn(
+                      'relative w-10 h-6 rounded-full transition-colors duration-200',
+                      form.isPublished ? 'bg-foreground' : 'bg-border'
+                    )}
                   >
-                    {editProduct ? 'Save Changes' : 'Create Product'}
-                  </Button>
+                    <span className={cn(
+                      'absolute top-1 w-4 h-4 rounded-full bg-background transition-all duration-200',
+                      form.isPublished ? 'left-5' : 'left-1'
+                    )} />
+                  </button>
+                  <span className="text-sm text-muted">
+                    {form.isPublished ? 'Published' : 'Draft'}
+                  </span>
                 </div>
               </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+
+              {/* Modal Footer */}
+              <div className="flex items-center justify-end gap-3 p-6 border-t border-border sticky bottom-0 bg-background">
+                <Button type="button" variant="outline" size="md" onClick={handleCloseModal}>
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="md"
+                  isLoading={isSaving}
+                  onClick={handleSave}
+                >
+                  {editProduct ? 'Save Changes' : 'Create Product'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }

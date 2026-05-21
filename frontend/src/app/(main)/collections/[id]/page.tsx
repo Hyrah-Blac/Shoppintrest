@@ -3,8 +3,6 @@
 import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { motion } from 'framer-motion'
-import { AnimatePresence } from 'framer-motion'
 import {
   Lock, Globe, Plus, Trash2,
   ArrowLeft, BookmarkPlus, Share2, Heart,
@@ -210,10 +208,9 @@ export default function CollectionDetailPage({
 
             {/* Right actions */}
             <div className="flex items-center gap-2 shrink-0">
-
-              {/* Save collection — non-owners only */}
               {!isOwner && (
                 <button
+                  type="button"
                   onClick={handleSaveCollection}
                   className={cn(
                     'w-10 h-10 rounded-xl flex items-center justify-center border transition-all duration-200',
@@ -227,8 +224,8 @@ export default function CollectionDetailPage({
                 </button>
               )}
 
-              {/* Share */}
               <button
+                type="button"
                 onClick={handleShare}
                 className="w-10 h-10 rounded-xl flex items-center justify-center border border-border text-muted hover:text-foreground hover:border-foreground bg-background transition-all duration-200"
                 title="Share collection"
@@ -236,7 +233,6 @@ export default function CollectionDetailPage({
                 <Share2 size={16} />
               </button>
 
-              {/* Owner — add products */}
               {isOwner && (
                 <Link href="/explore">
                   <Button variant="primary" size="md" leftIcon={<Plus size={14} />}>
@@ -276,40 +272,32 @@ export default function CollectionDetailPage({
             </p>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 lg:gap-6">
-              <AnimatePresence>
-                {collection.products.map((product: any, i: number) => (
-                  <motion.div
-                    key={product._id}
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    transition={{ delay: i * 0.04, duration: 0.3 }}
-                    className="relative group"
-                  >
-                    <ProductCard product={product} priority={i < 5} />
+              {collection.products.map((product: any) => (
+                <div key={product._id} className="relative group">
+                  <ProductCard product={product} />
 
-                    {isOwner && (
-                      <button
-                        onClick={() => handleRemoveProduct(product._id)}
-                        disabled={isDeleting === product._id}
-                        className={cn(
-                          'absolute top-3 left-3 z-20 w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-200',
-                          isDeleting === product._id
-                            ? 'bg-destructive text-white opacity-100'
-                            : 'bg-background/90 text-destructive opacity-0 group-hover:opacity-100 hover:bg-destructive hover:text-white'
-                        )}
-                        title="Remove from collection"
-                      >
-                        {isDeleting === product._id ? (
-                          <div className="w-3 h-3 border border-white/50 border-t-white rounded-full animate-spin" />
-                        ) : (
-                          <Trash2 size={12} />
-                        )}
-                      </button>
-                    )}
-                  </motion.div>
-                ))}
-              </AnimatePresence>
+                  {isOwner && (
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveProduct(product._id)}
+                      disabled={isDeleting === product._id}
+                      className={cn(
+                        'absolute top-3 left-3 z-20 w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-200',
+                        isDeleting === product._id
+                          ? 'bg-destructive text-white opacity-100'
+                          : 'bg-background/90 text-destructive opacity-0 group-hover:opacity-100 hover:bg-destructive hover:text-white'
+                      )}
+                      title="Remove from collection"
+                    >
+                      {isDeleting === product._id ? (
+                        <div className="w-3 h-3 border border-white/50 border-t-white rounded-full animate-spin" />
+                      ) : (
+                        <Trash2 size={12} />
+                      )}
+                    </button>
+                  )}
+                </div>
+              ))}
             </div>
           </>
         )}
