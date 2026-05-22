@@ -1,76 +1,89 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300;1,9..40,400&family=DM+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;1,14..32,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
 
 @import "tailwindcss";
 
-/* ─── CSS VARIABLES ─────────────────────────────────────────────────────── */
+/* ─── PINTEREST DESIGN SYSTEM — CSS VARIABLES ─────────────────────────── */
 
 @layer base {
   :root {
-    /* Core */
-    --background: 36 20% 98%;
-    --foreground: 24 12% 8%;
-    --surface: 36 15% 95%;
-    --surface-2: 36 10% 91%;
+    /* Core surfaces */
+    --background: 0 0% 100%;           /* #FFFFFF primary base */
+    --background-secondary: 240 5% 96%; /* #F5F5F7 secondary neutral */
+    --foreground: 240 6% 8%;            /* near-black text */
+    --surface: 240 5% 96%;
+    --surface-elevated: 0 0% 100%;
 
-    /* Muted */
-    --muted: 24 8% 42%;
-    --muted-foreground: 24 6% 58%;
+    /* Muted hierarchy */
+    --muted: 240 4% 46%;
+    --muted-foreground: 240 3% 60%;
 
     /* Borders */
-    --border: 36 12% 87%;
-    --border-subtle: 36 10% 92%;
-    --input: 36 12% 87%;
-    --ring: 36 60% 55%;
+    --border: 240 4% 90%;
+    --border-subtle: 240 4% 94%;
+    --input: 240 4% 90%;
+    --ring: 0 84% 60%;
 
-    /* Primary (warm near-black) */
-    --primary: 24 12% 10%;
-    --primary-foreground: 36 20% 97%;
-
-    /* Accent: champagne gold */
-    --accent: 36 60% 55%;
-    --accent-foreground: 24 12% 8%;
-    --accent-muted: 36 40% 92%;
+    /* Pinterest red accent */
+    --accent: 0 84% 60%;               /* #E60023 Pinterest red */
+    --accent-hover: 0 84% 52%;
+    --accent-foreground: 0 0% 100%;
+    --accent-muted: 0 84% 97%;
 
     /* Semantic */
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 98%;
     --success: 142 60% 40%;
 
-    /* Sizing */
-    --radius: 0.875rem;
-    --radius-sm: 0.5rem;
-    --radius-lg: 1.25rem;
-    --radius-xl: 1.75rem;
+    /* Glass */
+    --glass-bg: 0 0% 100% / 0.82;
+    --glass-border: 0 0% 100% / 0.3;
+
+    /* Sizing — Pinterest uses 20-32px radius */
+    --radius-sm:  0.5rem;    /* 8px  */
+    --radius:     1rem;      /* 16px */
+    --radius-lg:  1.25rem;   /* 20px */
+    --radius-xl:  1.5rem;    /* 24px */
+    --radius-2xl: 2rem;      /* 32px */
     --radius-pill: 9999px;
+
+    /* Shadows — soft, low-opacity */
+    --shadow-card: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.06);
+    --shadow-card-hover: 0 4px 8px rgba(0,0,0,0.08), 0 12px 32px rgba(0,0,0,0.10);
+    --shadow-float: 0 8px 32px rgba(0,0,0,0.12);
+    --shadow-glass: 0 4px 24px rgba(0,0,0,0.08);
   }
 
   .dark {
-    --background: 24 8% 6%;
-    --foreground: 36 15% 94%;
-    --surface: 24 6% 10%;
-    --surface-2: 24 5% 14%;
+    --background: 240 8% 7%;           /* #0F0F12 dark base */
+    --background-secondary: 240 6% 11%;
+    --foreground: 0 0% 95%;
+    --surface: 240 6% 11%;
+    --surface-elevated: 240 5% 14%;
 
-    --muted: 24 5% 60%;
-    --muted-foreground: 24 4% 45%;
+    --muted: 240 4% 58%;
+    --muted-foreground: 240 3% 44%;
 
-    --border: 24 6% 16%;
-    --border-subtle: 24 5% 12%;
-    --input: 24 6% 16%;
-    --ring: 36 60% 55%;
+    --border: 240 5% 17%;
+    --border-subtle: 240 5% 13%;
+    --input: 240 5% 17%;
+    --ring: 0 84% 60%;
 
-    --primary: 36 15% 94%;
-    --primary-foreground: 24 12% 8%;
+    --accent: 0 84% 60%;
+    --accent-hover: 0 84% 66%;
+    --accent-foreground: 0 0% 100%;
+    --accent-muted: 0 40% 12%;
 
-    --accent: 36 55% 50%;
-    --accent-foreground: 24 12% 8%;
-    --accent-muted: 36 20% 14%;
+    --glass-bg: 240 8% 7% / 0.85;
+    --glass-border: 0 0% 100% / 0.08;
 
-    --destructive: 0 63% 55%;
-    --destructive-foreground: 0 0% 98%;
+    --shadow-card: 0 1px 3px rgba(0,0,0,0.3), 0 4px 16px rgba(0,0,0,0.2);
+    --shadow-card-hover: 0 4px 8px rgba(0,0,0,0.4), 0 12px 32px rgba(0,0,0,0.3);
+    --shadow-float: 0 8px 32px rgba(0,0,0,0.4);
+    --shadow-glass: 0 4px 24px rgba(0,0,0,0.3);
   }
 }
 
-/* ─── BASE STYLES ─────────────────────────────────────────────────────────── */
+/* ─── BASE ────────────────────────────────────────────────────────────────── */
 
 @layer base {
   *, *::before, *::after {
@@ -88,28 +101,29 @@
   body {
     background: hsl(var(--background));
     color: hsl(var(--foreground));
-    font-family: 'DM Sans', sans-serif;
-    font-feature-settings: 'rlig' 1, 'calt' 1, 'kern' 1;
+    /* Pinterest: Inter / Plus Jakarta Sans */
+    font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
+    font-feature-settings: 'rlig' 1, 'calt' 1;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Playfair Display', serif;
-    @apply tracking-tight;
-    font-feature-settings: 'kern' 1, 'liga' 1;
+    /* Pinterest uses Inter/SF Pro for headings too — no serif */
+    font-family: 'Inter', sans-serif;
+    @apply tracking-tight font-semibold;
   }
 
   ::selection {
-    background: hsl(var(--accent) / 0.25);
+    background: hsl(var(--accent) / 0.15);
     color: hsl(var(--foreground));
   }
 
   :focus-visible {
     @apply outline-none;
-    box-shadow: 0 0 0 2px hsl(var(--ring) / 0.5);
-    border-radius: var(--radius-sm);
+    box-shadow: 0 0 0 3px hsl(var(--accent) / 0.3);
+    border-radius: var(--radius);
   }
 
-  /* Refined scrollbar */
+  /* Pinterest thin scrollbar */
   ::-webkit-scrollbar { width: 3px; height: 3px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb {
@@ -119,190 +133,222 @@
   ::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted)); }
 
   img { @apply max-w-full; }
-
   a { @apply transition-colors duration-200; }
-
-  input, textarea, select {
-    font-family: 'DM Sans', sans-serif;
-  }
-
-  code, pre, kbd {
-    font-family: 'DM Mono', monospace;
-  }
+  input, textarea, select { font-family: 'Inter', sans-serif; }
 }
 
-/* ─── COMPONENT UTILITIES ──────────────────────────────────────────────────── */
+/* ─── COMPONENTS ──────────────────────────────────────────────────────────── */
 
 @layer components {
 
-  /* Layout */
+  /* Layout — Pinterest max-width 1440px */
   .container-wide {
-    @apply max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-10;
+    @apply max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8;
   }
   .container-narrow {
     @apply max-w-4xl mx-auto px-4 sm:px-6;
   }
   .section-padding {
-    @apply py-20 md:py-28 lg:py-36;
+    @apply py-12 md:py-16 lg:py-20;
   }
 
-  /* Typography helpers */
-  .font-display {
-    font-family: 'Playfair Display', serif;
-  }
-  .font-mono-refined {
-    font-family: 'DM Mono', monospace;
-  }
-
-  /* Eyebrow label */
-  .eyebrow {
-    @apply text-xs font-medium uppercase tracking-[0.18em];
-    color: hsl(var(--accent));
-    font-family: 'DM Sans', sans-serif;
-  }
-
-  /* Shimmer skeleton */
-  .skeleton {
-    border-radius: var(--radius);
-    background: linear-gradient(
-      105deg,
-      hsl(var(--surface)) 0%,
-      hsl(var(--surface-2)) 40%,
-      hsl(var(--surface)) 80%
-    );
-    background-size: 200% 100%;
-    animation: shimmer 1.6s ease-in-out infinite;
-  }
-
-  /* Glass morphism */
+  /* ── Glassmorphism (20% of design per blueprint) ── */
   .glass {
-    backdrop-filter: blur(20px) saturate(1.4);
-    -webkit-backdrop-filter: blur(20px) saturate(1.4);
-    background: hsl(var(--background) / 0.82);
-    border-bottom: 1px solid hsl(var(--border) / 0.6);
+    backdrop-filter: blur(20px) saturate(1.8);
+    -webkit-backdrop-filter: blur(20px) saturate(1.8);
+    background: hsl(var(--glass-bg));
+    border-bottom: 1px solid hsl(var(--glass-border));
   }
-  .dark .glass {
-    background: hsl(var(--background) / 0.88);
+  .glass-surface {
+    backdrop-filter: blur(16px) saturate(1.6);
+    -webkit-backdrop-filter: blur(16px) saturate(1.6);
+    background: rgba(255, 255, 255, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: var(--shadow-glass);
   }
-
-  /* Base card */
-  .card {
-    background: hsl(var(--surface));
-    border-radius: var(--radius-lg);
-    border: 1px solid hsl(var(--border-subtle));
-    transition: box-shadow 0.3s ease, border-color 0.3s ease;
-  }
-  .card:hover {
-    border-color: hsl(var(--border));
-    box-shadow:
-      0 2px 4px hsl(var(--foreground) / 0.03),
-      0 8px 24px hsl(var(--foreground) / 0.06),
-      0 24px 48px hsl(var(--foreground) / 0.04);
+  .dark .glass-surface {
+    background: rgba(15, 15, 18, 0.85);
+    border-color: rgba(255, 255, 255, 0.08);
   }
 
-  /* Luxury card */
-  .card-luxury {
-    background: hsl(var(--surface));
-    border-radius: var(--radius-lg);
-    border: 1px solid hsl(var(--border-subtle));
-    transition: all 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  /* ── Pinterest card system (20-32px radius, soft shadows) ── */
+  .card-pin {
+    background: hsl(var(--surface-elevated));
+    border-radius: var(--radius-xl);        /* 24px */
+    overflow: hidden;
+    box-shadow: var(--shadow-card);
+    transition: box-shadow 0.25s ease, transform 0.25s ease;
+    cursor: pointer;
   }
-  .card-luxury:hover {
+  .card-pin:hover {
+    box-shadow: var(--shadow-card-hover);
     transform: translateY(-2px);
-    border-color: hsl(var(--accent) / 0.25);
+  }
+
+  /* ── Neumorphism accent (10% — buttons/controls only) ── */
+  .btn-neu {
+    background: hsl(var(--background-secondary));
     box-shadow:
-      0 4px 6px hsl(var(--foreground) / 0.04),
-      0 12px 32px hsl(var(--foreground) / 0.08),
-      0 1px 0 hsl(var(--accent) / 0.15) inset;
+      4px 4px 8px rgba(0,0,0,0.08),
+      -4px -4px 8px rgba(255,255,255,0.8);
+    border: none;
+    transition: box-shadow 0.2s ease, transform 0.1s ease;
+  }
+  .btn-neu:hover {
+    box-shadow:
+      6px 6px 12px rgba(0,0,0,0.1),
+      -6px -6px 12px rgba(255,255,255,0.9);
+  }
+  .btn-neu:active {
+    box-shadow:
+      inset 2px 2px 6px rgba(0,0,0,0.1),
+      inset -2px -2px 6px rgba(255,255,255,0.8);
+    transform: scale(0.98);
+  }
+  .dark .btn-neu {
+    box-shadow:
+      4px 4px 8px rgba(0,0,0,0.4),
+      -4px -4px 8px rgba(255,255,255,0.04);
   }
 
-  /* Text gradient */
-  .text-gradient {
-    @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(
-      135deg,
-      hsl(var(--foreground)) 0%,
-      hsl(var(--accent)) 50%,
-      hsl(var(--foreground)) 100%
-    );
-  }
-  .text-gradient-subtle {
-    @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(
-      160deg,
-      hsl(var(--foreground)) 60%,
-      hsl(var(--muted)) 100%
-    );
-  }
-
-  /* Accent underline on hover */
-  .accent-line {
-    display: inline-block;
-    position: relative;
-  }
-  .accent-line::after {
-    content: '';
-    position: absolute;
-    bottom: -4px;
-    left: 0;
-    right: 0;
-    height: 2px;
+  /* ── Pinterest red save button ── */
+  .btn-save {
     background: hsl(var(--accent));
-    border-radius: 9999px;
-    transform: scaleX(0);
-    transform-origin: left;
-    transition: transform 0.3s ease;
+    color: hsl(var(--accent-foreground));
+    border-radius: var(--radius-pill);
+    font-weight: 600;
+    font-size: 0.875rem;
+    padding: 0.5rem 1rem;
+    transition: background 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+    box-shadow: 0 2px 8px hsl(var(--accent) / 0.35);
   }
-  .accent-line:hover::after { transform: scaleX(1); }
-
-  /* Gold horizontal divider */
-  .divider-gold {
-    height: 1px;
-    background: linear-gradient(
-      90deg,
-      transparent,
-      hsl(var(--accent) / 0.5) 30%,
-      hsl(var(--accent) / 0.8) 50%,
-      hsl(var(--accent) / 0.5) 70%,
-      transparent
-    );
+  .btn-save:hover {
+    background: hsl(var(--accent-hover));
+    box-shadow: 0 4px 16px hsl(var(--accent) / 0.45);
+    transform: scale(1.02);
   }
+  .btn-save:active { transform: scale(0.97); }
 
-  /* Pill badge with accent colour */
-  .badge-accent {
+  /* ── Primary button ── */
+  .btn-primary {
+    background: hsl(var(--foreground));
+    color: hsl(var(--background));
+    border-radius: var(--radius-pill);
+    font-weight: 600;
+    font-size: 0.875rem;
+    padding: 0.625rem 1.5rem;
+    transition: opacity 0.2s ease, transform 0.1s ease;
     display: inline-flex;
     align-items: center;
-    padding: 0.25rem 0.75rem;
-    border-radius: 9999px;
-    font-size: 0.7rem;
-    font-weight: 500;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    background: hsl(var(--accent-muted));
-    color: hsl(var(--accent));
-    border: 1px solid hsl(var(--accent) / 0.2);
-    font-family: 'DM Sans', sans-serif;
+    gap: 0.5rem;
+  }
+  .btn-primary:hover { opacity: 0.85; }
+  .btn-primary:active { transform: scale(0.98); }
+
+  /* ── Ghost button ── */
+  .btn-ghost {
+    background: transparent;
+    color: hsl(var(--foreground));
+    border: 2px solid hsl(var(--border));
+    border-radius: var(--radius-pill);
+    font-weight: 600;
+    font-size: 0.875rem;
+    padding: 0.5625rem 1.5rem;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .btn-ghost:hover {
+    border-color: hsl(var(--foreground));
+    background: hsl(var(--foreground) / 0.04);
   }
 
-  /* Masonry */
+  /* ── Masonry (16-24px gutters per blueprint) ── */
   .masonry-grid {
     display: flex;
-    margin-left: -14px;
+    margin-left: -16px;
     width: auto;
   }
   .masonry-grid-column {
-    padding-left: 14px;
+    padding-left: 16px;
     background-clip: padding-box;
   }
 
-  /* Scrollbar hide */
+  /* ── Skeleton loader with shimmer ── */
+  .skeleton {
+    border-radius: var(--radius-lg);
+    background: linear-gradient(
+      105deg,
+      hsl(var(--surface)) 0%,
+      hsl(var(--border)) 40%,
+      hsl(var(--surface)) 80%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+  }
+
+  /* ── Category pill ── */
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-pill);
+    font-size: 0.875rem;
+    font-weight: 500;
+    background: hsl(var(--surface));
+    border: 1px solid hsl(var(--border));
+    color: hsl(var(--foreground));
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .pill:hover {
+    background: hsl(var(--foreground));
+    color: hsl(var(--background));
+    border-color: hsl(var(--foreground));
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  }
+  .pill.active {
+    background: hsl(var(--foreground));
+    color: hsl(var(--background));
+    border-color: hsl(var(--foreground));
+  }
+
+  /* ── Pinterest-style image overlay ── */
+  .pin-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      to bottom,
+      transparent 50%,
+      rgba(0,0,0,0.45) 100%
+    );
+    opacity: 0;
+    transition: opacity 0.25s ease;
+  }
+  .group:hover .pin-overlay { opacity: 1; }
+
+  /* ── Eyebrow ── */
+  .eyebrow {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: hsl(var(--accent));
+    font-family: 'Inter', sans-serif;
+  }
+
+  /* ── Scrollbar hide ── */
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
   .scrollbar-hide::-webkit-scrollbar { display: none; }
 
-  /* Line clamp */
+  /* ── Line clamp ── */
   .line-clamp-2 {
     display: -webkit-box;
     -webkit-line-clamp: 2;
@@ -316,15 +362,21 @@
     overflow: hidden;
   }
 
-  /* Image zoom on hover */
-  .img-zoom { overflow: hidden; }
-  .img-zoom img {
-    transition: transform 0.7s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  /* ── Text gradient (AI/discovery feel per blueprint) ── */
+  .text-gradient {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, hsl(var(--foreground)) 0%, hsl(var(--accent)) 100%);
   }
-  .img-zoom:hover img { transform: scale(1.07); }
+
+  /* ── Blur placeholder (lazy load) ── */
+  .blur-up {
+    filter: blur(8px);
+    transition: filter 0.4s ease;
+  }
+  .blur-up.loaded { filter: blur(0); }
 }
 
-/* ─── KEYFRAMES ─────────────────────────────────────────────────────────── */
+/* ─── KEYFRAMES ───────────────────────────────────────────────────────────── */
 
 @keyframes shimmer {
   0%   { background-position: 200% 0; }
@@ -332,8 +384,13 @@
 }
 
 @keyframes float-up {
-  from { opacity: 0; transform: translateY(18px); }
+  from { opacity: 0; transform: translateY(16px); }
   to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.94); }
+  to   { opacity: 1; transform: scale(1); }
 }
 
 @keyframes fade-in {
@@ -341,46 +398,47 @@
   to   { opacity: 1; }
 }
 
-@keyframes scale-in {
-  from { opacity: 0; transform: scale(0.95); }
-  to   { opacity: 1; transform: scale(1); }
+@keyframes pin-drop {
+  0%   { opacity: 0; transform: scale(0.8) translateY(-8px); }
+  60%  { transform: scale(1.03) translateY(2px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
 }
 
-.animate-float-up { animation: float-up 0.6s ease forwards; }
-.animate-fade-in  { animation: fade-in  0.4s ease forwards; }
-.animate-scale-in { animation: scale-in 0.35s ease forwards; }
+.animate-float-up  { animation: float-up  0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+.animate-scale-in  { animation: scale-in  0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+.animate-fade-in   { animation: fade-in   0.3s ease forwards; }
+.animate-pin-drop  { animation: pin-drop  0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
 .will-change-transform { will-change: transform; }
 
-/* ─── CLERK OVERRIDES ────────────────────────────────────────────────────── */
+/* ─── CLERK OVERRIDES ─────────────────────────────────────────────────────── */
 
 .cl-rootBox { width: 100%; }
 
 .cl-card {
   background: hsl(var(--background)) !important;
   border: 1px solid hsl(var(--border)) !important;
-  box-shadow: 0 24px 64px hsl(var(--foreground) / 0.08) !important;
-  border-radius: var(--radius-xl) !important;
+  box-shadow: var(--shadow-float) !important;
+  border-radius: var(--radius-2xl) !important;
 }
 
 .cl-headerTitle {
-  font-family: 'Playfair Display', serif !important;
+  font-family: 'Inter', sans-serif !important;
+  font-weight: 700 !important;
   color: hsl(var(--foreground)) !important;
 }
 
 .cl-formButtonPrimary {
-  background: hsl(var(--primary)) !important;
-  color: hsl(var(--primary-foreground)) !important;
-  border-radius: var(--radius) !important;
-  font-weight: 500 !important;
-  font-family: 'DM Sans', sans-serif !important;
-  letter-spacing: 0.01em !important;
+  background: hsl(var(--accent)) !important;
+  color: hsl(var(--accent-foreground)) !important;
+  border-radius: var(--radius-pill) !important;
+  font-weight: 600 !important;
+  font-family: 'Inter', sans-serif !important;
+  box-shadow: 0 2px 8px hsl(var(--accent) / 0.3) !important;
   transition: opacity 0.2s ease !important;
 }
-.cl-formButtonPrimary:hover {
-  opacity: 0.85 !important;
-}
+.cl-formButtonPrimary:hover { opacity: 0.88 !important; }
 
-/* ─── STRIPE OVERRIDES ───────────────────────────────────────────────────── */
+/* ─── STRIPE OVERRIDES ────────────────────────────────────────────────────── */
 
 .StripeElement {
   width: 100%;
@@ -390,7 +448,7 @@
   background: hsl(var(--background));
   color: hsl(var(--foreground));
   transition: all 0.2s ease;
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Inter', sans-serif;
 }
 
 .StripeElement--focus {

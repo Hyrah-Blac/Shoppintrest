@@ -3,44 +3,56 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowRight, ArrowUpRight } from 'lucide-react'
+import { ArrowRight, Sparkles } from 'lucide-react'
 
 const slides = [
   {
     id: 1,
-    issue: '№ 01',
-    eyebrow: 'New Season',
-    headline: 'Curated\nLuxury',
-    sub: "Discover fashion from the world's most iconic houses — handpicked, beautifully presented.",
-    cta: 'Shop the Edit',
+    eyebrow: 'New Arrivals',
+    headline: 'Discover Your\nNext Obsession',
+    sub: 'Millions of curated pieces from the world\'s best brands — all in one place.',
+    cta: 'Explore Now',
     ctaHref: '/explore',
-    stat: { value: '2,400+', label: 'Products' },
-    tag: 'SS 2025',
-    accentHue: '36',
+    secondaryCta: 'Browse Collections',
+    secondaryHref: '/collections',
+    tag: 'Trending Today',
+    stats: [
+      { value: '2M+',  label: 'Products' },
+      { value: '50K+', label: 'Brands' },
+      { value: '1M+',  label: 'Saves' },
+    ],
   },
   {
     id: 2,
-    issue: '№ 02',
-    eyebrow: 'Collections',
-    headline: 'Build Your\nAesthetic',
-    sub: 'Save, organise, and share the looks that define your personal world.',
-    cta: 'Explore Collections',
-    ctaHref: '/collections',
-    stat: { value: '860+', label: 'Collections' },
-    tag: 'Curated',
-    accentHue: '200',
+    eyebrow: 'Style Boards',
+    headline: 'Save. Collect.\nInspire.',
+    sub: 'Build boards that reflect your aesthetic. Share your taste with a community that gets it.',
+    cta: 'Start a Board',
+    ctaHref: '/collections/new',
+    secondaryCta: 'See Collections',
+    secondaryHref: '/collections',
+    tag: 'For You',
+    stats: [
+      { value: '860+', label: 'Collections' },
+      { value: '12K+', label: 'Curators' },
+      { value: '99K+', label: 'Followers' },
+    ],
   },
   {
     id: 3,
-    issue: '№ 03',
-    eyebrow: 'Community',
-    headline: 'Follow\nTastemakers',
-    sub: 'Connect with curators who inspire your personal style every single day.',
-    cta: 'Discover People',
-    ctaHref: '/explore',
-    stat: { value: '12K+', label: 'Creators' },
+    eyebrow: 'Trending Now',
+    headline: 'What Everyone\'s\nSaving Right Now',
+    sub: 'Real-time trending pieces from across fashion, beauty, home and more.',
+    cta: 'See Trending',
+    ctaHref: '/explore?sort=popular',
+    secondaryCta: 'Join Free',
+    secondaryHref: '/sign-up',
     tag: 'Live',
-    accentHue: '340',
+    stats: [
+      { value: '#1',   label: 'Fashion App' },
+      { value: '4.9★', label: 'Rated' },
+      { value: '500K', label: 'Daily Users' },
+    ],
   },
 ]
 
@@ -52,6 +64,8 @@ export function HeroSection() {
   const goTo = (idx: number) => {
     setDirection(idx > current ? 1 : -1)
     setCurrent(idx)
+    clearInterval(intervalRef.current)
+    intervalRef.current = setInterval(advance, 7000)
   }
 
   const advance = () => {
@@ -64,246 +78,158 @@ export function HeroSection() {
     return () => clearInterval(intervalRef.current)
   }, [])
 
-  const slide       = slides[current]
-  const accentColor = `hsl(${slide.accentHue} 55% 52%)`
-  const accentMuted = `hsl(${slide.accentHue} 40% 92%)`
+  const slide = slides[current]
 
-  const variants = {
-    enter:  (d: number) => ({ opacity: 0, x: d > 0 ?  40 : -40 }),
-    center: { opacity: 1, x: 0 },
-    exit:   (d: number) => ({ opacity: 0, x: d > 0 ? -40 :  40 }),
+  const contentVariants = {
+    enter:  (d: number) => ({ opacity: 0, y: d > 0 ? 20 : -20 }),
+    center: { opacity: 1, y: 0 },
+    exit:   (d: number) => ({ opacity: 0, y: d > 0 ? -20 : 20 }),
   }
 
   return (
-    <section className="relative min-h-[96vh] flex flex-col overflow-hidden bg-background">
-
-      {/* ── Background architectural lines ── */}
-      <div className="absolute inset-0 pointer-events-none">
-        {/* Horizontal rule */}
+    <section
+      className="relative min-h-[88vh] flex flex-col overflow-hidden"
+      style={{ background: 'hsl(var(--background))' }}
+    >
+      {/* ── Soft background blob (Pinterest discovery feel) ── */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <div
-          className="absolute top-[38%] left-0 right-0 h-px opacity-[0.07]"
-          style={{ background: 'hsl(var(--foreground))' }}
+          className="absolute -top-32 -right-32 w-[600px] h-[600px] rounded-full opacity-[0.05]"
+          style={{
+            background: 'radial-gradient(circle, hsl(var(--accent)) 0%, transparent 70%)',
+          }}
         />
-        {/* Vertical rule */}
         <div
-          className="absolute left-[55%] top-0 bottom-0 w-px opacity-[0.05]"
-          style={{ background: 'hsl(var(--foreground))' }}
+          className="absolute -bottom-24 -left-24 w-[400px] h-[400px] rounded-full opacity-[0.04]"
+          style={{
+            background: 'radial-gradient(circle, hsl(240 80% 65%) 0%, transparent 70%)',
+          }}
         />
-        {/* Dot grid */}
+        {/* Subtle dot pattern */}
         <div
-          className="absolute inset-0 opacity-[0.025]"
+          className="absolute inset-0 opacity-[0.03]"
           style={{
             backgroundImage: `radial-gradient(hsl(var(--foreground)) 1px, transparent 1px)`,
-            backgroundSize: '36px 36px',
+            backgroundSize: '32px 32px',
           }}
         />
       </div>
 
-      {/* ── Large ghost issue number ── */}
-      <div
-        className="absolute right-6 top-1/2 -translate-y-1/2 font-display font-bold
-                   leading-none select-none pointer-events-none opacity-[0.04] tracking-tighter"
-        style={{ fontSize: 'clamp(7rem, 18vw, 18rem)' }}
-        aria-hidden="true"
-      >
-        {current + 1 < 10 ? `0${current + 1}` : current + 1}
-      </div>
-
       {/* ── Main content ── */}
       <div className="container-wide relative z-10 flex-1 flex items-center">
-        <div className="w-full grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-12 lg:gap-24
-                        items-center py-20 lg:py-0">
+        <div className="w-full py-16 lg:py-24">
 
-          {/* Left: editorial copy */}
           <AnimatePresence mode="wait" custom={direction}>
             <motion.div
               key={current}
               custom={direction}
-              variants={variants}
+              variants={contentVariants}
               initial="enter"
               animate="center"
               exit="exit"
-              transition={{ duration: 0.48, ease: [0.22, 1, 0.36, 1] }}
-              className="max-w-2xl"
+              transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+              className="max-w-3xl"
             >
-              {/* Issue + tag row */}
-              <div className="flex items-center gap-4 mb-8">
+              {/* Tag pill */}
+              <div className="flex items-center gap-2 mb-6">
                 <span
-                  className="font-mono-refined text-xs tracking-wider"
-                  style={{ color: 'hsl(var(--muted))' }}
-                >
-                  {slide.issue}
-                </span>
-                <div
-                  className="h-px flex-1 max-w-[3rem] opacity-30"
-                  style={{ background: 'hsl(var(--foreground))' }}
-                />
-                <span
-                  className="text-xs font-medium uppercase tracking-[0.14em] px-2.5 py-1 rounded-full"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5
+                             rounded-full text-xs font-semibold"
                   style={{
-                    background: accentMuted,
-                    color: accentColor,
-                    fontFamily: "'DM Sans', sans-serif",
+                    background: 'hsl(var(--accent-muted))',
+                    color: 'hsl(var(--accent))',
                   }}
                 >
+                  <Sparkles size={11} />
                   {slide.tag}
                 </span>
               </div>
 
               {/* Eyebrow */}
-              <p
-                className="text-xs font-medium uppercase tracking-[0.2em] mb-5"
-                style={{ color: accentColor }}
-              >
-                {slide.eyebrow}
-              </p>
+              <p className="eyebrow mb-4">{slide.eyebrow}</p>
 
-              {/* Headline */}
+              {/* Headline — Pinterest uses large, bold Inter */}
               <h1
-                className="font-display font-semibold tracking-tight text-foreground
-                           whitespace-pre-line leading-[1.02]"
-                style={{ fontSize: 'clamp(3.2rem, 8vw, 7rem)' }}
+                className="font-semibold tracking-tight text-foreground
+                           whitespace-pre-line leading-[1.05] mb-5"
+                style={{ fontSize: 'clamp(2.8rem, 7vw, 6rem)' }}
               >
                 {slide.headline}
               </h1>
 
-              {/* Animated accent underline */}
-              <motion.div
-                key={`line-${current}`}
-                className="mt-4 mb-7 h-[2px] w-16 rounded-full"
-                style={{ background: accentColor }}
-                initial={{ scaleX: 0, originX: 0 }}
-                animate={{ scaleX: 1 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-              />
-
               {/* Subtext */}
-              <p className="text-base text-muted max-w-[32rem] leading-relaxed mb-10">
+              <p
+                className="text-base sm:text-lg leading-relaxed mb-8 max-w-lg"
+                style={{ color: 'hsl(var(--muted))' }}
+              >
                 {slide.sub}
               </p>
 
               {/* CTAs */}
-              <div className="flex flex-wrap items-center gap-4">
-                <Link
-                  href={slide.ctaHref}
-                  className="group inline-flex items-center gap-2.5 px-7 py-3.5
-                             rounded-xl text-sm font-medium text-background
-                             transition-opacity duration-200 hover:opacity-85"
-                  style={{ background: 'hsl(var(--foreground))' }}
-                >
+              <div className="flex flex-wrap items-center gap-3 mb-12">
+                <Link href={slide.ctaHref} className="btn-save">
                   {slide.cta}
-                  <ArrowRight
-                    size={15}
-                    className="transition-transform duration-200 group-hover:translate-x-0.5"
-                  />
+                  <ArrowRight size={14} className="ml-1 inline" />
                 </Link>
+                <Link href={slide.secondaryHref} className="btn-ghost">
+                  {slide.secondaryCta}
+                </Link>
+              </div>
 
-                <Link
-                  href="/collections"
-                  className="group inline-flex items-center gap-1.5 text-sm font-medium
-                             text-muted hover:text-foreground transition-colors duration-200"
-                >
-                  View Collections
-                  <ArrowUpRight
-                    size={13}
-                    className="transition-transform duration-200
-                               group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
-                  />
-                </Link>
+              {/* Stats row */}
+              <div className="flex items-center gap-8">
+                {slide.stats.map((stat, i) => (
+                  <div key={i} className="flex flex-col">
+                    <span className="text-2xl font-bold tracking-tight text-foreground">
+                      {stat.value}
+                    </span>
+                    <span className="text-xs font-medium" style={{ color: 'hsl(var(--muted))' }}>
+                      {stat.label}
+                    </span>
+                  </div>
+                ))}
               </div>
             </motion.div>
           </AnimatePresence>
-
-          {/* Right: stat card */}
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={`stat-${current}`}
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{   opacity: 0, y: -16 }}
-              transition={{ duration: 0.4, ease: 'easeOut' }}
-              className="hidden lg:flex flex-col items-end gap-2 shrink-0"
-            >
-              <div
-                className="w-44 rounded-2xl p-6 border"
-                style={{
-                  background: 'hsl(var(--surface))',
-                  borderColor: 'hsl(var(--border-subtle))',
-                }}
-              >
-                <p
-                  className="font-display text-4xl font-semibold text-foreground
-                             tracking-tight leading-none mb-1"
-                >
-                  {slide.stat.value}
-                </p>
-                <p className="text-xs text-muted uppercase tracking-[0.12em]">
-                  {slide.stat.label}
-                </p>
-                <div
-                  className="mt-4 h-0.5 w-8 rounded-full"
-                  style={{ background: accentColor }}
-                />
-              </div>
-            </motion.div>
-          </AnimatePresence>
-
         </div>
       </div>
 
-      {/* ── Bottom bar: slide controls + scroll hint ── */}
-      <div className="container-wide relative z-10 pb-10 flex items-center justify-between">
+      {/* ── Bottom controls ── */}
+      <div className="container-wide relative z-10 pb-8 flex items-center justify-between">
 
-        {/* Slide selectors */}
-        <div className="flex items-center gap-5">
+        {/* Slide dots — Pinterest style */}
+        <div className="flex items-center gap-2">
           {slides.map((_, i) => (
             <button
               key={i}
               onClick={() => goTo(i)}
-              className="flex items-center gap-2.5"
               aria-label={`Slide ${i + 1}`}
-            >
-              <span
-                className="font-mono-refined text-[10px] tracking-wider transition-colors duration-200"
-                style={{
-                  color: i === current
-                    ? 'hsl(var(--foreground))'
-                    : 'hsl(var(--muted))',
-                }}
-              >
-                {i + 1 < 10 ? `0${i + 1}` : i + 1}
-              </span>
-              <span
-                className="block h-px transition-all duration-500"
-                style={{
-                  width: i === current ? '2.5rem' : '0.75rem',
-                  background: i === current
-                    ? accentColor
-                    : 'hsl(var(--border))',
-                }}
-              />
-            </button>
+              className="transition-all duration-400"
+              style={{
+                width: i === current ? '2rem' : '0.5rem',
+                height: '0.375rem',
+                borderRadius: '9999px',
+                background: i === current
+                  ? 'hsl(var(--accent))'
+                  : 'hsl(var(--border))',
+              }}
+            />
           ))}
         </div>
 
         {/* Scroll hint */}
-        <div className="flex items-center gap-2.5" style={{ color: 'hsl(var(--muted))' }}>
-          <span
-            className="text-[10px] uppercase tracking-[0.18em]"
-            style={{ fontFamily: "'DM Mono', monospace" }}
-          >
-            Scroll
-          </span>
+        <div
+          className="hidden sm:flex items-center gap-2 text-xs font-medium uppercase tracking-widest"
+          style={{ color: 'hsl(var(--muted))' }}
+        >
+          Scroll to explore
           <motion.div
-            animate={{ y: [0, 6, 0] }}
-            transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
-            className="w-px h-8 rounded-full"
-            style={{
-              background: 'linear-gradient(to bottom, hsl(var(--muted)), transparent)',
-            }}
+            animate={{ y: [0, 5, 0] }}
+            transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+            className="w-px h-6 rounded-full"
+            style={{ background: 'linear-gradient(to bottom, hsl(var(--muted)), transparent)' }}
           />
         </div>
-
       </div>
     </section>
   )

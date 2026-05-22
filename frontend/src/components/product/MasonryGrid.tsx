@@ -1,6 +1,7 @@
 'use client'
 
 import Masonry from 'react-masonry-css'
+import { motion } from 'framer-motion'
 import { ProductCard } from './ProductCard'
 import { ProductCardSkeleton } from '@/components/ui/Skeleton'
 
@@ -33,11 +34,7 @@ export function MasonryGrid({
         columnClassName="masonry-grid-column"
       >
         {Array.from({ length: skeletonCount }).map((_, i) => (
-          <div
-            key={i}
-            className="mb-4"
-            style={{ marginBottom: i % 3 === 0 ? '24px' : '16px' }}
-          >
+          <div key={i} className="mb-4">
             <ProductCardSkeleton />
           </div>
         ))}
@@ -52,12 +49,20 @@ export function MasonryGrid({
       columnClassName="masonry-grid-column"
     >
       {products.map((product, i) => (
-        <div key={product._id} className="mb-4">
-          <ProductCard
-            product={product}
-            priority={i < 6}
-          />
-        </div>
+        <motion.div
+          key={product._id}
+          className="mb-4"
+          initial={{ opacity: 0, y: 12 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.1 }}
+          transition={{
+            duration: 0.35,
+            delay: Math.min(i * 0.04, 0.3),
+            ease: [0.22, 1, 0.36, 1],
+          }}
+        >
+          <ProductCard product={product} priority={i < 6} />
+        </motion.div>
       ))}
     </Masonry>
   )

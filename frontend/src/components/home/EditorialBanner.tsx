@@ -2,222 +2,148 @@
 
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { ArrowRight, ArrowUpRight, Bookmark } from 'lucide-react'
+import { ArrowRight, Bookmark, Users } from 'lucide-react'
 
 export function EditorialBanner() {
   return (
-    <section className="py-10">
+    <section
+      className="py-8"
+      style={{ background: 'hsl(var(--background-secondary))' }}
+    >
       <div className="container-wide">
         <motion.div
-          initial={{ opacity: 0, y: 24 }}
+          initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-          className="relative overflow-hidden rounded-3xl"
+          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+          className="relative overflow-hidden rounded-[var(--radius-2xl)]"
           style={{ background: 'hsl(var(--foreground))' }}
         >
-
-          {/* ── Background layers ── */}
-
-          {/* Dot grid */}
+          {/* Subtle dot grid */}
           <div
-            className="absolute inset-0 opacity-[0.07] pointer-events-none"
+            className="absolute inset-0 pointer-events-none opacity-[0.06]"
             style={{
-              backgroundImage: `radial-gradient(rgba(255,255,255,0.6) 1px, transparent 1px)`,
-              backgroundSize: '28px 28px',
+              backgroundImage: `radial-gradient(rgba(255,255,255,0.5) 1px, transparent 1px)`,
+              backgroundSize: '24px 24px',
             }}
           />
 
-          {/* Diagonal accent stripe */}
+          {/* Red glow */}
           <div
-            className="absolute -top-24 -right-24 w-96 h-96
-                       rounded-full pointer-events-none opacity-[0.06]"
+            className="absolute -top-20 -right-20 w-80 h-80 rounded-full pointer-events-none"
             style={{
-              background: `radial-gradient(circle, hsl(var(--accent)) 0%, transparent 70%)`,
+              background: 'radial-gradient(circle, hsl(var(--accent) / 0.18) 0%, transparent 70%)',
             }}
           />
 
-          {/* Bottom-left glow */}
-          <div
-            className="absolute -bottom-16 -left-16 w-72 h-72
-                       rounded-full pointer-events-none opacity-[0.04]"
-            style={{
-              background: `radial-gradient(circle, hsl(var(--accent)) 0%, transparent 70%)`,
-            }}
-          />
+          {/* Content */}
+          <div className="relative z-10 px-8 py-14 sm:py-18 lg:py-24 text-center">
 
-          {/* Thin gold top border */}
-          <div
-            className="absolute top-0 left-0 right-0 h-px opacity-40"
-            style={{
-              background:
-                'linear-gradient(90deg, transparent, hsl(var(--accent)), transparent)',
-            }}
-          />
-
-          {/* ── Content ── */}
-          <div className="relative z-10 px-8 py-16 sm:py-20 lg:py-28
-                          flex flex-col items-center text-center">
-
-            {/* Icon badge */}
+            {/* Icon */}
             <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              whileInView={{ opacity: 1, scale: 1 }}
+              initial={{ scale: 0.8, opacity: 0 }}
+              whileInView={{ scale: 1, opacity: 1 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.4, delay: 0.15 }}
-              className="w-11 h-11 rounded-2xl flex items-center justify-center mb-7"
+              transition={{ delay: 0.1 }}
+              className="inline-flex items-center justify-center w-12 h-12 rounded-2xl mb-6"
               style={{ background: 'hsl(var(--accent) / 0.15)' }}
             >
-              <Bookmark size={18} style={{ color: 'hsl(var(--accent))' }} />
+              <Bookmark size={20} style={{ color: 'hsl(var(--accent))' }} />
             </motion.div>
 
-            <div className="max-w-2xl">
+            {/* Eyebrow */}
+            <p
+              className="text-xs font-semibold uppercase tracking-[0.18em] mb-4"
+              style={{ color: 'hsl(var(--accent))' }}
+            >
+              Collections
+            </p>
 
-              {/* Eyebrow */}
-              <motion.p
-                initial={{ opacity: 0, y: 10 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.4, delay: 0.1 }}
-                className="text-xs font-medium uppercase tracking-[0.2em] mb-5"
-                style={{
-                  color: 'hsl(var(--accent))',
-                  fontFamily: "'DM Sans', sans-serif",
-                }}
-              >
-                Collections
-              </motion.p>
+            {/* Headline */}
+            <h2
+              className="font-bold tracking-tight leading-tight mb-4"
+              style={{
+                fontSize: 'clamp(2rem, 5vw, 4rem)',
+                color: 'rgba(255,255,255,0.96)',
+              }}
+            >
+              Your Personal Style Board
+            </h2>
 
-              {/* Headline */}
-              <motion.h2
-                initial={{ opacity: 0, y: 16 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: 0.15 }}
-                className="font-display font-semibold tracking-tight
-                           leading-[1.05] mb-2"
-                style={{
-                  fontSize: 'clamp(2.2rem, 5vw, 4rem)',
-                  color: 'hsl(var(--primary-foreground))',
-                }}
-              >
-                Your Personal
-              </motion.h2>
+            {/* Subtext */}
+            <p
+              className="text-base sm:text-lg leading-relaxed mb-8 max-w-md mx-auto"
+              style={{ color: 'rgba(255,255,255,0.55)' }}
+            >
+              Save pieces you love. Build boards. Share your aesthetic with a
+              community that gets it.
+            </p>
 
-              <motion.h2
-                initial={{ opacity: 0, y: 16 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: 0.22 }}
-                className="font-display font-semibold tracking-tight
-                           leading-[1.05] mb-6"
-                style={{
-                  fontSize: 'clamp(2.2rem, 5vw, 4rem)',
-                  color: 'hsl(var(--accent))',
-                }}
-              >
-                Style Board
-              </motion.h2>
-
-              {/* Gold divider */}
-              <motion.div
-                className="mx-auto mb-8 h-px w-16"
-                style={{
-                  background:
-                    'linear-gradient(90deg, transparent, hsl(var(--accent) / 0.7), transparent)',
-                }}
-                initial={{ scaleX: 0 }}
-                whileInView={{ scaleX: 1 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: 0.3 }}
-              />
-
-              {/* Subtext */}
-              <motion.p
-                initial={{ opacity: 0, y: 10 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.45, delay: 0.25 }}
-                className="text-base sm:text-lg leading-relaxed mb-10 max-w-md mx-auto"
-                style={{ color: 'rgba(255,255,255,0.6)' }}
-              >
-                Save the pieces you love, build collections that reflect your
-                aesthetic, and share your vision with the world.
-              </motion.p>
-
-              {/* CTAs */}
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.4, delay: 0.3 }}
-                className="flex flex-wrap gap-3 justify-center"
-              >
-                <Link
-                  href="/collections"
-                  className="group inline-flex items-center gap-2.5 px-6 py-3
-                             rounded-xl text-sm font-medium transition-opacity
-                             duration-200 hover:opacity-85"
-                  style={{
-                    background: 'hsl(var(--accent))',
-                    color: 'hsl(var(--accent-foreground))',
-                  }}
-                >
-                  Browse Collections
-                  <ArrowRight
-                    size={14}
-                    className="transition-transform duration-200 group-hover:translate-x-0.5"
+            {/* Social proof */}
+            <div className="flex items-center justify-center gap-2 mb-8">
+              <div className="flex -space-x-2">
+                {[...Array(4)].map((_, i) => (
+                  <div
+                    key={i}
+                    className="w-7 h-7 rounded-full border-2 border-foreground"
+                    style={{
+                      background: `hsl(${[200, 160, 280, 340][i]} 60% 55%)`,
+                    }}
                   />
-                </Link>
+                ))}
+              </div>
+              <p className="text-xs font-medium" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                <span style={{ color: 'rgba(255,255,255,0.85)' }}>12,000+</span> curators already collecting
+              </p>
+            </div>
 
-                <Link
-                  href="/sign-up"
-                  className="group inline-flex items-center gap-2 px-6 py-3
-                             rounded-xl text-sm font-medium transition-all duration-200"
-                  style={{
-                    border: '1px solid rgba(255,255,255,0.15)',
-                    color: 'rgba(255,255,255,0.75)',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.35)'
-                    e.currentTarget.style.color = 'rgba(255,255,255,1)'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'
-                    e.currentTarget.style.color = 'rgba(255,255,255,0.75)'
-                  }}
-                >
-                  Start Collecting
-                  <ArrowUpRight
-                    size={13}
-                    className="transition-transform duration-200
-                               group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
-                  />
-                </Link>
-              </motion.div>
+            {/* CTAs */}
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <Link
+                href="/collections"
+                className="btn-save"
+              >
+                Browse Collections
+                <ArrowRight size={14} className="ml-1 inline" />
+              </Link>
+              <Link
+                href="/sign-up"
+                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-[var(--radius-pill)]
+                           text-sm font-semibold transition-all duration-200"
+                style={{
+                  border: '2px solid rgba(255,255,255,0.2)',
+                  color: 'rgba(255,255,255,0.8)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.5)'
+                  e.currentTarget.style.color = 'rgba(255,255,255,1)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)'
+                  e.currentTarget.style.color = 'rgba(255,255,255,0.8)'
+                }}
+              >
+                <Users size={14} />
+                Join Free
+              </Link>
             </div>
           </div>
 
-          {/* ── Bottom editorial label ── */}
+          {/* Footer strip */}
           <div
-            className="relative z-10 px-8 pb-6 flex items-center justify-between
+            className="relative z-10 px-8 py-4 flex items-center justify-between
                        border-t"
-            style={{ borderColor: 'rgba(255,255,255,0.07)' }}
+            style={{ borderColor: 'rgba(255,255,255,0.06)' }}
           >
-            <span
-              className="font-mono-refined text-[10px] tracking-[0.2em] uppercase"
-              style={{ color: 'rgba(255,255,255,0.25)' }}
-            >
-              Shoppintrest — Collections
+            <span className="text-[10px] font-medium uppercase tracking-widest"
+              style={{ color: 'rgba(255,255,255,0.2)' }}>
+              Shoppintrest
             </span>
-            <span
-              className="font-mono-refined text-[10px] tracking-[0.2em] uppercase"
-              style={{ color: 'rgba(255,255,255,0.25)' }}
-            >
+            <span className="text-[10px] font-medium uppercase tracking-widest"
+              style={{ color: 'rgba(255,255,255,0.2)' }}>
               Est. 2025
             </span>
           </div>
-
         </motion.div>
       </div>
     </section>
