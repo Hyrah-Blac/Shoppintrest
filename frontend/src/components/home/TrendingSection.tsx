@@ -20,95 +20,137 @@ export function TrendingSection() {
   }, [])
 
   return (
-    <section
-      className="section-padding"
-      style={{ background: 'hsl(var(--background-secondary))' }}
+    <section className="section-padding relative overflow-hidden"
+      style={{ background: 'hsl(var(--surface))' }}
     >
+      {/* Subtle top border accent */}
+      <div className="absolute top-0 left-0 right-0 h-px divider-gold" />
+
       <div className="container-wide">
 
-        {/* ── Header ── */}
-        <div className="flex items-end justify-between mb-8">
+        {/* ── Section Header ── */}
+        <div className="flex items-end justify-between mb-12">
           <motion.div
-            initial={{ opacity: 0, y: 12 }}
+            initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ duration: 0.4 }}
+            transition={{ duration: 0.5 }}
           >
-            <div className="flex items-center gap-2 mb-2">
+            {/* Eyebrow */}
+            <div className="flex items-center gap-2 mb-3">
               <div
-                className="w-6 h-6 rounded-lg flex items-center justify-center"
+                className="w-5 h-5 rounded-md flex items-center justify-center"
                 style={{ background: 'hsl(var(--accent-muted))' }}
               >
-                <TrendingUp size={12} style={{ color: 'hsl(var(--accent))' }} />
+                <TrendingUp
+                  size={11}
+                  style={{ color: 'hsl(var(--accent))' }}
+                />
               </div>
               <span className="eyebrow">Right Now</span>
             </div>
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-foreground">
-              Trending
+
+            {/* Headline */}
+            <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl
+                           font-semibold tracking-tight leading-tight">
+              What's{' '}
+              <em className="not-italic" style={{ color: 'hsl(var(--accent))' }}>
+                Trending
+              </em>
             </h2>
+
+            {/* Accent underline */}
+            <motion.div
+              className="mt-4 h-[2px] w-12 rounded-full"
+              style={{ background: 'hsl(var(--accent))' }}
+              initial={{ scaleX: 0, originX: 0 }}
+              whileInView={{ scaleX: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+            />
           </motion.div>
 
-          <Link
-            href="/explore?sort=popular"
-            className="group hidden sm:flex items-center gap-1.5 text-sm font-semibold
-                       transition-colors duration-200"
-            style={{ color: 'hsl(var(--accent))' }}
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.4, delay: 0.15 }}
           >
-            See all
-            <ArrowRight size={14}
-              className="transition-transform duration-200 group-hover:translate-x-0.5"
-            />
-          </Link>
+            <Link
+              href="/explore?sort=popular"
+              className="group hidden sm:flex items-center gap-2 text-sm font-medium
+                         text-muted hover:text-foreground transition-colors duration-200"
+            >
+              See all
+              <ArrowRight
+                size={14}
+                className="transition-transform duration-200 group-hover:translate-x-0.5"
+              />
+            </Link>
+          </motion.div>
         </div>
 
-        {/* ── Horizontal scroll strip ── */}
+        {/* ── Horizontal Scroll Strip ── */}
         <div className="overflow-x-auto scrollbar-hide -mx-4 px-4">
           <div className="flex gap-4 pb-2" style={{ width: 'max-content' }}>
             {isLoading
               ? Array.from({ length: 8 }).map((_, i) => (
-                  <div key={i} className="w-44 shrink-0">
+                  <div key={i} className="w-48 shrink-0">
                     <ProductCardSkeleton />
                   </div>
                 ))
               : products.slice(0, 12).map((product, i) => (
                   <motion.div
                     key={product._id}
-                    initial={{ opacity: 0, x: 16 }}
+                    initial={{ opacity: 0, x: 20 }}
                     whileInView={{ opacity: 1, x: 0 }}
                     viewport={{ once: true, amount: 0.2 }}
-                    transition={{ delay: i * 0.04, ease: [0.22, 1, 0.36, 1] }}
-                    className="w-44 sm:w-52 shrink-0 relative"
+                    transition={{
+                      delay: i * 0.04,
+                      ease: [0.22, 1, 0.36, 1],
+                      duration: 0.4,
+                    }}
+                    className="w-48 sm:w-56 shrink-0"
                   >
-                    {/* Rank badge for top 3 */}
-                    {i < 3 && (
-                      <div
-                        className="absolute -top-2 -left-2 z-10 w-6 h-6 rounded-full
-                                   flex items-center justify-center text-[10px] font-bold
-                                   text-white shadow-md"
-                        style={{ background: 'hsl(var(--accent))' }}
-                      >
-                        {i + 1}
-                      </div>
-                    )}
-                    <ProductCard product={product} />
+                    {/* Rank badge */}
+                    <div className="relative">
+                      {i < 3 && (
+                        <div
+                          className="absolute -top-2 -left-2 z-10 w-6 h-6 rounded-full
+                                     flex items-center justify-center text-[10px] font-bold
+                                     text-background shadow-sm"
+                          style={{ background: 'hsl(var(--accent))' }}
+                        >
+                          {i + 1}
+                        </div>
+                      )}
+                      <ProductCard product={product} />
+                    </div>
                   </motion.div>
                 ))}
           </div>
         </div>
 
-        {/* Mobile CTA */}
-        <div className="sm:hidden mt-6 text-center">
+        {/* ── Mobile "See all" link ── */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.4, delay: 0.2 }}
+          className="mt-8 sm:hidden text-center"
+        >
           <Link
             href="/explore?sort=popular"
-            className="group inline-flex items-center gap-2 text-sm font-semibold"
-            style={{ color: 'hsl(var(--accent))' }}
+            className="group inline-flex items-center gap-2 text-sm font-medium
+                       text-muted hover:text-foreground transition-colors duration-200"
           >
             See all trending
-            <ArrowRight size={13}
+            <ArrowRight
+              size={14}
               className="transition-transform duration-200 group-hover:translate-x-0.5"
             />
           </Link>
-        </div>
+        </motion.div>
 
       </div>
     </section>

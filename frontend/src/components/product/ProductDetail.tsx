@@ -23,20 +23,20 @@ interface Props { id: string }
 
 export function ProductDetail({ id }: Props) {
   const { isSignedIn } = useAuth()
-  const addItem           = useCartStore((s) => s.addItem)
-  const isSaved           = useUserStore((s) => s.isSaved(id))
+  const addItem = useCartStore((s) => s.addItem)
+  const isSaved = useUserStore((s) => s.isSaved(id))
   const toggleSaveProduct = useUserStore((s) => s.toggleSaveProduct)
 
-  const [product,             setProduct]             = useState<any>(null)
-  const [isLoading,           setIsLoading]           = useState(true)
-  const [selectedSize,        setSelectedSize]        = useState<string>('')
-  const [selectedImage,       setSelectedImage]       = useState(0)
-  const [isAddingToCart,      setIsAddingToCart]      = useState(false)
-  const [isSaving,            setIsSaving]            = useState(false)
-  const [isZoomed,            setIsZoomed]            = useState(false)
-  const [zoomPos,             setZoomPos]             = useState({ x: 50, y: 50 })
-  const [collections,         setCollections]         = useState<any[]>([])
-  const [showCollectionPicker,setShowCollectionPicker]= useState(false)
+  const [product, setProduct] = useState<any>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [selectedSize, setSelectedSize] = useState<string>('')
+  const [selectedImage, setSelectedImage] = useState(0)
+  const [isAddingToCart, setIsAddingToCart] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [isZoomed, setIsZoomed] = useState(false)
+  const [zoomPos, setZoomPos] = useState({ x: 50, y: 50 })
+  const [collections, setCollections] = useState<any[]>([])
+  const [showCollectionPicker, setShowCollectionPicker] = useState(false)
 
   useEffect(() => {
     setIsLoading(true)
@@ -44,7 +44,9 @@ export function ProductDetail({ id }: Props) {
       .then(({ data }) => {
         setProduct(data.data)
         if (data.data?.variants?.length > 0) {
-          const inStock = data.data.variants.find((v: any) => v.inventory > 0)
+          const inStock = data.data.variants.find(
+            (v: any) => v.inventory > 0
+          )
           setSelectedSize(inStock?.size || data.data.variants[0].size)
         }
       })
@@ -54,22 +56,24 @@ export function ProductDetail({ id }: Props) {
 
   useEffect(() => {
     if (isSignedIn) {
-      apiClient.collections.getAll()
-        .then(({ data }) => setCollections(data.data || []))
-        .catch(() => {})
+      apiClient.collections.getAll().then(({ data }) => {
+        setCollections(data.data || [])
+      }).catch(() => {})
     }
   }, [isSignedIn])
 
   const handleAddToCart = async () => {
-    if (!isSignedIn)   { toast.error('Sign in to add to cart'); return }
-    if (!selectedSize) { toast.error('Please select a size');  return }
+    if (!isSignedIn) { toast.error('Sign in to add to cart'); return }
+    if (!selectedSize) { toast.error('Please select a size'); return }
     setIsAddingToCart(true)
     try {
       await addItem(id, selectedSize, 1)
       toast.success('Added to cart')
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Could not add to cart')
-    } finally { setIsAddingToCart(false) }
+    } finally {
+      setIsAddingToCart(false)
+    }
   }
 
   const handleSave = async () => {
@@ -102,27 +106,28 @@ export function ProductDetail({ id }: Props) {
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect()
-    setZoomPos({
-      x: ((e.clientX - rect.left) / rect.width)  * 100,
-      y: ((e.clientY - rect.top)  / rect.height) * 100,
-    })
+    const x = ((e.clientX - rect.left) / rect.width) * 100
+    const y = ((e.clientY - rect.top) / rect.height) * 100
+    setZoomPos({ x, y })
   }
 
-  const selectedVariant = product?.variants?.find((v: any) => v.size === selectedSize)
-  const isOutOfStock    = !selectedVariant || selectedVariant.inventory === 0
+  const selectedVariant = product?.variants?.find(
+    (v: any) => v.size === selectedSize
+  )
+  const isOutOfStock =
+    !selectedVariant || selectedVariant.inventory === 0
 
   if (isLoading) return null
   if (!product) return (
-    <div className="container-wide py-32 text-center" style={{ color: 'hsl(var(--muted))' }}>
+    <div className="container-wide py-32 text-center text-muted">
       Product not found
     </div>
   )
 
   return (
     <div className="container-wide py-8 lg:py-12">
-
-      {/* ── Breadcrumb ── */}
-      <nav className="flex items-center gap-2 text-xs mb-8" style={{ color: 'hsl(var(--muted))' }}>
+      {/* Breadcrumb */}
+      <nav className="flex items-center gap-2 text-xs text-muted mb-8">
         <Link href="/" className="hover:text-foreground transition-colors">Home</Link>
         <span>/</span>
         <Link href="/explore" className="hover:text-foreground transition-colors">Explore</Link>
@@ -138,13 +143,12 @@ export function ProductDetail({ id }: Props) {
       </nav>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 xl:gap-16">
-
         {/* ── LEFT: Images ── */}
         <div className="space-y-3">
-          {/* Main image */}
+          {/* Main Image */}
           <div
-            className="relative aspect-[4/5] overflow-hidden bg-surface cursor-zoom-in select-none"
-            style={{ borderRadius: 'var(--radius-2xl)' }}
+            className="relative aspect-[4/5] rounded-3xl overflow-hidden
+                       bg-surface cursor-zoom-in select-none"
             onMouseMove={handleMouseMove}
             onMouseEnter={() => setIsZoomed(true)}
             onMouseLeave={() => setIsZoomed(false)}
@@ -155,7 +159,7 @@ export function ProductDetail({ id }: Props) {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 0.22 }}
+                transition={{ duration: 0.25 }}
                 className="absolute inset-0"
               >
                 {product.images?.[selectedImage]?.url && (
@@ -168,32 +172,45 @@ export function ProductDetail({ id }: Props) {
                     priority
                     style={
                       isZoomed
-                        ? { transformOrigin: `${zoomPos.x}% ${zoomPos.y}%`, transform: 'scale(1.8)', transition: 'transform 0.1s ease' }
-                        : { transform: 'scale(1)', transition: 'transform 0.3s ease' }
+                        ? {
+                            transformOrigin: `${zoomPos.x}% ${zoomPos.y}%`,
+                            transform: 'scale(1.8)',
+                            transition: 'transform 0.1s ease',
+                          }
+                        : {
+                            transform: 'scale(1)',
+                            transition: 'transform 0.3s ease',
+                          }
                     }
                   />
                 )}
               </motion.div>
             </AnimatePresence>
 
-            {/* Arrows */}
+            {/* Nav arrows */}
             {product.images?.length > 1 && (
               <>
                 <button
-                  onClick={() => setSelectedImage((p) => p === 0 ? product.images.length - 1 : p - 1)}
+                  onClick={() =>
+                    setSelectedImage((p) =>
+                      p === 0 ? product.images.length - 1 : p - 1
+                    )
+                  }
                   className="absolute left-4 top-1/2 -translate-y-1/2 w-9 h-9
-                             rounded-full flex items-center justify-center
-                             transition-all shadow-sm hover:scale-105"
-                  style={{ background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(8px)' }}
+                             rounded-xl bg-background/90 flex items-center justify-center
+                             text-foreground hover:bg-background transition-all shadow-sm"
                 >
                   <ChevronLeft size={16} />
                 </button>
                 <button
-                  onClick={() => setSelectedImage((p) => p === product.images.length - 1 ? 0 : p + 1)}
+                  onClick={() =>
+                    setSelectedImage((p) =>
+                      p === product.images.length - 1 ? 0 : p + 1
+                    )
+                  }
                   className="absolute right-4 top-1/2 -translate-y-1/2 w-9 h-9
-                             rounded-full flex items-center justify-center
-                             transition-all shadow-sm hover:scale-105"
-                  style={{ background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(8px)' }}
+                             rounded-xl bg-background/90 flex items-center justify-center
+                             text-foreground hover:bg-background transition-all shadow-sm"
                 >
                   <ChevronRight size={16} />
                 </button>
@@ -201,36 +218,13 @@ export function ProductDetail({ id }: Props) {
             )}
 
             {/* Badges */}
-            <div className="absolute top-4 left-4 flex flex-col gap-2 z-10">
+            <div className="absolute top-4 left-4 flex flex-col gap-2">
               {product.isFeatured && (
-                <span
-                  className="inline-flex items-center px-2.5 py-1 rounded-full
-                             text-[11px] font-bold text-white"
-                  style={{ background: 'hsl(var(--accent))' }}
-                >
-                  Featured
-                </span>
+                <Badge>Featured</Badge>
               )}
               {isOutOfStock && (
-                <span
-                  className="inline-flex items-center px-2.5 py-1 rounded-full
-                             text-[11px] font-semibold text-white"
-                  style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}
-                >
-                  Sold Out
-                </span>
+                <Badge variant="secondary">Sold Out</Badge>
               )}
-            </div>
-
-            {/* Pinterest-style save button on image */}
-            <div className="absolute top-4 right-4 z-10">
-              <button
-                onClick={handleSave}
-                disabled={isSaving}
-                className="btn-save text-xs px-4 py-1.5"
-              >
-                {isSaved ? '✓ Saved' : 'Save'}
-              </button>
             </div>
           </div>
 
@@ -242,16 +236,12 @@ export function ProductDetail({ id }: Props) {
                   key={i}
                   onClick={() => setSelectedImage(i)}
                   className={cn(
-                    'relative w-16 h-20 shrink-0 overflow-hidden transition-all duration-200',
+                    'relative w-16 h-20 rounded-xl overflow-hidden shrink-0',
+                    'border-2 transition-all duration-200',
                     i === selectedImage
-                      ? 'ring-2 opacity-100'
-                      : 'opacity-55 hover:opacity-80'
+                      ? 'border-foreground'
+                      : 'border-transparent opacity-60 hover:opacity-100'
                   )}
-                  style={{
-                    borderRadius: 'var(--radius)',
-                    outline: i === selectedImage ? '2px solid hsl(var(--foreground))' : 'none',
-                    outlineOffset: '2px',
-                  }}
                 >
                   <Image
                     src={img.url}
@@ -267,41 +257,55 @@ export function ProductDetail({ id }: Props) {
         </div>
 
         {/* ── RIGHT: Info ── */}
-        <div className="lg:sticky lg:top-28 lg:self-start space-y-5">
-
-          {/* Brand + action row */}
-          <div className="flex items-start justify-between gap-4">
+        <div className="lg:sticky lg:top-28 lg:self-start space-y-6">
+          {/* Brand + Actions */}
+          <div className="flex items-start justify-between">
             <div>
               <Link
                 href={`/explore?brand=${product.brand}`}
-                className="text-xs font-bold uppercase tracking-widest
-                           transition-colors hover:opacity-70"
-                style={{ color: 'hsl(var(--accent))' }}
+                className="text-xs font-semibold uppercase tracking-widest
+                           text-muted hover:text-foreground transition-colors"
               >
                 {product.brand}
               </Link>
-              <h1
-                className="text-2xl sm:text-3xl font-bold tracking-tight
-                           text-foreground mt-1 leading-snug"
-              >
+              <h1 className="font-display text-2xl sm:text-3xl font-semibold
+                             tracking-tight text-foreground mt-1 leading-snug">
                 {product.title}
               </h1>
             </div>
 
-            {/* Icon buttons */}
-            <div className="flex gap-2 shrink-0">
-              <IconBtn onClick={handleShare} label="Share">
-                <Share2 size={15} />
-              </IconBtn>
-
+            <div className="flex gap-2 shrink-0 ml-4">
+              <button
+                onClick={handleSave}
+                disabled={isSaving}
+                className={cn(
+                  `w-10 h-10 rounded-xl flex items-center justify-center
+                   border transition-all duration-200`,
+                  isSaved
+                    ? 'bg-foreground text-background border-foreground'
+                    : 'border-border text-muted hover:text-foreground hover:border-foreground'
+                )}
+              >
+                <Heart size={16} className={cn(isSaved && 'fill-current')} />
+              </button>
+              <button
+                onClick={handleShare}
+                className="w-10 h-10 rounded-xl flex items-center justify-center
+                           border border-border text-muted hover:text-foreground
+                           hover:border-foreground transition-all duration-200"
+              >
+                <Share2 size={16} />
+              </button>
               {isSignedIn && (
                 <div className="relative">
-                  <IconBtn
+                  <button
                     onClick={() => setShowCollectionPicker(!showCollectionPicker)}
-                    label="Add to collection"
+                    className="w-10 h-10 rounded-xl flex items-center justify-center
+                               border border-border text-muted hover:text-foreground
+                               hover:border-foreground transition-all duration-200"
                   >
-                    <Bookmark size={15} />
-                  </IconBtn>
+                    <Bookmark size={16} />
+                  </button>
 
                   <AnimatePresence>
                     {showCollectionPicker && (
@@ -310,24 +314,19 @@ export function ProductDetail({ id }: Props) {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 8, scale: 0.96 }}
                         transition={{ duration: 0.15 }}
-                        className="absolute right-0 top-12 z-20 w-56 border shadow-xl overflow-hidden"
-                        style={{
-                          background: 'hsl(var(--background))',
-                          borderColor: 'hsl(var(--border))',
-                          borderRadius: 'var(--radius-xl)',
-                        }}
+                        className="absolute right-0 top-12 z-20 w-56 bg-background
+                                   border border-border rounded-2xl shadow-xl
+                                   overflow-hidden"
                       >
                         <div className="p-3">
-                          <p className="text-xs font-semibold px-2 pb-2"
-                             style={{ color: 'hsl(var(--muted))' }}>
+                          <p className="text-xs font-semibold text-muted px-2 pb-2">
                             Save to collection
                           </p>
                           {collections.length === 0 ? (
                             <Link
                               href="/collections/new"
                               className="block px-3 py-2.5 text-sm text-foreground
-                                         hover:bg-background-secondary transition-colors"
-                              style={{ borderRadius: 'var(--radius)' }}
+                                         hover:bg-accent rounded-xl transition-colors"
                             >
                               + Create collection
                             </Link>
@@ -337,9 +336,8 @@ export function ProductDetail({ id }: Props) {
                                 key={col._id}
                                 onClick={() => handleAddToCollection(col._id)}
                                 className="w-full text-left px-3 py-2.5 text-sm
-                                           text-foreground hover:bg-background-secondary
+                                           text-foreground hover:bg-accent rounded-xl
                                            transition-colors truncate"
-                                style={{ borderRadius: 'var(--radius)' }}
                               >
                                 {col.title}
                               </button>
@@ -357,21 +355,20 @@ export function ProductDetail({ id }: Props) {
           {/* Rating */}
           {product.rating > 0 && (
             <div className="flex items-center gap-2">
-              <div className="flex gap-px">
+              <div className="flex">
                 {Array.from({ length: 5 }).map((_, i) => (
                   <Star
                     key={i}
-                    size={13}
-                    style={{
-                      color: i < Math.round(product.rating)
-                        ? 'hsl(var(--accent))'
-                        : 'hsl(var(--border))',
-                      fill: 'currentColor',
-                    }}
+                    size={14}
+                    className={cn(
+                      i < Math.round(product.rating)
+                        ? 'text-foreground fill-current'
+                        : 'text-border fill-current'
+                    )}
                   />
                 ))}
               </div>
-              <span className="text-sm" style={{ color: 'hsl(var(--muted))' }}>
+              <span className="text-sm text-muted">
                 {product.rating.toFixed(1)} ({product.reviewCount} reviews)
               </span>
             </div>
@@ -379,43 +376,46 @@ export function ProductDetail({ id }: Props) {
 
           {/* Price */}
           <div className="flex items-baseline gap-3">
-            <span className="text-3xl font-bold tracking-tight text-foreground">
+            <span className="font-display text-3xl font-semibold">
               {formatPrice(product.price, 'KES')}
             </span>
             {product.comparePrice > product.price && (
               <>
-                <span className="text-lg line-through" style={{ color: 'hsl(var(--muted))' }}>
+                <span className="text-lg text-muted line-through">
                   {formatPrice(product.comparePrice, 'KES')}
                 </span>
-                <span
-                  className="text-xs font-bold px-2 py-0.5 rounded-full text-white"
-                  style={{ background: 'hsl(var(--accent))' }}
-                >
-                  Save {Math.round(((product.comparePrice - product.price) / product.comparePrice) * 100)}%
-                </span>
+                <Badge variant="destructive" size="sm">
+                  Save{' '}
+                  {Math.round(
+                    ((product.comparePrice - product.price) /
+                      product.comparePrice) *
+                      100
+                  )}
+                  %
+                </Badge>
               </>
             )}
           </div>
 
           {/* Description */}
-          <p className="text-sm leading-relaxed" style={{ color: 'hsl(var(--muted))' }}>
+          <p className="text-sm text-muted leading-relaxed">
             {product.description}
           </p>
 
-          {/* Size selector */}
+          {/* Size Selector */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold text-foreground">Size</span>
-              <button
-                className="text-xs underline underline-offset-2 transition-colors hover:opacity-70"
-                style={{ color: 'hsl(var(--muted))' }}
-              >
+              <span className="text-sm font-medium text-foreground">
+                Select Size
+              </span>
+              <button className="text-xs text-muted underline underline-offset-2
+                                 hover:text-foreground transition-colors">
                 Size Guide
               </button>
             </div>
             <div className="flex flex-wrap gap-2">
               {product.variants?.map((variant: any) => {
-                const inStock   = variant.inventory > 0
+                const inStock = variant.inventory > 0
                 const isSelected = selectedSize === variant.size
                 return (
                   <button
@@ -423,29 +423,20 @@ export function ProductDetail({ id }: Props) {
                     onClick={() => inStock && setSelectedSize(variant.size)}
                     disabled={!inStock}
                     className={cn(
-                      'relative h-11 min-w-[3rem] px-4 text-sm font-semibold transition-all duration-200',
-                      !inStock && 'line-through opacity-35 cursor-not-allowed'
+                      `relative h-11 min-w-[3rem] px-4 rounded-xl border text-sm
+                       font-medium transition-all duration-200`,
+                      isSelected
+                        ? 'bg-foreground text-background border-foreground'
+                        : inStock
+                        ? 'border-border text-foreground hover:border-foreground'
+                        : 'border-border text-muted opacity-40 cursor-not-allowed',
+                      !inStock && 'line-through'
                     )}
-                    style={{
-                      borderRadius: 'var(--radius)',
-                      border: isSelected
-                        ? '2px solid hsl(var(--foreground))'
-                        : '1.5px solid hsl(var(--border))',
-                      background: isSelected
-                        ? 'hsl(var(--foreground))'
-                        : 'transparent',
-                      color: isSelected
-                        ? 'hsl(var(--background))'
-                        : 'hsl(var(--foreground))',
-                    }}
                   >
                     {variant.size}
                     {inStock && variant.inventory <= 3 && (
-                      <span
-                        className="absolute -top-1.5 -right-1.5 text-white
-                                   text-[9px] font-bold px-1 rounded-full"
-                        style={{ background: 'hsl(var(--accent))' }}
-                      >
+                      <span className="absolute -top-1.5 -right-1.5 bg-amber-500
+                                       text-white text-2xs px-1 rounded-full">
                         {variant.inventory}
                       </span>
                     )}
@@ -454,7 +445,7 @@ export function ProductDetail({ id }: Props) {
               })}
             </div>
             {selectedVariant && (
-              <p className="text-xs" style={{ color: 'hsl(var(--muted))' }}>
+              <p className="text-xs text-muted">
                 {selectedVariant.inventory > 0
                   ? `${selectedVariant.inventory} in stock`
                   : 'Out of stock'}
@@ -462,71 +453,52 @@ export function ProductDetail({ id }: Props) {
             )}
           </div>
 
-          {/* Add to cart */}
-          <div className="flex gap-3 pt-1">
-            <button
+          {/* Add to Cart */}
+          <div className="flex gap-3 pt-2">
+            <Button
+              variant="primary"
+              size="xl"
+              className="flex-1 rounded-2xl"
+              leftIcon={<ShoppingBag size={18} />}
+              isLoading={isAddingToCart}
+              disabled={isOutOfStock}
               onClick={handleAddToCart}
-              disabled={isOutOfStock || isAddingToCart}
-              className="flex-1 h-12 rounded-[var(--radius-pill)] text-sm font-bold
-                         flex items-center justify-center gap-2.5
-                         transition-all duration-200 disabled:opacity-50"
-              style={{
-                background: isOutOfStock ? 'hsl(var(--border))' : 'hsl(var(--accent))',
-                color: 'white',
-                boxShadow: isOutOfStock ? 'none' : '0 4px 16px hsl(var(--accent) / 0.35)',
-              }}
             >
-              <ShoppingBag size={17} />
-              {isAddingToCart ? 'Adding…' : isOutOfStock ? 'Out of Stock' : 'Add to Cart'}
-            </button>
-
-            <button
-              onClick={handleSave}
-              disabled={isSaving}
-              className="w-12 h-12 rounded-[var(--radius-pill)] flex items-center
-                         justify-center border-2 transition-all duration-200 hover:scale-105"
-              style={{
-                borderColor: isSaved ? 'hsl(var(--accent))' : 'hsl(var(--border))',
-                background: isSaved ? 'hsl(var(--accent-muted))' : 'transparent',
-                color: isSaved ? 'hsl(var(--accent))' : 'hsl(var(--muted))',
-              }}
-              aria-label="Save product"
-            >
-              <Heart size={16} className={cn(isSaved && 'fill-current')} />
-            </button>
+              {isOutOfStock ? 'Out of Stock' : 'Add to Cart'}
+            </Button>
           </div>
 
           {/* Trust badges */}
-          <div
-            className="grid grid-cols-3 gap-3 p-4 rounded-[var(--radius-xl)]"
-            style={{ background: 'hsl(var(--background-secondary))' }}
-          >
+          <div className="grid grid-cols-3 gap-3 pt-2">
             {[
               { icon: '🔒', label: 'Secure Checkout', sub: 'M-Pesa protected' },
-              { icon: '↩️', label: 'Free Returns',    sub: 'Within 30 days' },
-              { icon: '🚚', label: 'Fast Delivery',   sub: 'Nairobi same day' },
+              { icon: '↩️', label: 'Free Returns', sub: 'Within 30 days' },
+              { icon: '🚚', label: 'Fast Delivery', sub: 'Nairobi same day' },
             ].map((item) => (
-              <div key={item.label} className="flex flex-col items-center text-center gap-1">
+              <div
+                key={item.label}
+                className="flex flex-col items-center text-center p-3
+                           rounded-xl bg-surface border border-border gap-1"
+              >
                 <span className="text-lg">{item.icon}</span>
-                <p className="text-xs font-semibold text-foreground leading-tight">{item.label}</p>
-                <p className="text-[10px]" style={{ color: 'hsl(var(--muted))' }}>{item.sub}</p>
+                <p className="text-xs font-medium text-foreground leading-tight">
+                  {item.label}
+                </p>
+                <p className="text-2xs text-muted">{item.sub}</p>
               </div>
             ))}
           </div>
 
           {/* Tags */}
           {product.tags?.length > 0 && (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 pt-2">
               {product.tags.map((tag: string) => (
                 <Link
                   key={tag}
                   href={`/explore?q=${tag}`}
-                  className="text-xs px-3 py-1 rounded-full border transition-all duration-200
-                             hover:border-foreground hover:text-foreground"
-                  style={{
-                    borderColor: 'hsl(var(--border))',
-                    color: 'hsl(var(--muted))',
-                  }}
+                  className="text-xs text-muted border border-border px-3 py-1
+                             rounded-full hover:border-foreground hover:text-foreground
+                             transition-all duration-200"
                 >
                   #{tag}
                 </Link>
@@ -534,33 +506,29 @@ export function ProductDetail({ id }: Props) {
             </div>
           )}
 
-          {/* Seller card */}
+          {/* Seller */}
           {product.seller && (
-            <div
-              className="flex items-center gap-3 p-4 rounded-[var(--radius-xl)] border"
-              style={{
-                background: 'hsl(var(--background-secondary))',
-                borderColor: 'hsl(var(--border))',
-              }}
-            >
+            <div className="flex items-center gap-3 p-4 rounded-2xl
+                            bg-surface border border-border">
               <Avatar
                 src={product.seller.avatar}
                 name={product.seller.displayName}
                 size="md"
               />
               <div className="flex-1 min-w-0">
-                <p className="text-xs" style={{ color: 'hsl(var(--muted))' }}>Sold by</p>
+                <p className="text-xs text-muted">Sold by</p>
                 <Link
                   href={`/profile/${product.seller.username}`}
-                  className="text-sm font-semibold text-foreground hover:opacity-70 transition-opacity"
+                  className="text-sm font-medium text-foreground hover:opacity-70
+                             transition-opacity"
                 >
                   {product.seller.displayName}
                 </Link>
               </div>
               {product.saves > 0 && (
                 <div className="text-right">
-                  <p className="text-sm font-bold text-foreground">{product.saves}</p>
-                  <p className="text-[10px]" style={{ color: 'hsl(var(--muted))' }}>saves</p>
+                  <p className="text-sm font-semibold">{product.saves}</p>
+                  <p className="text-2xs text-muted">saves</p>
                 </div>
               )}
             </div>
@@ -573,32 +541,5 @@ export function ProductDetail({ id }: Props) {
         <ReviewSection productId={id} />
       </div>
     </div>
-  )
-}
-
-/* ── Small helper ── */
-function IconBtn({
-  onClick,
-  label,
-  children,
-}: {
-  onClick: () => void
-  label: string
-  children: React.ReactNode
-}) {
-  return (
-    <button
-      onClick={onClick}
-      aria-label={label}
-      className="w-10 h-10 rounded-full flex items-center justify-center
-                 border transition-all duration-200 hover:scale-105"
-      style={{
-        borderColor: 'hsl(var(--border))',
-        color: 'hsl(var(--muted))',
-        background: 'hsl(var(--background-secondary))',
-      }}
-    >
-      {children}
-    </button>
   )
 }
