@@ -16,7 +16,6 @@ const slides = [
     ctaHref: '/explore',
     stat: { value: '2,400+', label: 'Products' },
     tag: 'SS 2025',
-    accentHue: '36',
   },
   {
     id: 2,
@@ -28,7 +27,6 @@ const slides = [
     ctaHref: '/collections',
     stat: { value: '860+', label: 'Collections' },
     tag: 'Curated',
-    accentHue: '200',
   },
   {
     id: 3,
@@ -40,14 +38,13 @@ const slides = [
     ctaHref: '/explore',
     stat: { value: '12K+', label: 'Creators' },
     tag: 'Live',
-    accentHue: '340',
   },
 ]
 
 export function HeroSection() {
   const [current,   setCurrent]   = useState(0)
   const [direction, setDirection] = useState(1)
-  const intervalRef               = useRef<ReturnType<typeof setInterval>>()
+ const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const goTo = (idx: number) => {
     setDirection(idx > current ? 1 : -1)
@@ -64,9 +61,7 @@ export function HeroSection() {
     return () => clearInterval(intervalRef.current)
   }, [])
 
-  const slide       = slides[current]
-  const accentColor = `hsl(${slide.accentHue} 55% 52%)`
-  const accentMuted = `hsl(${slide.accentHue} 40% 92%)`
+  const slide = slides[current]
 
   const variants = {
     enter:  (d: number) => ({ opacity: 0, x: d > 0 ?  40 : -40 }),
@@ -75,7 +70,8 @@ export function HeroSection() {
   }
 
   return (
-    <section className="relative min-h-[96vh] flex flex-col overflow-hidden bg-background">
+    <section className="relative min-h-[96vh] flex flex-col overflow-hidden
+                        bg-[hsl(var(--background))]">
 
       {/* ── Background architectural lines ── */}
       <div className="absolute inset-0 pointer-events-none">
@@ -97,12 +93,21 @@ export function HeroSection() {
             backgroundSize: '36px 36px',
           }}
         />
+        {/* Pinterest red ambient glow — top left */}
+        <div
+          className="absolute -top-32 -left-32 w-[40vw] h-[40vw] rounded-full
+                     pointer-events-none opacity-[0.04]"
+          style={{
+            background: 'radial-gradient(circle, hsl(var(--accent)) 0%, transparent 70%)',
+          }}
+        />
       </div>
 
       {/* ── Large ghost issue number ── */}
       <div
         className="absolute right-6 top-1/2 -translate-y-1/2 font-display font-bold
-                   leading-none select-none pointer-events-none opacity-[0.04] tracking-tighter"
+                   leading-none select-none pointer-events-none opacity-[0.04]
+                   tracking-tighter text-[hsl(var(--foreground))]"
         style={{ fontSize: 'clamp(7rem, 18vw, 18rem)' }}
         aria-hidden="true"
       >
@@ -129,8 +134,11 @@ export function HeroSection() {
               {/* Issue + tag row */}
               <div className="flex items-center gap-4 mb-8">
                 <span
-                  className="font-mono-refined text-xs tracking-wider"
-                  style={{ color: 'hsl(var(--muted))' }}
+                  className="text-xs tracking-wider font-medium"
+                  style={{
+                    color: 'hsl(var(--muted))',
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}
                 >
                   {slide.issue}
                 </span>
@@ -138,75 +146,74 @@ export function HeroSection() {
                   className="h-px flex-1 max-w-[3rem] opacity-30"
                   style={{ background: 'hsl(var(--foreground))' }}
                 />
+                {/* Tag pill — uses blueprint accent system */}
                 <span
-                  className="text-xs font-medium uppercase tracking-[0.14em] px-2.5 py-1 rounded-full"
-                  style={{
-                    background: accentMuted,
-                    color: accentColor,
-                    fontFamily: "'DM Sans', sans-serif",
-                  }}
+                  className="pill active text-xs px-2.5 py-1"
+                  style={{ fontSize: 'var(--text-xs)' }}
                 >
                   {slide.tag}
                 </span>
               </div>
 
               {/* Eyebrow */}
-              <p
-                className="text-xs font-medium uppercase tracking-[0.2em] mb-5"
-                style={{ color: accentColor }}
-              >
-                {slide.eyebrow}
-              </p>
+              <p className="eyebrow mb-5">{slide.eyebrow}</p>
 
               {/* Headline */}
               <h1
-                className="font-display font-semibold tracking-tight text-foreground
-                           whitespace-pre-line leading-[1.02]"
-                style={{ fontSize: 'clamp(3.2rem, 8vw, 7rem)' }}
+                className="font-display font-bold tracking-[-0.03em]
+                           text-[hsl(var(--foreground))] whitespace-pre-line leading-[1.02]"
+                style={{ fontSize: 'clamp(3.2rem, 8vw, var(--text-hero))' }}
               >
                 {slide.headline}
               </h1>
 
-              {/* Animated accent underline */}
+              {/* Animated accent underline — Pinterest red */}
               <motion.div
                 key={`line-${current}`}
                 className="mt-4 mb-7 h-[2px] w-16 rounded-full"
-                style={{ background: accentColor }}
+                style={{ background: 'hsl(var(--accent))' }}
                 initial={{ scaleX: 0, originX: 0 }}
                 animate={{ scaleX: 1 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
+                transition={{ duration: 0.5, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
               />
 
               {/* Subtext */}
-              <p className="text-base text-muted max-w-[32rem] leading-relaxed mb-10">
+              <p
+                className="text-base max-w-[32rem] leading-relaxed mb-10"
+                style={{
+                  color: 'hsl(var(--muted))',
+                  fontWeight: 300,
+                }}
+              >
                 {slide.sub}
               </p>
 
               {/* CTAs */}
               <div className="flex flex-wrap items-center gap-4">
+                {/* Primary — Pinterest red save style */}
                 <Link
                   href={slide.ctaHref}
-                  className="group inline-flex items-center gap-2.5 px-7 py-3.5
-                             rounded-xl text-sm font-medium text-background
-                             transition-opacity duration-200 hover:opacity-85"
-                  style={{ background: 'hsl(var(--foreground))' }}
+                  className="btn-save group gap-2.5 px-7 py-3.5 text-sm"
                 >
                   {slide.cta}
                   <ArrowRight
                     size={15}
-                    className="transition-transform duration-200 group-hover:translate-x-0.5"
+                    className="transition-transform duration-[var(--duration-hover)]
+                               group-hover:translate-x-0.5"
                   />
                 </Link>
 
+                {/* Secondary — ghost link */}
                 <Link
                   href="/collections"
                   className="group inline-flex items-center gap-1.5 text-sm font-medium
-                             text-muted hover:text-foreground transition-colors duration-200"
+                             text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]
+                             transition-colors duration-[var(--duration-hover)]"
                 >
                   View Collections
                   <ArrowUpRight
                     size={13}
-                    className="transition-transform duration-200
+                    className="transition-transform duration-[var(--duration-hover)]
                                group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
                   />
                 </Link>
@@ -221,28 +228,34 @@ export function HeroSection() {
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{   opacity: 0, y: -16 }}
-              transition={{ duration: 0.4, ease: 'easeOut' }}
+              transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
               className="hidden lg:flex flex-col items-end gap-2 shrink-0"
             >
               <div
-                className="w-44 rounded-2xl p-6 border"
+                className="w-44 rounded-[var(--radius-xl)] p-6 border
+                           shadow-[var(--shadow-card)]"
                 style={{
-                  background: 'hsl(var(--surface))',
-                  borderColor: 'hsl(var(--border-subtle))',
+                  background:   'hsl(var(--surface))',
+                  borderColor:  'hsl(var(--border-subtle))',
                 }}
               >
                 <p
-                  className="font-display text-4xl font-semibold text-foreground
-                             tracking-tight leading-none mb-1"
+                  className="font-display text-4xl font-bold
+                             text-[hsl(var(--foreground))]
+                             tracking-[-0.03em] leading-none mb-1"
                 >
                   {slide.stat.value}
                 </p>
-                <p className="text-xs text-muted uppercase tracking-[0.12em]">
+                <p
+                  className="text-xs uppercase tracking-[0.12em]"
+                  style={{ color: 'hsl(var(--muted))' }}
+                >
                   {slide.stat.label}
                 </p>
+                {/* Pinterest red accent bar */}
                 <div
                   className="mt-4 h-0.5 w-8 rounded-full"
-                  style={{ background: accentColor }}
+                  style={{ background: 'hsl(var(--accent))' }}
                 />
               </div>
             </motion.div>
@@ -260,25 +273,29 @@ export function HeroSection() {
             <button
               key={i}
               onClick={() => goTo(i)}
-              className="flex items-center gap-2.5"
+              className="flex items-center gap-2.5 transition-opacity
+                         duration-[var(--duration-hover)] hover:opacity-100"
+              style={{ opacity: i === current ? 1 : 0.45 }}
               aria-label={`Slide ${i + 1}`}
             >
               <span
-                className="font-mono-refined text-[10px] tracking-wider transition-colors duration-200"
+                className="text-[10px] tracking-wider font-medium transition-colors
+                           duration-[var(--duration-standard)]"
                 style={{
                   color: i === current
                     ? 'hsl(var(--foreground))'
                     : 'hsl(var(--muted))',
+                  fontFamily: "'DM Sans', sans-serif",
                 }}
               >
                 {i + 1 < 10 ? `0${i + 1}` : i + 1}
               </span>
               <span
-                className="block h-px transition-all duration-500"
+                className="block h-px transition-all duration-[var(--duration-standard)]"
                 style={{
                   width: i === current ? '2.5rem' : '0.75rem',
                   background: i === current
-                    ? accentColor
+                    ? 'hsl(var(--accent))'
                     : 'hsl(var(--border))',
                 }}
               />
@@ -287,10 +304,13 @@ export function HeroSection() {
         </div>
 
         {/* Scroll hint */}
-        <div className="flex items-center gap-2.5" style={{ color: 'hsl(var(--muted))' }}>
+        <div
+          className="flex items-center gap-2.5"
+          style={{ color: 'hsl(var(--muted))' }}
+        >
           <span
             className="text-[10px] uppercase tracking-[0.18em]"
-            style={{ fontFamily: "'DM Mono', monospace" }}
+            style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 500 }}
           >
             Scroll
           </span>

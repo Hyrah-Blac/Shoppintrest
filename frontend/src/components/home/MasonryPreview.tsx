@@ -39,33 +39,38 @@ export function MasonryPreview() {
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ duration: 0.5 }}
+            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
           >
             {/* Eyebrow with icon */}
             <div className="flex items-center gap-2 mb-3">
-              <Sparkles
-                size={13}
-                style={{ color: 'hsl(var(--accent))' }}
-              />
+              <div
+                className="w-6 h-6 rounded-[var(--radius-sm)] flex items-center justify-center"
+                style={{ background: 'hsl(var(--accent-muted))' }}
+              >
+                <Sparkles size={12} style={{ color: 'hsl(var(--accent))' }} />
+              </div>
               <span className="eyebrow">Discover</span>
             </div>
 
-            {/* Headline with italic accent word */}
-            <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-semibold tracking-tight leading-tight">
+            {/* Headline */}
+            <h2
+              className="font-display font-bold tracking-[-0.03em] leading-[1.1]"
+              style={{ fontSize: 'clamp(1.75rem, 3vw, var(--text-section))' }}
+            >
               Just{' '}
               <em className="not-italic" style={{ color: 'hsl(var(--accent))' }}>
                 Arrived
               </em>
             </h2>
 
-            {/* Decorative accent line */}
+            {/* Accent underline */}
             <motion.div
               className="mt-4 h-[2px] w-12 rounded-full"
               style={{ background: 'hsl(var(--accent))' }}
               initial={{ scaleX: 0, originX: 0 }}
               whileInView={{ scaleX: 1 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: 0.2 }}
+              transition={{ duration: 0.5, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
             />
           </motion.div>
 
@@ -77,13 +82,15 @@ export function MasonryPreview() {
           >
             <Link
               href="/explore"
-              className="group flex items-center gap-2 text-sm font-medium
-                         text-muted hover:text-foreground transition-colors duration-200"
+              className="group hidden sm:flex items-center gap-2 text-sm font-medium
+                         text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]
+                         transition-colors duration-[var(--duration-hover)]"
             >
               Explore all
               <ArrowRight
                 size={14}
-                className="transition-transform duration-200 group-hover:translate-x-0.5"
+                className="transition-transform duration-[var(--duration-hover)]
+                           group-hover:translate-x-0.5"
               />
             </Link>
           </motion.div>
@@ -106,18 +113,17 @@ export function MasonryPreview() {
         >
           <Link
             href="/explore"
-            className="group inline-flex items-center gap-3 px-8 py-4 rounded-2xl
-                       text-sm font-medium text-background transition-opacity
-                       duration-200 hover:opacity-85"
-            style={{ background: 'hsl(var(--foreground))' }}
+            className="btn-primary group gap-3 px-8 py-4 text-sm"
           >
             Explore Everything
             <ArrowRight
               size={15}
-              className="transition-transform duration-200 group-hover:translate-x-0.5"
+              className="transition-transform duration-[var(--duration-hover)]
+                         group-hover:translate-x-0.5"
             />
           </Link>
         </motion.div>
+
       </div>
     </section>
   )

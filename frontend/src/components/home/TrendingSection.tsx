@@ -20,11 +20,18 @@ export function TrendingSection() {
   }, [])
 
   return (
-    <section className="section-padding relative overflow-hidden"
+    <section
+      className="section-padding relative overflow-hidden"
       style={{ background: 'hsl(var(--surface))' }}
     >
-      {/* Subtle top border accent */}
-      <div className="absolute top-0 left-0 right-0 h-px divider-gold" />
+      {/* Top accent line — Pinterest red */}
+      <div
+        className="absolute top-0 left-0 right-0 h-px"
+        style={{
+          background:
+            'linear-gradient(90deg, transparent, hsl(var(--accent) / 0.4), transparent)',
+        }}
+      />
 
       <div className="container-wide">
 
@@ -34,25 +41,24 @@ export function TrendingSection() {
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ duration: 0.5 }}
+            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
           >
             {/* Eyebrow */}
             <div className="flex items-center gap-2 mb-3">
               <div
-                className="w-5 h-5 rounded-md flex items-center justify-center"
+                className="w-6 h-6 rounded-[var(--radius-sm)] flex items-center justify-center"
                 style={{ background: 'hsl(var(--accent-muted))' }}
               >
-                <TrendingUp
-                  size={11}
-                  style={{ color: 'hsl(var(--accent))' }}
-                />
+                <TrendingUp size={12} style={{ color: 'hsl(var(--accent))' }} />
               </div>
               <span className="eyebrow">Right Now</span>
             </div>
 
             {/* Headline */}
-            <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl
-                           font-semibold tracking-tight leading-tight">
+            <h2
+              className="font-display font-bold tracking-[-0.03em] leading-[1.1]"
+              style={{ fontSize: 'clamp(1.75rem, 3vw, var(--text-section))' }}
+            >
               What's{' '}
               <em className="not-italic" style={{ color: 'hsl(var(--accent))' }}>
                 Trending
@@ -66,7 +72,7 @@ export function TrendingSection() {
               initial={{ scaleX: 0, originX: 0 }}
               whileInView={{ scaleX: 1 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: 0.2 }}
+              transition={{ duration: 0.5, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
             />
           </motion.div>
 
@@ -79,12 +85,14 @@ export function TrendingSection() {
             <Link
               href="/explore?sort=popular"
               className="group hidden sm:flex items-center gap-2 text-sm font-medium
-                         text-muted hover:text-foreground transition-colors duration-200"
+                         text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]
+                         transition-colors duration-[var(--duration-hover)]"
             >
               See all
               <ArrowRight
                 size={14}
-                className="transition-transform duration-200 group-hover:translate-x-0.5"
+                className="transition-transform duration-[var(--duration-hover)]
+                           group-hover:translate-x-0.5"
               />
             </Link>
           </motion.div>
@@ -112,14 +120,13 @@ export function TrendingSection() {
                     }}
                     className="w-48 sm:w-56 shrink-0"
                   >
-                    {/* Rank badge */}
+                    {/* Rank badge — top 3 only */}
                     <div className="relative">
                       {i < 3 && (
                         <div
-                          className="absolute -top-2 -left-2 z-10 w-6 h-6 rounded-full
-                                     flex items-center justify-center text-[10px] font-bold
-                                     text-background shadow-sm"
-                          style={{ background: 'hsl(var(--accent))' }}
+                          className="badge badge-red absolute -top-2 -left-2 z-10
+                                     w-6 h-6 shadow-[var(--shadow-red)]"
+                          style={{ padding: 0 }}
                         >
                           {i + 1}
                         </div>
@@ -142,12 +149,14 @@ export function TrendingSection() {
           <Link
             href="/explore?sort=popular"
             className="group inline-flex items-center gap-2 text-sm font-medium
-                       text-muted hover:text-foreground transition-colors duration-200"
+                       text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]
+                       transition-colors duration-[var(--duration-hover)]"
           >
             See all trending
             <ArrowRight
               size={14}
-              className="transition-transform duration-200 group-hover:translate-x-0.5"
+              className="transition-transform duration-[var(--duration-hover)]
+                         group-hover:translate-x-0.5"
             />
           </Link>
         </motion.div>
