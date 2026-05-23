@@ -5,15 +5,18 @@ import { useThemeStore } from '@/store/useThemeStore'
 
 export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useThemeStore()
+  const isDark = resolvedTheme === 'dark'
 
   return (
     <button
-      onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
-      className="p-2.5 rounded-xl text-muted hover:text-foreground
-                 hover:bg-accent transition-all duration-200"
+      onClick={() => setTheme(isDark ? 'light' : 'dark')}
+      className="btn-icon"
       aria-label="Toggle theme"
     >
-      {resolvedTheme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+      {isDark
+        ? <Sun  size={17} />
+        : <Moon size={17} />
+      }
     </button>
   )
 }

@@ -18,19 +18,19 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product, priority = false, className }: ProductCardProps) {
-  const { isSignedIn }        = useAuth()
-  const isSaved               = useUserStore((s) => s.isSaved(product._id))
-  const toggleSaveProduct     = useUserStore((s) => s.toggleSaveProduct)
-  const addItem               = useCartStore((s) => s.addItem)
+  const { isSignedIn }    = useAuth()
+  const isSaved           = useUserStore((s) => s.isSaved(product._id))
+  const toggleSaveProduct = useUserStore((s) => s.toggleSaveProduct)
+  const addItem           = useCartStore((s) => s.addItem)
 
-  const [isHovered,           setIsHovered]           = useState(false)
-  const [currentImageIndex,   setCurrentImageIndex]   = useState(0)
-  const [isSaving,            setIsSaving]            = useState(false)
-  const [isAdding,            setIsAdding]            = useState(false)
+  const [isHovered,         setIsHovered]         = useState(false)
+  const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  const [isSaving,          setIsSaving]          = useState(false)
+  const [isAdding,          setIsAdding]          = useState(false)
 
-  const discount     = calculateDiscount(product.price, product.comparePrice)
-  const hasMany      = product.images?.length > 1
-  const defaultSize  = product.variants?.[0]?.size
+  const discount    = calculateDiscount(product.price, product.comparePrice)
+  const hasMany     = product.images?.length > 1
+  const defaultSize = product.variants?.[0]?.size
 
   const handleSave = async (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation()
@@ -40,7 +40,7 @@ export function ProductCard({ product, priority = false, className }: ProductCar
       await toggleSaveProduct(product._id)
       toast.success(isSaved ? 'Removed from saved' : 'Saved!')
     } catch { toast.error('Something went wrong') }
-    finally { setIsSaving(false) }
+    finally  { setIsSaving(false) }
   }
 
   const handleQuickAdd = async (e: React.MouseEvent) => {
@@ -61,19 +61,17 @@ export function ProductCard({ product, priority = false, className }: ProductCar
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-      className={cn('group relative', className)}
+      className={cn('group relative will-change-transform', className)}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => { setIsHovered(false); setCurrentImageIndex(0) }}
     >
       <Link href={`/product/${product._id}`}>
 
-        {/* ── Image Container ── */}
+        {/* ── Image Container — card-pin blueprint component ── */}
         <div
           className={cn(
-            'relative overflow-hidden aspect-[3/4]',
-            'bg-surface rounded-[var(--radius-lg)]',
-            'transition-shadow duration-500',
-            isHovered && 'shadow-[0_16px_48px_hsl(var(--foreground)/0.10)]'
+            'card-pin relative aspect-[3/4]',
+            'transition-[box-shadow,transform] duration-[var(--duration-standard)]',
           )}
         >
           {/* Images */}
@@ -82,7 +80,7 @@ export function ProductCard({ product, priority = false, className }: ProductCar
               key={currentImageIndex}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+              exit={{   opacity: 0 }}
               transition={{ duration: 0.2 }}
               className="absolute inset-0"
             >
@@ -92,22 +90,28 @@ export function ProductCard({ product, priority = false, className }: ProductCar
                   alt={product.images[currentImageIndex].alt || product.title}
                   fill
                   className={cn(
-                    'object-cover transition-transform duration-700 ease-out',
+                    'object-cover transition-transform duration-700 ease-out blur-up loaded',
                     isHovered && 'scale-[1.06]'
                   )}
                   sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
                   priority={priority}
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center
-                                text-muted text-xs tracking-wide">
+                <div
+                  className="w-full h-full flex items-center justify-center
+                              text-xs tracking-wide"
+                  style={{ color: 'hsl(var(--muted))' }}
+                >
                   No image
                 </div>
               )}
             </motion.div>
           </AnimatePresence>
 
-          {/* Hover zone triggers for multi-image */}
+          {/* Pinterest-style gradient overlay */}
+          <div className="pin-overlay" />
+
+          {/* Hover zones for multi-image swap */}
           {hasMany && isHovered && (
             <div className="absolute top-0 left-0 right-0 flex h-full z-10">
               {product.images.map((_: any, i: number) => (
@@ -126,134 +130,120 @@ export function ProductCard({ product, priority = false, className }: ProductCar
               {product.images.slice(0, 5).map((_: any, i: number) => (
                 <motion.div
                   key={i}
-                  className={cn(
-                    'h-[3px] rounded-full transition-all duration-200 bg-white',
-                    i === currentImageIndex ? 'w-4 opacity-100' : 'w-1.5 opacity-50'
-                  )}
+                  className="h-[3px] rounded-full bg-white transition-all duration-200"
+                  animate={{
+                    width:   i === currentImageIndex ? 16 : 6,
+                    opacity: i === currentImageIndex ? 1  : 0.5,
+                  }}
                 />
               ))}
             </div>
           )}
 
-          {/* ── Badges ── */}
+          {/* ── Badges (top-left) ── */}
           <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-20">
             {product.isFeatured && (
-              <span className="badge-accent text-[10px]">Featured</span>
+              <span className="badge badge-red">Featured</span>
             )}
             {discount && !product.isFeatured && (
               <span
-                className="inline-flex items-center px-2 py-0.5 rounded-full
-                           text-[10px] font-semibold text-white"
-                style={{ background: 'hsl(var(--destructive))' }}
+                className="badge"
+                style={{
+                  background: 'hsl(var(--destructive))',
+                  color:      'white',
+                }}
               >
                 −{discount}%
               </span>
             )}
             {product.totalInventory === 0 && (
               <span
-                className="inline-flex items-center px-2.5 py-0.5 rounded-full
-                           text-[10px] font-medium"
-                style={{
-                  background: 'hsl(var(--surface))',
-                  color: 'hsl(var(--muted))',
-                  border: '1px solid hsl(var(--border))',
-                }}
+                className="badge badge-muted"
               >
                 Sold Out
               </span>
             )}
           </div>
 
-          {/* ── Action buttons (top-right) ── */}
-          <AnimatePresence>
-            {isHovered && (
-              <motion.div
-                initial={{ opacity: 0, x: 8 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 8 }}
-                transition={{ duration: 0.18, ease: 'easeOut' }}
-                className="absolute top-3 right-3 flex flex-col gap-2 z-20"
-              >
-                {/* Save */}
-                <ActionBtn
-                  onClick={handleSave}
-                  disabled={isSaving}
-                  filled={isSaved}
-                  label="Save product"
-                >
-                  <Heart size={14} className={cn(isSaved && 'fill-current')} />
-                </ActionBtn>
+          {/* ── pin-actions (top-right) — blueprint overlay component ── */}
+          <div className="pin-actions z-20">
+            {/* Save */}
+            <button
+              onClick={handleSave}
+              disabled={isSaving}
+              aria-label="Save product"
+              className={cn(
+                'btn-glass w-9 h-9 p-0 flex items-center justify-center rounded-full',
+                isSaved && 'text-[hsl(var(--accent))]'
+              )}
+              style={
+                isSaved
+                  ? { background: 'rgba(255,255,255,1)' }
+                  : undefined
+              }
+            >
+              <Heart size={14} className={cn(isSaved && 'fill-current')} />
+            </button>
 
-                {/* Quick view */}
-                <Link
-                  href={`/product/${product._id}`}
-                  onClick={(e) => e.stopPropagation()}
-                  aria-label="View product"
-                  className={actionBtnClass(false)}
-                >
-                  <Eye size={14} />
-                </Link>
-              </motion.div>
-            )}
-          </AnimatePresence>
+           {/* Quick view */}
+<button
+  type="button"
+  onClick={(e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    window.location.href = `/product/${product._id}`
+  }}
+  aria-label="View product"
+  className="btn-glass w-9 h-9 p-0 flex items-center justify-center rounded-full"
+>
+  <Eye size={14} />
+</button>
+          </div>
 
-          {/* ── Quick Add (bottom) ── */}
-          <AnimatePresence>
-            {isHovered && product.totalInventory > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 10 }}
-                transition={{ duration: 0.18, ease: 'easeOut' }}
-                className="absolute bottom-3 left-3 right-3 z-20"
+          {/* ── pin-bottom-action — Quick Add ── */}
+          {product.totalInventory > 0 && (
+            <div className="pin-bottom-action z-20">
+              <button
+                onClick={handleQuickAdd}
+                disabled={isAdding}
+                className="btn-save w-full h-9 text-xs justify-center gap-2"
               >
-                <button
-                  onClick={handleQuickAdd}
-                  disabled={isAdding}
-                  className="w-full h-10 rounded-xl text-xs font-medium
-                             flex items-center justify-center gap-2
-                             transition-all duration-200 shadow-sm
-                             backdrop-blur-md"
-                  style={{
-                    background: 'hsl(var(--background) / 0.92)',
-                    color: 'hsl(var(--foreground))',
-                    border: '1px solid hsl(var(--border) / 0.6)',
-                  }}
-                >
-                  <ShoppingBag size={13} />
-                  {isAdding ? 'Adding…' : 'Quick Add'}
-                </button>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                <ShoppingBag size={13} />
+                {isAdding ? 'Adding…' : 'Quick Add'}
+              </button>
+            </div>
+          )}
         </div>
 
         {/* ── Product Info ── */}
         <div className="mt-3.5 space-y-1 px-0.5">
 
-          {/* Brand */}
+          {/* Brand — eyebrow style */}
           {product.brand && (
-            <p
-              className="text-[10px] font-medium uppercase tracking-[0.14em]"
-              style={{ color: 'hsl(var(--accent))' }}
-            >
-              {product.brand}
-            </p>
+            <p className="eyebrow">{product.brand}</p>
           )}
 
           {/* Title */}
-          <p className="text-sm font-medium text-foreground line-clamp-2 leading-snug">
+          <p
+            className="text-sm font-medium line-clamp-2 leading-snug"
+            style={{ color: 'hsl(var(--foreground))' }}
+          >
             {product.title}
           </p>
 
           {/* Price row */}
           <div className="flex items-center gap-2 pt-0.5">
-            <span className="text-sm font-semibold text-foreground">
+            <span className="price">
               {formatPrice(product.price, 'KES')}
             </span>
             {product.comparePrice && product.comparePrice > product.price && (
-              <span className="text-xs line-through" style={{ color: 'hsl(var(--muted-foreground))' }}>
+              <span className="price-original">
                 {formatPrice(product.comparePrice, 'KES')}
+              </span>
+            )}
+            {discount && (
+              <span className="price-sale text-xs font-semibold">
+                −{discount}%
               </span>
             )}
           </div>
@@ -267,17 +257,19 @@ export function ProductCard({ product, priority = false, className }: ProductCar
                     key={i}
                     className="text-[11px] leading-none"
                     style={{
-                      color:
-                        i < Math.round(product.rating)
-                          ? 'hsl(var(--accent))'
-                          : 'hsl(var(--border))',
+                      color: i < Math.round(product.rating)
+                        ? 'hsl(var(--accent))'
+                        : 'hsl(var(--border))',
                     }}
                   >
                     ★
                   </span>
                 ))}
               </div>
-              <span className="text-[10px]" style={{ color: 'hsl(var(--muted))' }}>
+              <span
+                className="text-[10px]"
+                style={{ color: 'hsl(var(--muted))' }}
+              >
                 ({product.reviewCount})
               </span>
             </div>
@@ -285,46 +277,5 @@ export function ProductCard({ product, priority = false, className }: ProductCar
         </div>
       </Link>
     </motion.div>
-  )
-}
-
-/* ── Helpers ── */
-
-const actionBtnClass = (filled: boolean) =>
-  cn(
-    'w-9 h-9 rounded-xl flex items-center justify-center',
-    'transition-all duration-200 shadow-sm backdrop-blur-sm',
-    filled
-      ? 'text-background'
-      : 'text-foreground hover:scale-105',
-  )
-
-function ActionBtn({
-  onClick,
-  disabled,
-  filled,
-  label,
-  children,
-}: {
-  onClick: (e: React.MouseEvent) => void
-  disabled: boolean
-  filled: boolean
-  label: string
-  children: React.ReactNode
-}) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      aria-label={label}
-      className={actionBtnClass(filled)}
-      style={
-        filled
-          ? { background: 'hsl(var(--foreground))' }
-          : { background: 'hsl(var(--background) / 0.9)', border: '1px solid hsl(var(--border) / 0.5)' }
-      }
-    >
-      {children}
-    </button>
   )
 }
