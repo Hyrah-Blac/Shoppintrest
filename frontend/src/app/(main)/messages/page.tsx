@@ -5,8 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Send, Search, MoreHorizontal, Phone,
-  Image as ImageIcon, Smile, ArrowLeft,
-  CheckCheck, Circle,
+  Image as ImageIcon, Smile, ArrowLeft, CheckCheck,
 } from 'lucide-react'
 import { useAuth } from '@clerk/nextjs'
 import { toast } from 'sonner'
@@ -14,7 +13,6 @@ import { io, Socket } from 'socket.io-client'
 import { apiClient } from '@/lib/api'
 import { useUserStore } from '@/store/useUserStore'
 import { Avatar } from '@/components/ui/Avatar'
-import { Input } from '@/components/ui/Input'
 import { formatRelativeTime, cn } from '@/lib/utils'
 
 const REACTIONS = ['❤️', '😂', '😮', '😢', '👍', '🔥']
@@ -22,35 +20,33 @@ const REACTIONS = ['❤️', '😂', '😮', '😢', '👍', '🔥']
 export default function MessagesPage() {
   const searchParams = useSearchParams()
   const { isSignedIn } = useAuth()
-  const currentUser = useUserStore((s) => s.user)
+  const currentUser    = useUserStore((s) => s.user)
 
-  const [conversations, setConversations] = useState<any[]>([])
+  const [conversations,      setConversations]      = useState<any[]>([])
   const [activeConversation, setActiveConversation] = useState<any>(null)
-  const [messages, setMessages] = useState<any[]>([])
-  const [newMessage, setNewMessage] = useState('')
-  const [isLoadingConvos, setIsLoadingConvos] = useState(true)
-  const [isLoadingMessages, setIsLoadingMessages] = useState(false)
-  const [isSending, setIsSending] = useState(false)
-  const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set())
-  const [showMobileList, setShowMobileList] = useState(true)
-  const [reactionTarget, setReactionTarget] = useState<string | null>(null)
-  const [searchQuery, setSearchQuery] = useState('')
+  const [messages,           setMessages]           = useState<any[]>([])
+  const [newMessage,         setNewMessage]         = useState('')
+  const [isLoadingConvos,    setIsLoadingConvos]    = useState(true)
+  const [isLoadingMessages,  setIsLoadingMessages]  = useState(false)
+  const [isSending,          setIsSending]          = useState(false)
+  const [typingUsers,        setTypingUsers]        = useState<Set<string>>(new Set())
+  const [showMobileList,     setShowMobileList]     = useState(true)
+  const [reactionTarget,     setReactionTarget]     = useState<string | null>(null)
+  const [searchQuery,        setSearchQuery]        = useState('')
 
-  const socketRef = useRef<Socket | null>(null)
+  const socketRef      = useRef<Socket | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const inputRef       = useRef<HTMLInputElement>(null)
 
-  // Socket setup
+  /* Socket setup */
   useEffect(() => {
     if (!currentUser) return
-
-    const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5000', {
-      transports: ['websocket'],
-    })
-
+    const socket = io(
+      process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5000',
+      { transports: ['websocket'] }
+    )
     socketRef.current = socket
-
     socket.emit('user:online', currentUser._id)
 
     socket.on('message:new', (message: any) => {
@@ -70,25 +66,16 @@ export default function MessagesPage() {
     })
 
     socket.on('typing:start', ({ userId }: { userId: string }) => {
-      if (userId !== currentUser._id) {
+      if (userId !== currentUser._id)
         setTypingUsers((prev) => new Set([...prev, userId]))
-      }
     })
-
     socket.on('typing:stop', ({ userId }: { userId: string }) => {
-      setTypingUsers((prev) => {
-        const next = new Set(prev)
-        next.delete(userId)
-        return next
-      })
+      setTypingUsers((prev) => { const n = new Set(prev); n.delete(userId); return n })
     })
 
-    return () => {
-      socket.disconnect()
-    }
+    return () => { socket.disconnect() }
   }, [currentUser])
 
-  // Join conversation room
   useEffect(() => {
     if (!activeConversation || !socketRef.current) return
     socketRef.current.emit('conversation:join', activeConversation._id)
@@ -97,7 +84,6 @@ export default function MessagesPage() {
     }
   }, [activeConversation])
 
-  // Fetch conversations
   useEffect(() => {
     if (!isSignedIn) return
     apiClient.messages.getConversations()
@@ -106,7 +92,6 @@ export default function MessagesPage() {
       .finally(() => setIsLoadingConvos(false))
   }, [isSignedIn])
 
-  // Handle ?user= param
   useEffect(() => {
     const userId = searchParams.get('user')
     if (userId && isSignedIn) {
@@ -115,16 +100,14 @@ export default function MessagesPage() {
           const convo = data.data
           setActiveConversation(convo)
           setShowMobileList(false)
-          setConversations((prev) => {
-            if (prev.find((c) => c._id === convo._id)) return prev
-            return [convo, ...prev]
-          })
+          setConversations((prev) =>
+            prev.find((c) => c._id === convo._id) ? prev : [convo, ...prev]
+          )
         })
         .catch(() => {})
     }
   }, [searchParams, isSignedIn])
 
-  // Fetch messages
   useEffect(() => {
     if (!activeConversation) return
     setIsLoadingMessages(true)
@@ -134,7 +117,6 @@ export default function MessagesPage() {
       .finally(() => setIsLoadingMessages(false))
   }, [activeConversation])
 
-  // Auto scroll
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
@@ -149,56 +131,49 @@ export default function MessagesPage() {
   const handleSend = async () => {
     const content = newMessage.trim()
     if (!content || !activeConversation || isSending) return
-
     setNewMessage('')
     setIsSending(true)
 
-    // Optimistic UI
     const optimistic = {
-      _id: `temp-${Date.now()}`,
+      _id:          `temp-${Date.now()}`,
       conversation: activeConversation._id,
-      sender: currentUser,
+      sender:       currentUser,
       content,
-      isRead: false,
-      reactions: [],
-      createdAt: new Date().toISOString(),
+      isRead:       false,
+      reactions:    [],
+      createdAt:    new Date().toISOString(),
     }
     setMessages((prev) => [...prev, optimistic])
 
     try {
       const { data } = await apiClient.messages.send(
-        activeConversation._id,
-        { content }
+        activeConversation._id, { content }
       )
       setMessages((prev) =>
-        prev.map((m) =>
-          m._id === optimistic._id ? data.data : m
-        )
+        prev.map((m) => m._id === optimistic._id ? data.data : m)
       )
       socketRef.current?.emit('message:send', {
         conversationId: activeConversation._id,
-        message: data.data,
+        message:        data.data,
       })
     } catch {
       setMessages((prev) => prev.filter((m) => m._id !== optimistic._id))
       toast.error('Message failed to send')
       setNewMessage(content)
-    } finally {
-      setIsSending(false)
-    }
+    } finally { setIsSending(false) }
   }
 
   const handleTyping = () => {
     if (!activeConversation || !currentUser) return
     socketRef.current?.emit('typing:start', {
       conversationId: activeConversation._id,
-      userId: currentUser._id,
+      userId:         currentUser._id,
     })
     if (typingTimerRef.current) clearTimeout(typingTimerRef.current)
     typingTimerRef.current = setTimeout(() => {
       socketRef.current?.emit('typing:stop', {
         conversationId: activeConversation._id,
-        userId: currentUser._id,
+        userId:         currentUser._id,
       })
     }, 2000)
   }
@@ -222,11 +197,8 @@ export default function MessagesPage() {
     setReactionTarget(null)
   }
 
-  const getOtherParticipant = (convo: any) => {
-    return convo.participants?.find(
-      (p: any) => p._id !== currentUser?._id
-    )
-  }
+  const getOtherParticipant = (convo: any) =>
+    convo.participants?.find((p: any) => p._id !== currentUser?._id)
 
   const filteredConvos = conversations.filter((c) => {
     const other = getOtherParticipant(c)
@@ -238,47 +210,70 @@ export default function MessagesPage() {
   })
 
   return (
-    <div className="flex h-[calc(100vh-72px)] bg-background overflow-hidden">
-      {/* ── Conversation List ── */}
+    <div
+      className="flex overflow-hidden"
+      style={{
+        height:     'calc(100vh - 72px)',
+        background: 'hsl(var(--background))',
+      }}
+    >
+
+      {/* ══════════════════════════════════════════════════
+          Conversation list sidebar
+      ══════════════════════════════════════════════════ */}
       <div
         className={cn(
-          `w-full md:w-80 lg:w-96 border-r border-border flex flex-col
-           bg-surface shrink-0`,
+          'w-full md:w-80 lg:w-96 flex flex-col shrink-0 border-r',
           !showMobileList && 'hidden md:flex'
         )}
+        style={{
+          background:  'hsl(var(--surface))',
+          borderColor: 'hsl(var(--border))',
+        }}
       >
-        {/* Header */}
-        <div className="px-5 pt-6 pb-4 border-b border-border">
-          <h1 className="font-display text-xl font-semibold tracking-tight mb-4">
+        {/* Sidebar header */}
+        <div
+          className="px-5 pt-6 pb-4 border-b"
+          style={{ borderColor: 'hsl(var(--border))' }}
+        >
+          <h1
+            className="font-display font-bold tracking-[-0.03em] leading-[1.1] mb-4"
+            style={{ fontSize: 'clamp(1.1rem, 2vw, 1.4rem)' }}
+          >
             Messages
           </h1>
-          <div className="relative">
-            <Search
-              size={14}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted"
-            />
+
+          {/* Search */}
+          <div className="search-input-wrapper">
+            <Search size={14} style={{ color: 'hsl(var(--muted))' }} />
             <input
               type="text"
-              placeholder="Search conversations..."
+              placeholder="Search conversations…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-9 pl-9 pr-4 rounded-xl border border-input
-                         bg-background text-sm placeholder:text-muted
-                         focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
         </div>
 
-        {/* List */}
-        <div className="flex-1 overflow-y-auto">
+        {/* Conversation list */}
+        <div className="flex-1 overflow-y-auto scrollbar-hide">
           {isLoadingConvos ? (
             <div className="p-4 space-y-3">
               {Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="flex gap-3 items-center">
-                  <div className="skeleton w-11 h-11 rounded-full shrink-0" />
+                  <div
+                    className="skeleton w-11 h-11 shrink-0"
+                    style={{ borderRadius: 'var(--radius-sm)' }}
+                  />
                   <div className="flex-1 space-y-2">
-                    <div className="skeleton h-3.5 w-28 rounded" />
-                    <div className="skeleton h-3 w-40 rounded" />
+                    <div
+                      className="skeleton h-3.5 w-28"
+                      style={{ borderRadius: 'var(--radius-sm)' }}
+                    />
+                    <div
+                      className="skeleton h-3 w-40"
+                      style={{ borderRadius: 'var(--radius-sm)' }}
+                    />
                   </div>
                 </div>
               ))}
@@ -286,17 +281,23 @@ export default function MessagesPage() {
           ) : filteredConvos.length === 0 ? (
             <div className="py-16 text-center px-6">
               <p className="text-2xl mb-3">💬</p>
-              <p className="text-sm font-medium text-foreground mb-1">
+              <p
+                className="text-sm font-medium mb-1"
+                style={{ color: 'hsl(var(--foreground))' }}
+              >
                 No conversations
               </p>
-              <p className="text-xs text-muted">
+              <p
+                className="text-xs"
+                style={{ color: 'hsl(var(--muted))', fontWeight: 300 }}
+              >
                 Visit a profile to start messaging
               </p>
             </div>
           ) : (
             <div className="py-2">
               {filteredConvos.map((convo) => {
-                const other = getOtherParticipant(convo)
+                const other    = getOtherParticipant(convo)
                 const isActive = activeConversation?._id === convo._id
                 const isUnread =
                   convo.lastMessage &&
@@ -307,13 +308,22 @@ export default function MessagesPage() {
                   <button
                     key={convo._id}
                     onClick={() => handleSelectConversation(convo)}
-                    className={cn(
-                      `w-full flex items-center gap-3 px-4 py-3.5 text-left
-                       transition-all duration-200`,
-                      isActive
-                        ? 'bg-accent'
-                        : 'hover:bg-accent/50'
-                    )}
+                    className="w-full flex items-center gap-3 px-4 py-3.5
+                               text-left transition-all duration-[var(--duration-hover)]"
+                    style={{
+                      background: isActive
+                        ? 'hsl(var(--accent-muted))'
+                        : 'transparent',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isActive)
+                        e.currentTarget.style.background =
+                          'hsl(var(--background-secondary))'
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isActive)
+                        e.currentTarget.style.background = 'transparent'
+                    }}
                   >
                     <div className="relative shrink-0">
                       <Avatar
@@ -322,42 +332,66 @@ export default function MessagesPage() {
                         size="md"
                       />
                       {typingUsers.has(other?._id) && (
-                        <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3
-                                         bg-green-500 rounded-full border-2
-                                         border-background" />
+                        <span
+                          className="absolute -bottom-0.5 -right-0.5 w-3 h-3
+                                     rounded-full border-2"
+                          style={{
+                            background:  'hsl(142 60% 40%)',
+                            borderColor: 'hsl(var(--surface))',
+                          }}
+                        />
                       )}
                     </div>
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
-                        <p className={cn(
-                          'text-sm truncate',
-                          isUnread
-                            ? 'font-semibold text-foreground'
-                            : 'font-medium text-foreground'
-                        )}>
+                        <p
+                          className="text-sm truncate"
+                          style={{
+                            color:      'hsl(var(--foreground))',
+                            fontWeight: isUnread ? 600 : 500,
+                          }}
+                        >
                           {other?.displayName}
                         </p>
-                        <p className="text-2xs text-muted shrink-0">
+                        <p
+                          className="text-[10px] shrink-0"
+                          style={{ color: 'hsl(var(--muted))' }}
+                        >
                           {convo.lastMessage
                             ? formatRelativeTime(convo.lastMessage.createdAt)
                             : ''}
                         </p>
                       </div>
-                      <p className={cn(
-                        'text-xs truncate mt-0.5',
-                        isUnread ? 'text-foreground' : 'text-muted'
-                      )}>
+                      <p
+                        className="text-xs truncate mt-0.5"
+                        style={{
+                          color:      isUnread
+                            ? 'hsl(var(--foreground))'
+                            : 'hsl(var(--muted))',
+                          fontWeight: isUnread ? 500 : 300,
+                        }}
+                      >
                         {typingUsers.has(other?._id) ? (
-                          <span className="text-green-500 italic">typing...</span>
+                          <span
+                            className="italic"
+                            style={{ color: 'hsl(142 60% 40%)' }}
+                          >
+                            typing…
+                          </span>
                         ) : (
                           convo.lastMessage?.content || 'Start a conversation'
                         )}
                       </p>
                     </div>
 
+                    {/* Unread dot — Pinterest red */}
                     {isUnread && (
-                      <div className="w-2 h-2 rounded-full bg-foreground shrink-0" />
+                      <div
+                        className="w-2 h-2 rounded-full shrink-0
+                                   shadow-[var(--shadow-red)]"
+                        style={{ background: 'hsl(var(--accent))' }}
+                      />
                     )}
                   </button>
                 )
@@ -367,7 +401,9 @@ export default function MessagesPage() {
         </div>
       </div>
 
-      {/* ── Chat Area ── */}
+      {/* ══════════════════════════════════════════════════
+          Chat area
+      ══════════════════════════════════════════════════ */}
       <div
         className={cn(
           'flex-1 flex flex-col min-w-0',
@@ -375,71 +411,83 @@ export default function MessagesPage() {
         )}
       >
         {!activeConversation ? (
-          /* Empty state */
+
+          /* Empty / no selection */
           <div className="flex-1 flex items-center justify-center text-center p-8">
             <div>
               <p className="text-4xl mb-4">✦</p>
-              <p className="font-display text-xl font-semibold mb-2">
+              <h2
+                className="font-display font-bold tracking-[-0.03em] mb-2"
+                style={{ fontSize: 'clamp(1.1rem, 2vw, 1.4rem)' }}
+              >
                 Select a conversation
-              </p>
-              <p className="text-sm text-muted">
+              </h2>
+              <p
+                className="text-sm"
+                style={{ color: 'hsl(var(--muted))', fontWeight: 300 }}
+              >
                 Choose from your messages or visit a profile to start chatting
               </p>
             </div>
           </div>
+
         ) : (
           <>
-            {/* Chat Header */}
-            <div className="flex items-center gap-4 px-5 py-4 border-b
-                            border-border bg-background shrink-0">
-              <button
-                onClick={() => setShowMobileList(true)}
-                className="md:hidden p-2 rounded-xl hover:bg-accent
-                           text-muted hover:text-foreground transition-colors"
-              >
-                <ArrowLeft size={18} />
-              </button>
+            {/* ── Chat header ── */}
+            {(() => {
+              const other = getOtherParticipant(activeConversation)
+              return (
+                <div
+                  className="flex items-center gap-4 px-5 py-4 border-b shrink-0"
+                  style={{
+                    background:  'hsl(var(--background))',
+                    borderColor: 'hsl(var(--border))',
+                  }}
+                >
+                  <button
+                    onClick={() => setShowMobileList(true)}
+                    className="btn-icon md:hidden"
+                    aria-label="Back"
+                  >
+                    <ArrowLeft size={18} />
+                  </button>
 
-              {(() => {
-                const other = getOtherParticipant(activeConversation)
-                return (
-                  <>
-                    <Avatar
-                      src={other?.avatar}
-                      name={other?.displayName}
-                      size="md"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-foreground text-sm">
-                        {other?.displayName}
-                      </p>
-                      <p className="text-xs text-muted">
-                        {typingUsers.has(other?._id)
-                          ? 'typing...'
-                          : `@${other?.username}`}
-                      </p>
-                    </div>
-                    <div className="flex gap-1">
-                      <button
-                        className="p-2.5 rounded-xl hover:bg-accent text-muted
-                                   hover:text-foreground transition-colors"
-                      >
-                        <Phone size={16} />
-                      </button>
-                      <button
-                        className="p-2.5 rounded-xl hover:bg-accent text-muted
-                                   hover:text-foreground transition-colors"
-                      >
-                        <MoreHorizontal size={16} />
-                      </button>
-                    </div>
-                  </>
-                )
-              })()}
-            </div>
+                  <Avatar
+                    src={other?.avatar}
+                    name={other?.displayName}
+                    size="md"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p
+                      className="font-medium text-sm"
+                      style={{ color: 'hsl(var(--foreground))' }}
+                    >
+                      {other?.displayName}
+                    </p>
+                    <p
+                      className="text-xs"
+                      style={{ color: 'hsl(var(--muted))' }}
+                    >
+                      {typingUsers.has(other?._id)
+                        ? 'typing…'
+                        : `@${other?.username}`}
+                    </p>
+                  </div>
 
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto px-5 py-6 space-y-1">
+                  <div className="flex gap-1">
+                    <button className="btn-icon" aria-label="Call">
+                      <Phone size={16} />
+                    </button>
+                    <button className="btn-icon" aria-label="More">
+                      <MoreHorizontal size={16} />
+                    </button>
+                  </div>
+                </div>
+              )
+            })()}
+
+            {/* ── Messages ── */}
+            <div className="flex-1 overflow-y-auto scrollbar-hide px-5 py-6 space-y-1">
               {isLoadingMessages ? (
                 <div className="space-y-4">
                   {Array.from({ length: 8 }).map((_, i) => (
@@ -451,13 +499,17 @@ export default function MessagesPage() {
                       )}
                     >
                       {i % 3 !== 0 && (
-                        <div className="skeleton w-8 h-8 rounded-full shrink-0" />
+                        <div
+                          className="skeleton w-8 h-8 shrink-0"
+                          style={{ borderRadius: 'var(--radius-sm)' }}
+                        />
                       )}
                       <div
                         className={cn(
-                          'skeleton h-10 rounded-2xl',
+                          'skeleton h-10',
                           i % 3 === 0 ? 'w-48' : 'w-56'
                         )}
+                        style={{ borderRadius: 'var(--radius-lg)' }}
                       />
                     </div>
                   ))}
@@ -466,7 +518,10 @@ export default function MessagesPage() {
                 <div className="h-full flex items-center justify-center">
                   <div className="text-center">
                     <p className="text-2xl mb-2">👋</p>
-                    <p className="text-sm text-muted">
+                    <p
+                      className="text-sm"
+                      style={{ color: 'hsl(var(--muted))', fontWeight: 300 }}
+                    >
                       Say hello to start the conversation
                     </p>
                   </div>
@@ -476,8 +531,8 @@ export default function MessagesPage() {
                   {messages.map((message, i) => {
                     const isOwn =
                       message.sender?._id === currentUser?._id ||
-                      message.sender === currentUser?._id
-                    const prevMsg = messages[i - 1]
+                      message.sender   === currentUser?._id
+                    const prevMsg      = messages[i - 1]
                     const isSameAuthor =
                       prevMsg &&
                       (prevMsg.sender?._id || prevMsg.sender) ===
@@ -489,14 +544,13 @@ export default function MessagesPage() {
                         key={message._id}
                         initial={{ opacity: 0, y: 8 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.2 }}
+                        transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
                         className={cn(
                           'flex gap-2 group',
                           isOwn ? 'justify-end' : 'justify-start',
                           !isSameAuthor && 'mt-4'
                         )}
                       >
-                        {/* Other user avatar */}
                         {!isOwn && (
                           <div className="w-8 shrink-0 self-end">
                             {showAvatar && (
@@ -511,27 +565,31 @@ export default function MessagesPage() {
 
                         <div
                           className={cn(
-                            'relative max-w-[70%]',
-                            isOwn ? 'items-end' : 'items-start',
-                            'flex flex-col'
+                            'relative max-w-[70%] flex flex-col',
+                            isOwn ? 'items-end' : 'items-start'
                           )}
                         >
-                          {/* Message bubble */}
+                          {/* Bubble */}
                           <div
-                            className={cn(
-                              `relative px-4 py-2.5 rounded-2xl text-sm
-                               leading-relaxed cursor-pointer select-text`,
-                              isOwn
-                                ? `bg-foreground text-background
-                                   rounded-br-md`
-                                : `bg-surface border border-border
-                                   text-foreground rounded-bl-md`
-                            )}
+                            className="relative px-4 py-2.5 text-sm
+                                       leading-relaxed cursor-pointer select-text"
+                            style={{
+                              background: isOwn
+                                ? 'hsl(var(--foreground))'
+                                : 'hsl(var(--surface))',
+                              color: isOwn
+                                ? 'hsl(var(--background))'
+                                : 'hsl(var(--foreground))',
+                              border: isOwn
+                                ? 'none'
+                                : '1px solid hsl(var(--border))',
+                              borderRadius: isOwn
+                                ? 'var(--radius-lg) var(--radius-lg) var(--radius-sm) var(--radius-lg)'
+                                : 'var(--radius-lg) var(--radius-lg) var(--radius-lg) var(--radius-sm)',
+                            }}
                             onDoubleClick={() =>
                               setReactionTarget(
-                                reactionTarget === message._id
-                                  ? null
-                                  : message._id
+                                reactionTarget === message._id ? null : message._id
                               )
                             }
                           >
@@ -542,23 +600,27 @@ export default function MessagesPage() {
                               {reactionTarget === message._id && (
                                 <motion.div
                                   initial={{ opacity: 0, scale: 0.8, y: 8 }}
-                                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                                  exit={{ opacity: 0, scale: 0.8, y: 8 }}
-                                  transition={{ duration: 0.15 }}
+                                  animate={{ opacity: 1, scale: 1,   y: 0 }}
+                                  exit={{   opacity: 0, scale: 0.8, y: 8 }}
+                                  transition={{ duration: 0.15, ease: [0.22, 1, 0.36, 1] }}
                                   className={cn(
-                                    `absolute -top-11 flex gap-1 bg-background
-                                     border border-border rounded-2xl px-2 py-1.5
-                                     shadow-xl z-20`,
+                                    'absolute -top-12 z-20 flex gap-1 px-2 py-1.5',
+                                    'shadow-[var(--shadow-float)]',
                                     isOwn ? 'right-0' : 'left-0'
                                   )}
+                                  style={{
+                                    background:   'hsl(var(--background))',
+                                    border:       '1px solid hsl(var(--border))',
+                                    borderRadius: 'var(--radius-pill)',
+                                  }}
                                 >
                                   {REACTIONS.map((emoji) => (
                                     <button
                                       key={emoji}
-                                      onClick={() =>
-                                        handleReact(message._id, emoji)
-                                      }
-                                      className="text-base hover:scale-125 transition-transform"
+                                      onClick={() => handleReact(message._id, emoji)}
+                                      className="text-base transition-transform
+                                                 duration-[var(--duration-fast)]
+                                                 hover:scale-125"
                                     >
                                       {emoji}
                                     </button>
@@ -572,53 +634,65 @@ export default function MessagesPage() {
                           {message.reactions?.length > 0 && (
                             <div className="flex gap-1 mt-1 flex-wrap">
                               {Object.entries(
-                                message.reactions.reduce(
-                                  (acc: any, r: any) => {
-                                    acc[r.emoji] = (acc[r.emoji] || 0) + 1
-                                    return acc
-                                  },
-                                  {}
-                                )
+                                message.reactions.reduce((acc: any, r: any) => {
+                                  acc[r.emoji] = (acc[r.emoji] || 0) + 1
+                                  return acc
+                                }, {})
                               ).map(([emoji, count]: any) => (
                                 <button
                                   key={emoji}
-                                  onClick={() =>
-                                    handleReact(message._id, emoji)
-                                  }
+                                  onClick={() => handleReact(message._id, emoji)}
                                   className="flex items-center gap-1 text-xs
-                                             bg-surface border border-border
-                                             rounded-full px-2 py-0.5
-                                             hover:bg-accent transition-colors"
+                                             px-2 py-0.5 transition-all
+                                             duration-[var(--duration-hover)]"
+                                  style={{
+                                    background:   'hsl(var(--surface))',
+                                    border:       '1px solid hsl(var(--border))',
+                                    borderRadius: 'var(--radius-pill)',
+                                  }}
+                                  onMouseEnter={(e) =>
+                                    (e.currentTarget.style.background =
+                                      'hsl(var(--accent-muted))')}
+                                  onMouseLeave={(e) =>
+                                    (e.currentTarget.style.background =
+                                      'hsl(var(--surface))')}
                                 >
                                   {emoji}
                                   {count > 1 && (
-                                    <span className="text-muted">{count}</span>
+                                    <span style={{ color: 'hsl(var(--muted))' }}>
+                                      {count}
+                                    </span>
                                   )}
                                 </button>
                               ))}
                             </div>
                           )}
 
-                          {/* Timestamp + read */}
+                          {/* Timestamp + read status */}
                           <div
                             className={cn(
                               'flex items-center gap-1 mt-1',
                               isOwn ? 'justify-end' : 'justify-start'
                             )}
                           >
-                            <span className="text-2xs text-muted opacity-0
-                                             group-hover:opacity-100 transition-opacity">
+                            <span
+                              className="text-[10px] opacity-0
+                                         group-hover:opacity-100
+                                         transition-opacity duration-[var(--duration-hover)]"
+                              style={{ color: 'hsl(var(--muted))' }}
+                            >
                               {formatRelativeTime(message.createdAt)}
                             </span>
                             {isOwn && (
                               <CheckCheck
                                 size={10}
-                                className={cn(
-                                  'opacity-0 group-hover:opacity-100 transition-opacity',
-                                  message.isRead
-                                    ? 'text-blue-500'
-                                    : 'text-muted'
-                                )}
+                                className="opacity-0 group-hover:opacity-100
+                                           transition-opacity duration-[var(--duration-hover)]"
+                                style={{
+                                  color: message.isRead
+                                    ? 'hsl(var(--accent))'
+                                    : 'hsl(var(--muted))',
+                                }}
                               />
                             )}
                           </div>
@@ -633,22 +707,30 @@ export default function MessagesPage() {
                       <motion.div
                         initial={{ opacity: 0, y: 8 }}
                         animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 8 }}
+                        exit={{   opacity: 0, y: 8 }}
                         className="flex gap-2 items-end"
                       >
                         <div className="w-8 shrink-0" />
-                        <div className="px-4 py-3 bg-surface border border-border
-                                        rounded-2xl rounded-bl-md">
+                        <div
+                          className="px-4 py-3"
+                          style={{
+                            background:   'hsl(var(--surface))',
+                            border:       '1px solid hsl(var(--border))',
+                            borderRadius:
+                              'var(--radius-lg) var(--radius-lg) var(--radius-lg) var(--radius-sm)',
+                          }}
+                        >
                           <div className="flex gap-1">
                             {[0, 1, 2].map((i) => (
                               <motion.div
                                 key={i}
-                                className="w-1.5 h-1.5 rounded-full bg-muted"
+                                className="w-1.5 h-1.5 rounded-full"
+                                style={{ background: 'hsl(var(--accent))' }}
                                 animate={{ y: [0, -4, 0] }}
                                 transition={{
                                   duration: 0.6,
-                                  repeat: Infinity,
-                                  delay: i * 0.15,
+                                  repeat:   Infinity,
+                                  delay:    i * 0.15,
                                 }}
                               />
                             ))}
@@ -662,12 +744,18 @@ export default function MessagesPage() {
               )}
             </div>
 
-            {/* Input Bar */}
-            <div className="px-5 py-4 border-t border-border bg-background shrink-0">
+            {/* ── Input bar ── */}
+            <div
+              className="px-5 py-4 border-t shrink-0"
+              style={{
+                background:  'hsl(var(--background))',
+                borderColor: 'hsl(var(--border))',
+              }}
+            >
               <div className="flex items-end gap-3">
                 <button
-                  className="p-2.5 rounded-xl text-muted hover:text-foreground
-                             hover:bg-accent transition-colors shrink-0"
+                  className="btn-icon shrink-0"
+                  aria-label="Attach image"
                 >
                   <ImageIcon size={18} />
                 </button>
@@ -687,31 +775,64 @@ export default function MessagesPage() {
                         handleSend()
                       }
                     }}
-                    placeholder="Write a message..."
-                    className="w-full h-11 px-4 pr-10 rounded-2xl border border-input
-                               bg-surface text-sm placeholder:text-muted
-                               focus:outline-none focus:ring-2 focus:ring-ring
-                               transition-colors resize-none"
+                    placeholder="Write a message…"
+                    className="w-full h-11 px-4 pr-10 text-sm outline-none
+                               transition-[border-color,box-shadow]
+                               duration-[var(--duration-hover)]"
+                    style={{
+                      background:   'hsl(var(--surface))',
+                      border:       '1.5px solid hsl(var(--border))',
+                      borderRadius: 'var(--radius-pill)',
+                      color:        'hsl(var(--foreground))',
+                      fontFamily:   "'DM Sans', sans-serif",
+                      fontWeight:   300,
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor =
+                        'hsl(var(--accent) / 0.6)'
+                      e.currentTarget.style.boxShadow =
+                        '0 0 0 3px hsl(var(--accent) / 0.12)'
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = 'hsl(var(--border))'
+                      e.currentTarget.style.boxShadow   = 'none'
+                    }}
                   />
                   <button
-                    className="absolute right-3 top-1/2 -translate-y-1/2
-                               text-muted hover:text-foreground transition-colors"
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2
+                               transition-colors duration-[var(--duration-hover)]"
+                    style={{ color: 'hsl(var(--muted))' }}
+                    onMouseEnter={(e) =>
+                      (e.currentTarget.style.color = 'hsl(var(--foreground))')}
+                    onMouseLeave={(e) =>
+                      (e.currentTarget.style.color = 'hsl(var(--muted))')}
+                    aria-label="Emoji"
                   >
                     <Smile size={16} />
                   </button>
                 </div>
 
+                {/* Send button — Pinterest red when active */}
                 <motion.button
                   whileTap={{ scale: 0.92 }}
                   onClick={handleSend}
                   disabled={!newMessage.trim() || isSending}
-                  className={cn(
-                    `w-11 h-11 rounded-2xl flex items-center justify-center
-                     shrink-0 transition-all duration-200`,
-                    newMessage.trim()
-                      ? 'bg-foreground text-background hover:opacity-80'
-                      : 'bg-surface text-muted cursor-not-allowed'
-                  )}
+                  className="w-11 h-11 flex items-center justify-center shrink-0
+                             transition-all duration-[var(--duration-hover)]"
+                  style={{
+                    borderRadius: 'var(--radius-pill)',
+                    background: newMessage.trim()
+                      ? 'hsl(var(--accent))'
+                      : 'hsl(var(--surface))',
+                    color: newMessage.trim()
+                      ? 'white'
+                      : 'hsl(var(--muted))',
+                    boxShadow: newMessage.trim()
+                      ? 'var(--shadow-red)'
+                      : 'none',
+                    cursor: newMessage.trim() ? 'pointer' : 'not-allowed',
+                  }}
+                  aria-label="Send"
                 >
                   <Send size={16} />
                 </motion.button>

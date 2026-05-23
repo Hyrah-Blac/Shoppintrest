@@ -10,11 +10,10 @@ import {
 import { useAuth } from '@clerk/nextjs'
 import { toast } from 'sonner'
 import { use } from 'react'
+import { motion } from 'framer-motion'
 import { apiClient } from '@/lib/api'
 import { useUserStore } from '@/store/useUserStore'
 import { Avatar } from '@/components/ui/Avatar'
-import { Badge } from '@/components/ui/Badge'
-import { Button } from '@/components/ui/Button'
 import { ProductCard } from '@/components/product/ProductCard'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { formatDate, cn } from '@/lib/utils'
@@ -24,14 +23,14 @@ export default function CollectionDetailPage({
 }: {
   params: Promise<{ id: string }>
 }) {
-  const { id } = use(params)
+  const { id }         = use(params)
   const { isSignedIn } = useAuth()
-  const currentUser = useUserStore((s) => s.user)
+  const currentUser    = useUserStore((s) => s.user)
 
   const [collection, setCollection] = useState<any>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading,  setIsLoading]  = useState(true)
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
-  const [isSaved, setIsSaved] = useState(false)
+  const [isSaved,    setIsSaved]    = useState(false)
 
   const isOwner = collection?.user?._id === currentUser?._id
 
@@ -54,9 +53,7 @@ export default function CollectionDetailPage({
       toast.success('Removed from collection')
     } catch {
       toast.error('Could not remove product')
-    } finally {
-      setIsDeleting(null)
-    }
+    } finally { setIsDeleting(null) }
   }
 
   const handleShare = async () => {
@@ -70,10 +67,7 @@ export default function CollectionDetailPage({
   }
 
   const handleSaveCollection = () => {
-    if (!isSignedIn) {
-      toast.error('Sign in to save collections')
-      return
-    }
+    if (!isSignedIn) { toast.error('Sign in to save collections'); return }
     setIsSaved(!isSaved)
     setCollection((prev: any) => ({
       ...prev,
@@ -82,24 +76,35 @@ export default function CollectionDetailPage({
     toast.success(isSaved ? 'Removed from saved' : 'Collection saved')
   }
 
+  /* ── Loading skeleton ── */
   if (isLoading) {
     return (
       <div className="min-h-screen">
-        <div className="bg-surface border-b border-border">
+        <div
+          className="border-b"
+          style={{
+            background:  'hsl(var(--surface))',
+            borderColor: 'hsl(var(--border))',
+          }}
+        >
           <div className="container-wide py-12 space-y-4">
-            <Skeleton className="h-4 w-32 rounded" />
-            <Skeleton className="h-10 w-80 rounded-xl" />
-            <Skeleton className="h-4 w-96 rounded" />
+            <Skeleton className="h-4 w-32 rounded-[var(--radius-sm)]" />
+            <Skeleton className="h-10 w-80 rounded-[var(--radius)]" />
+            <Skeleton className="h-4 w-96 rounded-[var(--radius-sm)]" />
             <div className="flex items-center gap-3">
-              <Skeleton className="w-8 h-8 rounded-full" />
-              <Skeleton className="h-4 w-40 rounded" />
+              <Skeleton className="w-8 h-8 rounded-[var(--radius-sm)]" />
+              <Skeleton className="h-4 w-40 rounded-[var(--radius-sm)]" />
             </div>
           </div>
         </div>
         <div className="container-wide py-10">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 lg:gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 lg:gap-5">
             {Array.from({ length: 10 }).map((_, i) => (
-              <Skeleton key={i} className="aspect-[3/4] rounded-2xl" />
+              <Skeleton
+                key={i}
+                className="aspect-[3/4]"
+                style={{ borderRadius: 'var(--radius-xl)' }}
+              />
             ))}
           </div>
         </div>
@@ -107,18 +112,39 @@ export default function CollectionDetailPage({
     )
   }
 
+  /* ── Not found ── */
   if (!collection) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center text-center px-6 py-32">
-        <BookmarkPlus size={40} className="text-muted mb-4" />
-        <p className="font-medium text-foreground mb-2">Collection not found</p>
-        <p className="text-sm text-muted mb-6">
+      <div className="min-h-screen flex flex-col items-center justify-center
+                      text-center px-6 py-32">
+        <div
+          className="w-16 h-16 rounded-[var(--radius-xl)] flex items-center
+                     justify-center mb-5 border shadow-[var(--shadow-card)]"
+          style={{
+            background:  'hsl(var(--surface))',
+            borderColor: 'hsl(var(--border))',
+          }}
+        >
+          <BookmarkPlus size={24} style={{ color: 'hsl(var(--muted))' }} />
+        </div>
+        <p
+          className="font-medium mb-2"
+          style={{ color: 'hsl(var(--foreground))' }}
+        >
+          Collection not found
+        </p>
+        <p
+          className="text-sm mb-6"
+          style={{ color: 'hsl(var(--muted))', fontWeight: 300 }}
+        >
           This collection may have been removed or made private
         </p>
-        <Link href="/collections">
-          <Button variant="outline" size="md" leftIcon={<ArrowLeft size={14} />}>
-            All Collections
-          </Button>
+        <Link
+          href="/collections"
+          className="btn-ghost gap-2"
+        >
+          <ArrowLeft size={14} />
+          All Collections
         </Link>
       </div>
     )
@@ -127,8 +153,17 @@ export default function CollectionDetailPage({
   return (
     <div className="min-h-screen">
 
-      {/* Hero Header */}
-      <div className="relative bg-surface border-b border-border overflow-hidden">
+      {/* ══════════════════════════════════════════════════
+          Hero Header
+      ══════════════════════════════════════════════════ */}
+      <div
+        className="relative border-b overflow-hidden"
+        style={{
+          background:  'hsl(var(--surface))',
+          borderColor: 'hsl(var(--border))',
+        }}
+      >
+        {/* Blurred cover bg */}
         {collection.coverImage && (
           <div className="absolute inset-0">
             <Image
@@ -139,14 +174,37 @@ export default function CollectionDetailPage({
               sizes="100vw"
               priority
             />
-            <div className="absolute inset-0 bg-gradient-to-b from-surface/50 to-surface" />
+            <div
+              className="absolute inset-0"
+              style={{
+                background:
+                  'linear-gradient(to bottom, hsl(var(--surface)/0.5), hsl(var(--surface)))',
+              }}
+            />
           </div>
         )}
 
+        {/* Pinterest red top accent */}
+        <div
+          className="absolute top-0 left-0 right-0 h-px"
+          style={{
+            background:
+              'linear-gradient(90deg, transparent, hsl(var(--accent) / 0.5), transparent)',
+          }}
+        />
+
         <div className="relative container-wide py-12">
+
+          {/* Back link */}
           <Link
             href="/collections"
-            className="inline-flex items-center gap-2 text-sm text-muted hover:text-foreground transition-colors mb-8"
+            className="inline-flex items-center gap-2 text-sm mb-8
+                       transition-colors duration-[var(--duration-hover)]"
+            style={{ color: 'hsl(var(--muted))' }}
+            onMouseEnter={(e) =>
+              (e.currentTarget.style.color = 'hsl(var(--foreground))')}
+            onMouseLeave={(e) =>
+              (e.currentTarget.style.color = 'hsl(var(--muted))')}
           >
             <ArrowLeft size={14} />
             All Collections
@@ -154,38 +212,58 @@ export default function CollectionDetailPage({
 
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
 
-            {/* Left info */}
-            <div className="space-y-4 max-w-2xl">
+            {/* ── Left info ── */}
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+              className="space-y-4 max-w-2xl"
+            >
+              {/* Privacy + count badges */}
               <div className="flex items-center gap-2">
-                {collection.isPrivate ? (
-                  <Badge variant="secondary" size="sm">
-                    <Lock size={10} className="mr-1" />
-                    Private
-                  </Badge>
-                ) : (
-                  <Badge variant="secondary" size="sm">
-                    <Globe size={10} className="mr-1" />
-                    Public
-                  </Badge>
-                )}
+                <span className="badge badge-muted gap-1">
+                  {collection.isPrivate
+                    ? <><Lock size={10} /> Private</>
+                    : <><Globe size={10} /> Public</>}
+                </span>
                 {collection.products?.length > 0 && (
-                  <span className="text-xs text-muted">
+                  <span
+                    className="text-xs"
+                    style={{ color: 'hsl(var(--muted))' }}
+                  >
                     {collection.products.length}{' '}
                     {collection.products.length === 1 ? 'item' : 'items'}
                   </span>
                 )}
               </div>
 
-              <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl font-semibold tracking-tight">
+              {/* Title */}
+              <h1
+                className="font-display font-bold tracking-[-0.03em] leading-[1.05]"
+                style={{ fontSize: 'clamp(1.75rem, 4vw, var(--text-hero))' }}
+              >
                 {collection.title}
               </h1>
 
+              {/* Accent underline */}
+              <motion.div
+                className="h-[2px] w-12 rounded-full"
+                style={{ background: 'hsl(var(--accent))' }}
+                initial={{ scaleX: 0, originX: 0 }}
+                animate={{ scaleX: 1 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+              />
+
               {collection.description && (
-                <p className="text-muted text-sm sm:text-base leading-relaxed max-w-lg">
+                <p
+                  className="text-sm sm:text-base leading-relaxed max-w-lg"
+                  style={{ color: 'hsl(var(--muted))', fontWeight: 300 }}
+                >
                   {collection.description}
                 </p>
               )}
 
+              {/* Author */}
               <div className="flex items-center gap-3">
                 <Avatar
                   src={collection.user?.avatar}
@@ -195,30 +273,40 @@ export default function CollectionDetailPage({
                 <div>
                   <Link
                     href={`/profile/${collection.user?.username}`}
-                    className="text-sm font-medium hover:opacity-70 transition-opacity"
+                    className="text-sm font-medium transition-opacity
+                               duration-[var(--duration-hover)] hover:opacity-70"
+                    style={{ color: 'hsl(var(--foreground))' }}
                   >
                     {collection.user?.displayName}
                   </Link>
-                  <p className="text-xs text-muted mt-0.5">
+                  <p
+                    className="text-xs mt-0.5"
+                    style={{ color: 'hsl(var(--muted))' }}
+                  >
                     {collection.saves} saves · {formatDate(collection.createdAt)}
                   </p>
                 </div>
               </div>
-            </div>
+            </motion.div>
 
-            {/* Right actions */}
-            <div className="flex items-center gap-2 shrink-0">
+            {/* ── Right actions ── */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+              className="flex items-center gap-2 shrink-0"
+            >
               {!isOwner && (
                 <button
                   type="button"
                   onClick={handleSaveCollection}
-                  className={cn(
-                    'w-10 h-10 rounded-xl flex items-center justify-center border transition-all duration-200',
-                    isSaved
-                      ? 'bg-foreground text-background border-foreground'
-                      : 'border-border text-muted hover:text-foreground hover:border-foreground bg-background'
-                  )}
-                  title={isSaved ? 'Unsave' : 'Save collection'}
+                  aria-label={isSaved ? 'Unsave' : 'Save collection'}
+                  className="btn-icon"
+                  style={isSaved ? {
+                    background:  'hsl(var(--foreground))',
+                    color:       'hsl(var(--background))',
+                    borderColor: 'hsl(var(--foreground))',
+                  } : undefined}
                 >
                   <Heart size={16} className={cn(isSaved && 'fill-current')} />
                 </button>
@@ -227,76 +315,137 @@ export default function CollectionDetailPage({
               <button
                 type="button"
                 onClick={handleShare}
-                className="w-10 h-10 rounded-xl flex items-center justify-center border border-border text-muted hover:text-foreground hover:border-foreground bg-background transition-all duration-200"
-                title="Share collection"
+                aria-label="Share collection"
+                className="btn-icon"
               >
                 <Share2 size={16} />
               </button>
 
               {isOwner && (
-                <Link href="/explore">
-                  <Button variant="primary" size="md" leftIcon={<Plus size={14} />}>
-                    Add Products
-                  </Button>
+                <Link
+                  href="/explore"
+                  className="btn-save gap-2"
+                >
+                  <Plus size={14} />
+                  Add Products
                 </Link>
               )}
-            </div>
+            </motion.div>
           </div>
         </div>
       </div>
 
-      {/* Products Grid */}
+      {/* ══════════════════════════════════════════════════
+          Products Grid
+      ══════════════════════════════════════════════════ */}
       <div className="container-wide py-10">
         {collection.products?.length === 0 ? (
+
+          /* Empty state */
           <div className="py-24 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-surface border border-border flex items-center justify-center mx-auto mb-4">
-              <BookmarkPlus size={24} className="text-muted" />
+            <div
+              className="w-16 h-16 rounded-[var(--radius-xl)] flex items-center
+                         justify-center mx-auto mb-5 border shadow-[var(--shadow-card)]"
+              style={{
+                background:  'hsl(var(--surface))',
+                borderColor: 'hsl(var(--border))',
+              }}
+            >
+              <BookmarkPlus size={24} style={{ color: 'hsl(var(--muted))' }} />
             </div>
-            <p className="font-medium text-foreground mb-2">No products yet</p>
-            <p className="text-sm text-muted mb-6 max-w-xs mx-auto">
+            <p
+              className="font-medium mb-2"
+              style={{ color: 'hsl(var(--foreground))' }}
+            >
+              No products yet
+            </p>
+            <p
+              className="text-sm mb-6 max-w-xs mx-auto"
+              style={{ color: 'hsl(var(--muted))', fontWeight: 300 }}
+            >
               {isOwner
                 ? 'Browse products and save them to this collection'
                 : 'This collection is empty for now'}
             </p>
             {isOwner && (
-              <Link href="/explore">
-                <Button variant="primary" size="md">Browse Products</Button>
+              <Link href="/explore" className="btn-save">
+                Browse Products
               </Link>
             )}
           </div>
+
         ) : (
           <>
-            <p className="text-sm text-muted mb-6">
+            <p
+              className="text-sm mb-6"
+              style={{ color: 'hsl(var(--muted))' }}
+            >
               {collection.products.length}{' '}
               {collection.products.length === 1 ? 'product' : 'products'}
             </p>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 lg:gap-6">
-              {collection.products.map((product: any) => (
-                <div key={product._id} className="relative group">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4
+                            xl:grid-cols-5 gap-4 lg:gap-5">
+              {collection.products.map((product: any, i: number) => (
+                <motion.div
+                  key={product._id}
+                  className="relative group"
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{
+                    delay:    i * 0.04,
+                    duration: 0.4,
+                    ease:     [0.22, 1, 0.36, 1],
+                  }}
+                >
                   <ProductCard product={product} />
 
+                  {/* Owner remove button */}
                   {isOwner && (
                     <button
                       type="button"
                       onClick={() => handleRemoveProduct(product._id)}
                       disabled={isDeleting === product._id}
+                      aria-label="Remove from collection"
                       className={cn(
-                        'absolute top-3 left-3 z-20 w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-200',
+                        'absolute top-3 left-3 z-20 w-7 h-7 rounded-[var(--radius-sm)]',
+                        'flex items-center justify-center',
+                        'transition-all duration-[var(--duration-hover)]',
                         isDeleting === product._id
-                          ? 'bg-destructive text-white opacity-100'
-                          : 'bg-background/90 text-destructive opacity-0 group-hover:opacity-100 hover:bg-destructive hover:text-white'
+                          ? 'opacity-100'
+                          : 'opacity-0 group-hover:opacity-100'
                       )}
-                      title="Remove from collection"
+                      style={{
+                        background: isDeleting === product._id
+                          ? 'hsl(var(--destructive))'
+                          : 'hsl(var(--background) / 0.92)',
+                        color: isDeleting === product._id
+                          ? 'white'
+                          : 'hsl(var(--destructive))',
+                        backdropFilter: 'blur(8px)',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'hsl(var(--destructive))'
+                        e.currentTarget.style.color      = 'white'
+                      }}
+                      onMouseLeave={(e) => {
+                        if (isDeleting !== product._id) {
+                          e.currentTarget.style.background =
+                            'hsl(var(--background) / 0.92)'
+                          e.currentTarget.style.color =
+                            'hsl(var(--destructive))'
+                        }
+                      }}
                     >
                       {isDeleting === product._id ? (
-                        <div className="w-3 h-3 border border-white/50 border-t-white rounded-full animate-spin" />
+                        <div className="w-3 h-3 border border-white/50
+                                        border-t-white rounded-full animate-spin" />
                       ) : (
                         <Trash2 size={12} />
                       )}
                     </button>
                   )}
-                </div>
+                </motion.div>
               ))}
             </div>
           </>
