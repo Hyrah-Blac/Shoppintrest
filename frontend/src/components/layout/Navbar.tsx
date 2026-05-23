@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth, UserButton } from '@clerk/nextjs'
@@ -50,28 +51,19 @@ export function Navbar() {
       >
         <div className="container-wide flex items-center justify-between gap-4">
 
-          {/* ── Logo ── */}
-          <Link href="/" className="group flex items-center gap-2.5 shrink-0">
-            <div
-              className="w-8 h-8 flex items-center justify-center text-sm font-bold
-                         rounded-[var(--radius-sm)] bg-[hsl(var(--accent))]
-                         text-white shadow-[var(--shadow-red)]
-                         transition-all duration-[var(--duration-hover)]
-                         group-hover:shadow-[var(--shadow-red-hover)] group-hover:scale-105"
-              style={{ fontFamily: "'Playfair Display', serif" }}
-            >
-              S
-            </div>
-            <span
-              className="font-display text-lg font-semibold tracking-[-0.02em]
-                         text-[hsl(var(--foreground))]
-                         transition-opacity duration-[var(--duration-hover)]
-                         group-hover:opacity-75"
-            >
-              Shoppintrest
-            </span>
-          </Link>
-
+          {/* ── Logo — image only, no wordmark ── */}
+        {/* ── Logo — Pinterest-style floating icon ── */}
+<Link href="/" className="shrink-0 flex items-center">
+  <div className="relative w-30 h-30">
+    <Image
+      src="/logo.png"
+      alt="Shoppin"
+      fill
+      className="object-contain"
+      priority
+    />
+  </div>
+</Link>
           {/* ── Desktop Nav ── */}
           <nav className="hidden md:flex items-center gap-1">
             {navLinks.map((link) => (
@@ -186,10 +178,7 @@ export function Navbar() {
                 >
                   Sign in
                 </Link>
-                <Link
-                  href="/sign-up"
-                  className="btn-save text-sm"
-                >
+                <Link href="/sign-up" className="btn-save text-sm">
                   Join free
                 </Link>
               </div>

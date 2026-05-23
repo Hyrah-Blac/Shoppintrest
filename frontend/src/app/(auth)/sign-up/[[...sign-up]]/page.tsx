@@ -80,7 +80,7 @@ export default function SignUpPage() {
               className="font-display text-xl font-semibold tracking-[-0.02em]"
               style={{ color: 'hsl(var(--foreground))' }}
             >
-              Shoppintrest
+              Shoppin
             </span>
           </div>
 
@@ -88,7 +88,7 @@ export default function SignUpPage() {
             className="font-display font-bold tracking-[-0.03em] leading-[1.1] mb-2"
             style={{ fontSize: 'clamp(1.5rem, 3vw, 2rem)' }}
           >
-            Join Shoppintrest
+            Join Shoppin
           </h1>
 
           {/* Accent underline */}

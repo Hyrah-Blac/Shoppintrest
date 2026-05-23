@@ -106,7 +106,7 @@ export default function SignInPage() {
               className="font-display text-xl font-semibold tracking-[-0.02em]"
               style={{ color: 'hsl(var(--foreground))' }}
             >
-              Shoppintrest
+              Shoppin
             </span>
           </div>
 
@@ -129,7 +129,7 @@ export default function SignInPage() {
             className="text-sm"
             style={{ color: 'hsl(var(--muted))', fontWeight: 300 }}
           >
-            Sign in to your Shoppintrest account
+            Sign in to your Shoppin account
           </p>
         </div>
 

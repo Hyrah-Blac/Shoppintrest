@@ -7,7 +7,6 @@ import { ThemeProvider } from '@/components/providers/ThemeProvider'
 import { UserProvider } from '@/components/providers/UserProvider'
 import ClerkTokenProvider from '@/components/ClerkTokenProvider'
 
-/* ── Blueprint fonts: DM Sans (body/UI) + Playfair Display (editorial) ── */
 const dmSans = DM_Sans({
   subsets:  ['latin'],
   axes:     ['opsz'],
@@ -37,6 +36,12 @@ export const metadata: Metadata = {
   ],
   authors:  [{ name: 'Shoppintrest' }],
   creator:  'Shoppintrest',
+  icons: {
+    icon:     '/favicon.ico',
+    apple:    '/apple-icon.png',
+    shortcut: '/favicon.ico',
+  },
+  manifest: '/site.webmanifest',
   openGraph: {
     type:        'website',
     locale:      'en_US',
@@ -63,19 +68,19 @@ export const metadata: Metadata = {
     index:  true,
     follow: true,
     googleBot: {
-      index:                true,
-      follow:               true,
-      'max-video-preview':  -1,
-      'max-image-preview':  'large',
-      'max-snippet':        -1,
+      index:               true,
+      follow:              true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet':       -1,
     },
   },
 }
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#FAFAF8' }, /* --background light */
-    { media: '(prefers-color-scheme: dark)',  color: '#0F1115' }, /* --background dark  */
+    { media: '(prefers-color-scheme: light)', color: '#FAFAF8' },
+    { media: '(prefers-color-scheme: dark)',  color: '#0F1115' },
   ],
   width:        'device-width',
   initialScale: 1,
