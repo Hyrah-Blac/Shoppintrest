@@ -43,7 +43,7 @@ export function Navbar() {
           'fixed top-0 left-0 right-0 z-50',
           'transition-[padding,background,border-color,box-shadow]',
           'duration-[var(--duration-standard)]',
-          isScrolled ? 'glass py-3' : 'bg-transparent py-5'
+          isScrolled ? 'glass py-2' : 'bg-transparent py-3'  // ← reduced padding
         )}
         initial={{ y: -80, opacity: 0 }}
         animate={{ y: 0,   opacity: 1 }}
@@ -51,18 +51,19 @@ export function Navbar() {
       >
         <div className="container-wide flex items-center justify-between gap-4">
 
-        {/* ── Logo — Pinterest-style floating icon ── */}
-<Link href="/" className="shrink-0 flex items-center">
-  <div className="relative w-20 h-20">
-    <Image
-      src="/logo.png"
-      alt="Shoppin"
-      fill
-      className="object-contain"
-      priority
-    />
-  </div>
-</Link>
+          {/* ── Logo — smaller size ── */}
+          <Link href="/" className="shrink-0 flex items-center">
+            <div className="relative w-16 h-7">  {/* ← was w-28 h-12 */}
+              <Image
+                src="/logo.png"
+                alt="Shoppin"
+                fill
+                className="object-contain"
+                priority
+              />
+            </div>
+          </Link>
+
           {/* ── Desktop Nav ── */}
           <nav className="hidden md:flex items-center gap-1">
             {navLinks.map((link) => (
@@ -91,14 +92,15 @@ export function Navbar() {
           </nav>
 
           {/* ── Right Actions ── */}
-          <div className="flex items-center gap-0.5">
+          <div className="flex items-center gap-2 shrink-0">
 
-            {/* Search */}
-            <NavIconBtn onClick={() => setIsSearchOpen(true)} label="Search">
-              <Search size={17} />
-            </NavIconBtn>
-
-            <ThemeToggle />
+            {/* Search + ThemeToggle hidden on mobile */}
+            <div className="hidden md:flex items-center gap-2">
+              <NavIconBtn onClick={() => setIsSearchOpen(true)} label="Search">
+                <Search size={17} />
+              </NavIconBtn>
+              <ThemeToggle />
+            </div>
 
             {isSignedIn ? (
               <>
@@ -154,20 +156,20 @@ export function Navbar() {
                   </AnimatePresence>
                 </button>
 
-                {/* User avatar */}
-                <div className="ml-2 pl-2 border-l border-[hsl(var(--border))]">
+                {/* User avatar — no divider on mobile */}
+                <div className="ml-2 pl-2 md:border-l border-[hsl(var(--border))]">
                   <UserButton
                     afterSignOutUrl="/"
                     appearance={{
                       elements: {
-                        avatarBox: 'w-8 h-8 rounded-[var(--radius-sm)]',
+                        avatarBox: 'w-7 h-7 rounded-[var(--radius-sm)]',  // ← slightly smaller avatar too
                       },
                     }}
                   />
                 </div>
               </>
             ) : (
-              <div className="flex items-center gap-2 ml-3 pl-3 border-l border-[hsl(var(--border))]">
+              <div className="flex items-center gap-2 ml-3 pl-3 md:border-l border-[hsl(var(--border))]">
                 <Link
                   href="/sign-in"
                   className="text-sm font-medium text-[hsl(var(--muted))]
@@ -243,12 +245,29 @@ export function Navbar() {
                   </motion.div>
                 ))}
 
+                {/* Mobile: Search + Theme inside drawer */}
+                <motion.div
+                  className="flex items-center gap-3 px-3 py-3"
+                  initial={{ opacity: 0, x: -12 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: navLinks.length * 0.06 }}
+                >
+                  <button
+                    onClick={() => { setIsSearchOpen(true); setIsMobileOpen(false) }}
+                    className="btn-icon"
+                    aria-label="Search"
+                  >
+                    <Search size={15} />
+                  </button>
+                  <ThemeToggle />
+                </motion.div>
+
                 {isSignedIn && (
                   <motion.div
                     className="flex flex-col gap-0.5"
                     initial={{ opacity: 0, x: -12 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: navLinks.length * 0.06 }}
+                    transition={{ delay: (navLinks.length + 1) * 0.06 }}
                   >
                     <Link
                       href="/saved"
@@ -283,8 +302,8 @@ export function Navbar() {
         </AnimatePresence>
       </motion.header>
 
-      {/* Spacer */}
-      <div className="h-[72px]" />
+      {/* Spacer — matches new navbar height exactly */}
+      <div className="h-[52px]" />  {/* ← was h-[72px] */}
 
       {/* Search Modal */}
       <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
