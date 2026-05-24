@@ -19,19 +19,19 @@ const router = Router()
 // ─── SYNC — protected + rate limited ─────────────────────────────────────────
 router.post('/clerk/sync', authLimiter, protect, syncClerkUser)
 
-// ─── PUBLIC ───────────────────────────────────────────────────────────────────
+// ─── PUBLIC ──────────────────────────────────────────────────────────────────
 router.get('/search', searchUsers)
 
-// ─── /me ROUTES (must be before /:username) ───────────────────────────────────
-router.get('/me', protect, getMe)
-router.patch('/me', protect, updateMe)
-router.get('/me/saved', protect, getSavedProducts)
+// ─── /me ROUTES (must be before /:username) ──────────────────────────────────
+router.get('/me',              authLimiter, protect, getMe)
+router.patch('/me',            protect,     updateMe)
+router.get('/me/saved',        protect,     getSavedProducts)
 router.post('/me/save/:productId', protect, toggleSaveProduct)
 
 // ─── DYNAMIC /:username ROUTES LAST ──────────────────────────────────────────
-router.get('/:username', optionalAuth, getUserByUsername)
-router.get('/:username/followers', getFollowers)
-router.get('/:username/following', getFollowing)
-router.post('/:userId/follow', protect, toggleFollow)
+router.get('/:username',            optionalAuth, getUserByUsername)
+router.get('/:username/followers',  optionalAuth, getFollowers)
+router.get('/:username/following',  optionalAuth, getFollowing)
+router.post('/:userId/follow',      protect,      toggleFollow)
 
 export default router

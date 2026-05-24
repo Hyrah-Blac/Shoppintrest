@@ -8,19 +8,20 @@ import morgan from 'morgan'
 import { clerkMiddleware } from '@clerk/express'
 import { globalLimiter } from './config/rateLimiter'
 import globalErrorHandler from './middleware/errorHandler'
+import logger from './utils/logger'
 
-import userRoutes from './routes/user.routes'
-import productRoutes from './routes/product.routes'
-import orderRoutes from './routes/order.routes'
-import cartRoutes from './routes/cart.routes'
-import collectionRoutes from './routes/collection.routes'
-import reviewRoutes from './routes/review.routes'
-import messageRoutes from './routes/message.routes'
+import userRoutes         from './routes/user.routes'
+import productRoutes      from './routes/product.routes'
+import orderRoutes        from './routes/order.routes'
+import cartRoutes         from './routes/cart.routes'
+import collectionRoutes   from './routes/collection.routes'
+import reviewRoutes       from './routes/review.routes'
+import messageRoutes      from './routes/message.routes'
 import notificationRoutes from './routes/notification.routes'
-import uploadRoutes from './routes/upload.routes'
-import stripeRoutes from './routes/stripe.routes'
-import adminRoutes from './routes/admin.routes'
-import webhookRoutes from './routes/webhookRoutes'
+import uploadRoutes       from './routes/upload.routes'
+import stripeRoutes       from './routes/stripe.routes'
+import adminRoutes        from './routes/admin.routes'
+import webhookRoutes      from './routes/webhookRoutes'
 
 const app = express()
 
@@ -59,10 +60,9 @@ app.use(cors({
 app.options('*', cors())
 
 // ─── 3. BODY PARSERS ─────────────────────────────────────────────────────────
-// Stripe webhook needs raw body — must be before json parser
-app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }))
-// Clerk webhook needs raw body for svix signature verification
-app.use('/api/webhooks/clerk', express.raw({ type: 'application/json' }))
+// Stripe + Clerk webhooks need raw body — must be before json parser
+app.use('/api/stripe/webhook',  express.raw({ type: 'application/json' }))
+app.use('/api/webhooks/clerk',  express.raw({ type: 'application/json' }))
 
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
@@ -82,33 +82,41 @@ app.use('/api', globalLimiter)
 // ─── 8. LOGGING ──────────────────────────────────────────────────────────────
 if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'))
+} else {
+  // Production: structured logs via logger
+  app.use(morgan('combined', {
+    stream: { write: (msg: string) => logger.info(msg.trim()) },
+  }))
 }
 
 // ─── 9. CLERK MIDDLEWARE ─────────────────────────────────────────────────────
 app.use(clerkMiddleware())
 
 // ─── 10. HEALTH CHECK ────────────────────────────────────────────────────────
+// Environment name hidden in production
 app.get('/health', (req, res) => {
   res.status(200).json({
     success: true,
     message: 'Shoppin API is running',
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV,
+    ...(process.env.NODE_ENV === 'development' && {
+      environment: process.env.NODE_ENV,
+    }),
   })
 })
 
 // ─── 11. API ROUTES ──────────────────────────────────────────────────────────
-app.use('/api/webhooks', webhookRoutes)   // webhooks after CORS + raw body parsers
-app.use('/api/users', userRoutes)
-app.use('/api/products', productRoutes)
-app.use('/api/orders', orderRoutes)
-app.use('/api/cart', cartRoutes)
-app.use('/api/collections', collectionRoutes)
-app.use('/api/reviews', reviewRoutes)
-app.use('/api/messages', messageRoutes)
-app.use('/api/notifications', notificationRoutes)
-app.use('/api/upload', uploadRoutes)
-app.use('/api/admin', adminRoutes)
+app.use('/api/webhooks',       webhookRoutes)
+app.use('/api/users',          userRoutes)
+app.use('/api/products',       productRoutes)
+app.use('/api/orders',         orderRoutes)
+app.use('/api/cart',           cartRoutes)
+app.use('/api/collections',    collectionRoutes)
+app.use('/api/reviews',        reviewRoutes)
+app.use('/api/messages',       messageRoutes)
+app.use('/api/notifications',  notificationRoutes)
+app.use('/api/upload',         uploadRoutes)
+app.use('/api/admin',          adminRoutes)
 
 // ─── 12. 404 HANDLER ─────────────────────────────────────────────────────────
 app.use('*', (req, res) => {
