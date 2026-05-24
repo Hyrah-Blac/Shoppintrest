@@ -51,10 +51,9 @@ export function Navbar() {
       >
         <div className="container-wide flex items-center justify-between gap-4">
 
-          {/* ── Logo — image only, no wordmark ── */}
         {/* ── Logo — Pinterest-style floating icon ── */}
 <Link href="/" className="shrink-0 flex items-center">
-  <div className="relative w-30 h-30">
+  <div className="relative w-20 h-20">
     <Image
       src="/logo.png"
       alt="Shoppin"
