@@ -1,17 +1,20 @@
 'use client'
 
-import { useSignUp, useUser, useAuth } from '@clerk/nextjs'
-import { useEffect, useState } from 'react'
+import { useClerk, useSignUp, useUser, useAuth } from '@clerk/nextjs'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { motion } from 'framer-motion'
 import api from '@/lib/api'
 
 export default function SignUpPage() {
-  const { signUp, setActive, isLoaded } = useSignUp()
+  const { signUp, setActive } = useSignUp()
+  const clerk = useClerk()
   const { isSignedIn, user: clerkUser } = useUser()
   const { getToken } = useAuth()
   const router = useRouter()
+
+  const didSyncRef = useRef(false)
 
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
@@ -24,59 +27,75 @@ export default function SignUpPage() {
   const [syncing, setSyncing] = useState(false)
 
   useEffect(() => {
+    if (!clerk.loaded) return
     if (!isSignedIn || !clerkUser) return
+    if (didSyncRef.current) return
+    didSyncRef.current = true
+
     const syncAndRedirect = async () => {
-      setSyncing(true)
-      const token = await getToken()
-      if (!token) { router.replace('/sign-up'); return }
-      const authHeader = { Authorization: `Bearer ${token}` }
       try {
-        await api.post('/api/users/sync', {
-          type: 'user.created',
-          data: {
-            id: clerkUser.id,
-            email_addresses: clerkUser.emailAddresses.map((e) => ({ email_address: e.emailAddress })),
-            username: clerkUser.username,
-            image_url: clerkUser.imageUrl,
-            first_name: clerkUser.firstName,
-            last_name: clerkUser.lastName,
-          },
-        }, { headers: authHeader })
-      } catch {}
-      let attempts = 0
-      while (attempts < 5) {
+        setSyncing(true)
+
+        let token: string | null = null
+        for (let i = 0; i < 5; i++) {
+          token = await getToken()
+          if (token) break
+          await new Promise((r) => setTimeout(r, 500))
+        }
+
+        if (!token) {
+          setError('Unable to establish authentication session.')
+          return
+        }
+
+        const authHeader = { Authorization: `Bearer ${token}` }
+
         try {
-          const res = await api.get('/api/users/me', { headers: authHeader })
-          const user = res.data?.data
-          if (user?.role === 'admin') { router.replace('/admin'); return }
-          if (user?.role) { router.replace('/'); return }
+          await api.post('/api/users/sync', {
+            type: 'user.created',
+            data: {
+              id: clerkUser.id,
+              email_addresses: clerkUser.emailAddresses.map((e) => ({ email_address: e.emailAddress })),
+              username: clerkUser.username,
+              image_url: clerkUser.imageUrl,
+              first_name: clerkUser.firstName,
+              last_name: clerkUser.lastName,
+            },
+          }, { headers: authHeader })
         } catch {}
-        attempts++
-        await new Promise((r) => setTimeout(r, 800))
+
+        let attempts = 0
+        while (attempts < 5) {
+          try {
+            const res = await api.get('/api/users/me', { headers: authHeader })
+            const user = res.data?.data
+            if (user?.role === 'admin') { router.replace('/admin'); return }
+            if (user?.role) { router.replace('/'); return }
+          } catch {}
+          attempts++
+          await new Promise((r) => setTimeout(r, 800))
+        }
+
+        router.replace('/')
+      } finally {
+        setSyncing(false)
       }
-      setSyncing(false)
-      router.replace('/')
     }
+
     syncAndRedirect()
-  }, [isSignedIn, clerkUser, router, getToken])
+  }, [clerk.loaded, isSignedIn, clerkUser, router, getToken])
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!isLoaded) return
+    if (!signUp) return
     setError('')
     setLoading(true)
     try {
-      await signUp.create({
-        firstName,
-        lastName,
-        emailAddress: email,
-        password,
-      })
+      await signUp.create({ firstName, lastName, emailAddress: email, password })
       await signUp.prepareEmailAddressVerification({ strategy: 'email_code' })
       setStage('verify')
-    } catch (err: unknown) {
-      const clerkError = err as { errors?: { message: string }[] }
-      setError(clerkError.errors?.[0]?.message ?? 'Sign up failed. Please try again.')
+    } catch (err: any) {
+      setError(err?.errors?.[0]?.message ?? 'Sign up failed. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -84,7 +103,7 @@ export default function SignUpPage() {
 
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!isLoaded) return
+    if (!signUp) return
     setError('')
     setLoading(true)
     try {
@@ -94,12 +113,20 @@ export default function SignUpPage() {
       } else {
         setError('Verification incomplete. Please try again.')
       }
-    } catch (err: unknown) {
-      const clerkError = err as { errors?: { message: string }[] }
-      setError(clerkError.errors?.[0]?.message ?? 'Invalid code. Please try again.')
+    } catch (err: any) {
+      setError(err?.errors?.[0]?.message ?? 'Invalid code. Please try again.')
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleGoogleSignUp = () => {
+    if (!clerk.loaded) return
+    return clerk.client.signUp.authenticateWithRedirect({
+      strategy: 'oauth_google',
+      redirectUrl: `${window.location.origin}/sso-callback`,
+      redirectUrlComplete: `${window.location.origin}/`,
+    })
   }
 
   const inputStyle: React.CSSProperties = {
@@ -135,6 +162,8 @@ export default function SignUpPage() {
     marginBottom: '0.375rem',
   }
 
+  if (!clerk.loaded) return null
+
   if (syncing) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4" style={{ background: 'hsl(var(--background))' }}>
@@ -154,7 +183,6 @@ export default function SignUpPage() {
       >
         <div style={{ background: 'hsl(var(--surface))', border: '1px solid hsl(var(--border))', borderRadius: 'var(--radius-2xl)', boxShadow: 'var(--shadow-float)', padding: '2.5rem 2rem' }}>
 
-          {/* Logo + heading */}
           <div className="flex flex-col items-center mb-8">
             <div className="mb-5" style={{ position: 'relative', width: 40, height: 40, borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
               <Image src="/logo.png" alt="Shoppin" fill className="object-contain" priority />
@@ -167,7 +195,6 @@ export default function SignUpPage() {
             </p>
           </div>
 
-          {/* Stage: registration form */}
           {stage === 'form' && (
             <form onSubmit={handleRegister} noValidate>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
@@ -259,14 +286,7 @@ export default function SignUpPage() {
                 type="button"
                 className="btn-ghost"
                 style={{ width: '100%', justifyContent: 'center' }}
-                onClick={async () => {
-                  if (!isLoaded) return
-                  await signUp.authenticateWithRedirect({
-                    strategy: 'oauth_google',
-                    redirectUrl: '/sso-callback',
-                    redirectUrlComplete: '/',
-                  })
-                }}
+                onClick={handleGoogleSignUp}
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" style={{ marginRight: 8 }}>
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -279,7 +299,6 @@ export default function SignUpPage() {
             </form>
           )}
 
-          {/* Stage: email verification */}
           {stage === 'verify' && (
             <form onSubmit={handleVerify} noValidate>
               <div style={{ marginBottom: '1.5rem' }}>

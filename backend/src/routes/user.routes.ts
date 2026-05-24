@@ -12,11 +12,14 @@ import {
   syncClerkUser,
 } from '../controllers/user.controller'
 import { protect, optionalAuth } from '../middleware/auth'
+import { authLimiter } from '../config/rateLimiter'
 
 const router = Router()
 
-// ─── PUBLIC / STATIC ROUTES FIRST ────────────────────────────────────────────
-router.post('/clerk/sync', syncClerkUser)
+// ─── SYNC — protected + rate limited ─────────────────────────────────────────
+router.post('/clerk/sync', authLimiter, protect, syncClerkUser)
+
+// ─── PUBLIC ───────────────────────────────────────────────────────────────────
 router.get('/search', searchUsers)
 
 // ─── /me ROUTES (must be before /:username) ───────────────────────────────────
