@@ -6,7 +6,6 @@ import asyncHandler from '../utils/asyncHandler'
 
 const router = express.Router()
 
-// Clerk webhook — raw body already parsed by app.ts before this route
 router.post(
   '/clerk',
   asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
@@ -34,9 +33,25 @@ router.post(
       return next(new AppError('Invalid webhook signature', 400))
     }
 
-    // ── Handle events ──────────────────────────────────────────────────────
+    // ── Ignore events we don't handle ─────────────────────────────────────
+    if (!['user.created', 'user.updated', 'user.deleted'].includes(event.type)) {
+      return res.status(200).json({ success: true })
+    }
+
+    // ── Extract user fields (only present on user.* events) ───────────────
     const { id, email_addresses, username, image_url, first_name, last_name } = event.data
 
+    if (event.type === 'user.deleted') {
+      if (!id) return next(new AppError('Missing user id', 400))
+      await User.findOneAndUpdate(
+        { clerkId: id },
+        { isActive: false },
+        { new: true }
+      )
+      return res.status(200).json({ success: true })
+    }
+
+    // ── user.created / user.updated ───────────────────────────────────────
     const email = email_addresses?.[0]?.email_address
     if (!id || !email) return next(new AppError('Missing required fields', 400))
 
@@ -47,45 +62,48 @@ router.post(
       username ||
       `${email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '')}${Math.floor(Math.random() * 1000)}`
 
-    if (event.type === 'user.created' || event.type === 'user.updated') {
-      try {
+    try {
+      await User.findOneAndUpdate(
+        { clerkId: id },
+        {
+          $set: {
+            email,
+            displayName,
+            avatar: image_url,
+            isActive: true,
+          },
+          $setOnInsert: {
+            clerkId: id,
+            username: generatedUsername,
+            role: 'user',
+            isVerified: false,
+          },
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      )
+    } catch (error: any) {
+      if (error.code === 11000) {
         await User.findOneAndUpdate(
           { clerkId: id },
           {
-            clerkId: id,
-            email,
-            username: generatedUsername,
-            displayName,
-            avatar: image_url,
-            ...(event.type === 'user.created' && { role: 'user', isActive: true, isVerified: false }),
-          },
-          { upsert: true, new: true, setDefaultsOnInsert: true }
-        )
-      } catch (error: any) {
-        if (error.code === 11000) {
-          await User.findOneAndUpdate(
-            { clerkId: id },
-            {
-              clerkId: id,
+            $set: {
               email,
-              username: `${generatedUsername}${Date.now()}`,
               displayName,
               avatar: image_url,
+              isActive: true,
             },
-            { upsert: true, new: true }
-          )
-        } else {
-          throw error
-        }
+            $setOnInsert: {
+              clerkId: id,
+              username: `${generatedUsername}${Date.now()}`,
+              role: 'user',
+              isVerified: false,
+            },
+          },
+          { upsert: true, new: true }
+        )
+      } else {
+        throw error
       }
-    }
-
-    if (event.type === 'user.deleted') {
-      await User.findOneAndUpdate(
-        { clerkId: id },
-        { isActive: false },
-        { new: true }
-      )
     }
 
     return res.status(200).json({ success: true })
