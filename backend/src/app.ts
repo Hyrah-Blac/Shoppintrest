@@ -62,9 +62,9 @@ app.use(cors({
 app.options('*', cors())
 
 // ─── 3. BODY PARSERS ─────────────────────────────────────────────────────────
-// Stripe + Clerk webhooks need raw body — must be before json parser
-app.use('/api/stripe/webhook',  express.raw({ type: 'application/json' }))
-app.use('/api/webhooks/clerk',  express.raw({ type: 'application/json' }))
+// Webhook routes need raw body — must be before json parser
+app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }))
+app.use('/api/webhooks',       express.raw({ type: 'application/json' })) // ← broadened
 
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
@@ -85,12 +85,12 @@ app.use('/api', globalLimiter)
 if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'))
 } else {
-  // Production: structured logs via logger
   app.use(morgan('combined', {
     stream: { write: (msg: string) => logger.info(msg.trim()) },
   }))
 }
-// ─── 09. HEALTH CHECK ────────────────────────────────────────────────────────
+
+// ─── 9. HEALTH CHECK ─────────────────────────────────────────────────────────
 app.get('/health', (_req, res) => {
   res.status(200).json({
     success: true,
@@ -98,27 +98,28 @@ app.get('/health', (_req, res) => {
     timestamp: new Date().toISOString(),
   })
 })
-
 app.head('/health', (_req, res) => res.sendStatus(200))
-// ─── 10. CLERK MIDDLEWARE ─────────────────────────────────────────────────────
+
+// ─── 10. WEBHOOK ROUTES — before clerkMiddleware ──────────────────────────────
+app.use('/api/webhooks', webhookRoutes)
+app.use('/api/stripe',   stripeRoutes)
+
+// ─── 11. CLERK MIDDLEWARE — after webhooks ────────────────────────────────────
 app.use(clerkMiddleware())
 
+// ─── 12. API ROUTES ──────────────────────────────────────────────────────────
+app.use('/api/users',         userRoutes)
+app.use('/api/products',      productRoutes)
+app.use('/api/orders',        orderRoutes)
+app.use('/api/cart',          cartRoutes)
+app.use('/api/collections',   collectionRoutes)
+app.use('/api/reviews',       reviewRoutes)
+app.use('/api/messages',      messageRoutes)
+app.use('/api/notifications', notificationRoutes)
+app.use('/api/upload',        uploadRoutes)
+app.use('/api/admin',         adminRoutes)
 
-
-// ─── 11. API ROUTES ──────────────────────────────────────────────────────────
-app.use('/api/webhooks',       webhookRoutes)
-app.use('/api/users',          userRoutes)
-app.use('/api/products',       productRoutes)
-app.use('/api/orders',         orderRoutes)
-app.use('/api/cart',           cartRoutes)
-app.use('/api/collections',    collectionRoutes)
-app.use('/api/reviews',        reviewRoutes)
-app.use('/api/messages',       messageRoutes)
-app.use('/api/notifications',  notificationRoutes)
-app.use('/api/upload',         uploadRoutes)
-app.use('/api/admin',          adminRoutes)
-
-// ─── 12. 404 HANDLER ─────────────────────────────────────────────────────────
+// ─── 13. 404 HANDLER ─────────────────────────────────────────────────────────
 app.use('*', (req, res) => {
   res.status(404).json({
     success: false,
@@ -126,7 +127,7 @@ app.use('*', (req, res) => {
   })
 })
 
-// ─── 13. GLOBAL ERROR HANDLER ────────────────────────────────────────────────
+// ─── 14. GLOBAL ERROR HANDLER ────────────────────────────────────────────────
 app.use(globalErrorHandler)
 
 export default app
