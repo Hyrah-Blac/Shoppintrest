@@ -88,22 +88,20 @@ if (process.env.NODE_ENV === 'development') {
     stream: { write: (msg: string) => logger.info(msg.trim()) },
   }))
 }
-
-// ─── 9. CLERK MIDDLEWARE ─────────────────────────────────────────────────────
-app.use(clerkMiddleware())
-
-// ─── 10. HEALTH CHECK ────────────────────────────────────────────────────────
-// Environment name hidden in production
-app.get('/health', (req, res) => {
+// ─── 09. HEALTH CHECK ────────────────────────────────────────────────────────
+app.get('/health', (_req, res) => {
   res.status(200).json({
     success: true,
     message: 'Shoppin API is running',
     timestamp: new Date().toISOString(),
-    ...(process.env.NODE_ENV === 'development' && {
-      environment: process.env.NODE_ENV,
-    }),
   })
 })
+
+app.head('/health', (_req, res) => res.sendStatus(200))
+// ─── 10. CLERK MIDDLEWARE ─────────────────────────────────────────────────────
+app.use(clerkMiddleware())
+
+
 
 // ─── 11. API ROUTES ──────────────────────────────────────────────────────────
 app.use('/api/webhooks',       webhookRoutes)
