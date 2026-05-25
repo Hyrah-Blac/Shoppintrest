@@ -1,3 +1,5 @@
+console.log("USER ROUTES REGISTERED");
+
 import { Router } from 'express'
 import {
   getMe,

@@ -1,3 +1,5 @@
+
+console.log("SERVER BOOTED");
 import 'dotenv/config'
 import http from 'http'
 import app from './app'
