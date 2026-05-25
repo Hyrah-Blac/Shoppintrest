@@ -20,7 +20,6 @@ export const getMe = asyncHandler(async (req: Request, res: Response) => {
 export const updateMe = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
   const { displayName, bio, website, avatar } = req.body
 
-  // Block forbidden fields
   const forbidden = ['role', 'clerkId', 'email', 'isVerified', 'isActive']
   for (const field of forbidden) {
     if (req.body[field]) {
@@ -28,7 +27,6 @@ export const updateMe = asyncHandler(async (req: Request, res: Response, next: N
     }
   }
 
-  // Input length limits
   if (displayName && displayName.length > 60)
     return next(new AppError('Display name must be 60 characters or fewer', 400))
   if (bio && bio.length > 500)
@@ -36,7 +34,6 @@ export const updateMe = asyncHandler(async (req: Request, res: Response, next: N
   if (avatar && avatar.length > 500)
     return next(new AppError('Avatar URL too long', 400))
 
-  // Website URL validation — must be http/https only
   if (website) {
     if (website.length > 200)
       return next(new AppError('Website URL must be 200 characters or fewer', 400))
@@ -94,7 +91,6 @@ export const toggleFollow = asyncHandler(async (req: Request, res: Response, nex
     await User.findByIdAndUpdate(req.user._id, { $addToSet: { following: targetUser._id } })
     await User.findByIdAndUpdate(targetUser._id, { $addToSet: { followers: req.user._id } })
 
-    // Escape displayName before storing to prevent XSS if rendered as HTML
     await Notification.create({
       recipient: targetUser._id,
       sender: req.user._id,
@@ -177,7 +173,7 @@ export const toggleSaveProduct = asyncHandler(async (req: Request, res: Response
 // ─── GET SAVED PRODUCTS ──────────────────────────────────────────────────────
 export const getSavedProducts = asyncHandler(async (req: Request, res: Response) => {
   const page  = parseInt(req.query.page as string) || 1
-  const limit = Math.min(parseInt(req.query.limit as string) || 24, 100) // cap at 100
+  const limit = Math.min(parseInt(req.query.limit as string) || 24, 100)
   const skip  = (page - 1) * limit
 
   const user = await User.findById(req.user._id).select('savedProducts')
@@ -200,7 +196,6 @@ export const searchUsers = asyncHandler(async (req: Request, res: Response) => {
 
   if (!q) return sendSuccess(res, [])
 
-  // Escape regex special characters to prevent injection
   const escaped = (q as string).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
   const users = await User.find({
@@ -219,7 +214,7 @@ export const searchUsers = asyncHandler(async (req: Request, res: Response) => {
 
 // ─── SYNC CLERK USER ─────────────────────────────────────────────────────────
 // Identity is derived from the verified Clerk JWT via getAuth(req).
-// The request body is intentionally ignored for all identity fields.
+// protect is intentionally omitted — this route creates the user if missing.
 export const syncClerkUser = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
   const { userId } = getAuth(req)
   if (!userId) return next(new AppError('Unauthorised', 401))
@@ -242,35 +237,43 @@ export const syncClerkUser = asyncHandler(async (req: Request, res: Response, ne
     const user = await User.findOneAndUpdate(
       { clerkId: userId },
       {
-        clerkId: userId,
-        email,
-        username: generatedUsername,
-        displayName,
-        avatar: clerkUser.imageUrl,
-        role: 'user',
-        isActive: true,
-        isVerified: false,
+        $set: {
+          email,
+          displayName,
+          avatar: clerkUser.imageUrl,
+          isActive: true,
+        },
+        $setOnInsert: {
+          clerkId: userId,
+          username: generatedUsername,
+          role: 'user',
+          isVerified: false,
+        },
       },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     )
-    return res.status(200).json({ success: true, data: user })
+    return sendSuccess(res, user, 'User synced')
   } catch (error: any) {
     if (error.code === 11000) {
       const user = await User.findOneAndUpdate(
         { clerkId: userId },
         {
-          clerkId: userId,
-          email,
-          username: `${generatedUsername}${Date.now()}`,
-          displayName,
-          avatar: clerkUser.imageUrl,
-          role: 'user',
-          isActive: true,
-          isVerified: false,
+          $set: {
+            email,
+            displayName,
+            avatar: clerkUser.imageUrl,
+            isActive: true,
+          },
+          $setOnInsert: {
+            clerkId: userId,
+            username: `${generatedUsername}${Date.now()}`,
+            role: 'user',
+            isVerified: false,
+          },
         },
         { upsert: true, new: true, setDefaultsOnInsert: true }
       )
-      return res.status(200).json({ success: true, data: user })
+      return sendSuccess(res, user, 'User synced')
     }
     throw error
   }
