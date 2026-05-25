@@ -1,6 +1,13 @@
 import express, { Request, Response, NextFunction } from 'express'
 import { Webhook } from 'svix'
 import User from '../models/User'
+import Collection from '../models/Collection'
+import Product from '../models/Product'
+import Order from '../models/Order'
+import Review from '../models/Review'
+import Notification from '../models/Notification'
+import Message from '../models/Message'
+import Cart from '../models/Cart'
 import AppError from '../utils/AppError'
 import asyncHandler from '../utils/asyncHandler'
 
@@ -38,16 +45,65 @@ router.post(
       return res.status(200).json({ success: true })
     }
 
-    // ── Extract user fields (only present on user.* events) ───────────────
     const { id, email_addresses, username, image_url, first_name, last_name } = event.data
 
+    // ── user.deleted — cascade delete everything ───────────────────────────
     if (event.type === 'user.deleted') {
       if (!id) return next(new AppError('Missing user id', 400))
-      await User.findOneAndUpdate(
-        { clerkId: id },
-        { isActive: false },
-        { new: true }
-      )
+
+      const user = await User.findOne({ clerkId: id })
+
+      if (user) {
+        await Promise.all([
+          // Delete user's collections
+          Collection.deleteMany({ user: user._id }),
+
+          // Delete user's reviews and remove them from product rating counts
+          Review.deleteMany({ user: user._id }),
+
+          // Delete user's orders
+          Order.deleteMany({ user: user._id }),
+
+          // Delete user's cart
+          Cart.deleteMany({ user: user._id }),
+
+          // Delete all notifications sent to or by this user
+          Notification.deleteMany({
+            $or: [{ recipient: user._id }, { sender: user._id }],
+          }),
+
+          // Delete all messages sent to or from this user
+          Message.deleteMany({
+            $or: [{ sender: user._id }, { recipient: user._id }],
+          }),
+
+          // Remove user from other users' followers/following lists
+          User.updateMany(
+            { followers: user._id },
+            { $pull: { followers: user._id } }
+          ),
+          User.updateMany(
+            { following: user._id },
+            { $pull: { following: user._id } }
+          ),
+
+          // Remove user's saved products references
+          User.updateMany(
+            { savedProducts: { $in: user.savedProducts } },
+            { $pull: { savedProducts: { $in: user.savedProducts } } }
+          ),
+
+          // Remove this collection from other users who saved it
+          User.updateMany(
+            { collections: { $in: user.collections } },
+            { $pull: { collections: { $in: user.collections } } }
+          ),
+        ])
+
+        // Finally delete the user
+        await User.findByIdAndDelete(user._id)
+      }
+
       return res.status(200).json({ success: true })
     }
 
