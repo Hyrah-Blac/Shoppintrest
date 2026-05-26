@@ -58,11 +58,6 @@ export function ProductCard({ product, priority = false, className }: ProductCar
     } finally { setIsAdding(false) }
   }
 
-  // Mobile tap → navigate to product detail
-  const handleMobileTap = () => {
-    router.push(`/product/${product._id}`)
-  }
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -164,59 +159,7 @@ export function ProductCard({ product, priority = false, className }: ProductCar
             )}
           </div>
 
-          {/* ── pin-actions (top-right) ──
-               Desktop: shown on hover via pin-actions CSS class
-               Mobile:  always visible with dark backdrop so icons
-                        are legible over any image colour including white ── */}
-          <div
-            className={cn(
-              'absolute top-2.5 right-2.5 z-20 flex flex-col gap-1.5',
-              // Desktop — use the existing hover-driven CSS
-              'md:pin-actions',
-              // Mobile — always visible
-              'flex md:hidden',
-            )}
-          >
-            {/* Save / heart */}
-            <button
-              onClick={handleSave}
-              disabled={isSaving}
-              aria-label="Save product"
-              className={cn(
-                // Dark semi-transparent pill so icon is always visible
-                // on any image colour (white, pale, vivid)
-                'w-8 h-8 p-0 flex items-center justify-center rounded-full',
-                'bg-black/40 hover:bg-black/60 backdrop-blur-sm',
-                'transition-colors duration-[var(--duration-hover)]',
-                isSaved
-                  ? 'text-[hsl(var(--accent))]'
-                  : 'text-white',
-              )}
-            >
-              <Heart size={13} className={cn(isSaved && 'fill-current')} />
-            </button>
-
-            {/* Quick view — opens product detail */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                router.push(`/product/${product._id}`)
-              }}
-              aria-label="View product"
-              className={cn(
-                'w-8 h-8 p-0 flex items-center justify-center rounded-full',
-                'bg-black/40 hover:bg-black/60 backdrop-blur-sm',
-                'transition-colors duration-[var(--duration-hover)]',
-                'text-white',
-              )}
-            >
-              <Eye size={13} />
-            </button>
-          </div>
-
-          {/* Desktop-only pin-actions (original hover behaviour, same dark style) */}
+          {/* ── pin-actions — desktop hover only, clean on mobile ── */}
           <div className="pin-actions z-20 hidden md:flex">
             <button
               onClick={handleSave}
