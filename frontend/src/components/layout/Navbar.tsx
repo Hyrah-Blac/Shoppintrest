@@ -18,9 +18,13 @@ import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import { SearchModal } from '@/components/search/SearchModal'
 
 const navLinks = [
-  { href: '/explore',     label: 'Explore',     icon: Compass      },
-  { href: '/collections', label: 'Collections', icon: BookMarked   },
-  { href: '/saved',       label: 'Saved',       icon: Heart        },
+  { href: '/explore',     label: 'Explore',     icon: Compass    },
+  { href: '/collections', label: 'Collections', icon: BookMarked },
+]
+
+const mobileOnlyLinks = [
+  { href: '/saved',    label: 'Saved',    icon: Heart         },
+  { href: '/messages', label: 'Messages', icon: MessageCircle },
 ]
 
 export function Navbar() {
@@ -45,6 +49,10 @@ export function Navbar() {
     document.body.style.overflow = isMobileOpen ? 'hidden' : ''
     return () => { document.body.style.overflow = '' }
   }, [isMobileOpen])
+
+  const allMobileLinks = isSignedIn
+    ? [...navLinks, ...mobileOnlyLinks]
+    : navLinks
 
   return (
     <>
@@ -127,11 +135,11 @@ export function Navbar() {
                   <Heart size={17} className={cn(pathname === '/saved' && 'fill-current')} />
                 </Link>
 
-                {/* ── Messages — ALWAYS visible ── */}
+                {/* Messages — desktop only */}
                 <Link
                   href="/messages"
                   aria-label="Messages"
-                  className={cn('btn-icon relative', pathname === '/messages' && 'text-[hsl(var(--accent))]')}
+                  className={cn('btn-icon relative hidden md:inline-flex', pathname === '/messages' && 'text-[hsl(var(--accent))]')}
                 >
                   <MessageCircle size={17} className={cn(pathname === '/messages' && 'fill-current')} />
                 </Link>
@@ -250,7 +258,7 @@ export function Navbar() {
               >
                 {/* ── Nav Links ── */}
                 <div className="p-2">
-                  {navLinks.map((link, i) => {
+                  {allMobileLinks.map((link, i) => {
                     const Icon   = link.icon
                     const active = pathname === link.href
                     return (
@@ -278,7 +286,12 @@ export function Navbar() {
                                 : 'bg-[hsl(var(--background-secondary))] text-[hsl(var(--muted))] group-hover:text-[hsl(var(--foreground))]'
                             )}
                           >
-                            <Icon size={14} className={cn(link.href === '/saved' && active && 'fill-current')} />
+                            <Icon
+                              size={14}
+                              className={cn(
+                                (link.href === '/saved' || link.href === '/messages') && active && 'fill-current'
+                              )}
+                            />
                           </span>
                           <span className="flex-1 text-sm font-medium">{link.label}</span>
                           <ChevronRight
@@ -302,7 +315,7 @@ export function Navbar() {
                   className="p-2 flex items-center gap-2"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  transition={{ delay: navLinks.length * 0.04 + 0.05 }}
+                  transition={{ delay: allMobileLinks.length * 0.04 + 0.05 }}
                 >
                   <button
                     onClick={() => { setIsSearchOpen(true); setIsMobileOpen(false) }}
@@ -335,7 +348,7 @@ export function Navbar() {
                   className="p-3"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  transition={{ delay: navLinks.length * 0.04 + 0.1 }}
+                  transition={{ delay: allMobileLinks.length * 0.04 + 0.1 }}
                 >
                   {isSignedIn ? (
                     <div className="flex items-center gap-3">
