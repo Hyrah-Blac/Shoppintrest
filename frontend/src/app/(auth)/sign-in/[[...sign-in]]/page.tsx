@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 import api from '@/lib/api'
+import { useCartStore } from '@/store/useCartStore'
 
 // ── parse Clerk's non-enumerable error object ──────────────────────────────────
 function parseClerkError(err: any): { code: string; message: string; longMessage: string } {
@@ -39,6 +40,7 @@ export default function SignInPage() {
   const { isSignedIn, user: clerkUser } = useUser()
   const { getToken } = useAuth()
   const router = useRouter()
+  const fetchCart = useCartStore((s) => s.fetchCart)
 
   const lastSyncedUserId = useRef<string | null>(null)
   const cooldownRef      = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -95,6 +97,8 @@ export default function SignInPage() {
           return
         }
 
+        await fetchCart()
+
         let attempts = 0
         while (attempts < 5) {
           try {
@@ -114,7 +118,7 @@ export default function SignInPage() {
     }
 
     syncAndRedirect()
-  }, [clerk.loaded, isSignedIn, clerkUser, router, getToken])
+  }, [clerk.loaded, isSignedIn, clerkUser, router, getToken, fetchCart])
 
   // ── cooldown ticker ──────────────────────────────────────────────────────────
   const startCooldown = () => {

@@ -9,13 +9,18 @@ import api, { setTokenGetter } from '@/lib/api'
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const { isSignedIn, isLoaded, getToken } = useAuth()
   const { user: clerkUser } = useUser()
-  const fetchUser = useUserStore((s) => s.fetchUser)
-  const clearUser = useUserStore((s) => s.clearUser)
-  const fetchCart = useCartStore((s) => s.fetchCart)
+  const fetchUser  = useUserStore((s) => s.fetchUser)
+  const clearUser  = useUserStore((s) => s.clearUser)
+  const fetchCart  = useCartStore((s) => s.fetchCart)
+  const resetCart  = useCartStore((s) => s.reset)
 
-  // Set token getter synchronously on every render so it's
-  // always available before any API call fires
+  // Always keep the token getter fresh before any API call fires
   setTokenGetter(() => getToken({ template: 'backend' }))
+
+  // One-time: nuke any stale localStorage cart from the old persist middleware
+  useEffect(() => {
+    localStorage.removeItem('shoppintrest-cart')
+  }, [])
 
   useEffect(() => {
     if (!isLoaded) return
@@ -30,14 +35,14 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             await api.post('/api/users/sync', {
               type: 'user.created',
               data: {
-                id: clerkUser.id,
+                id:              clerkUser.id,
                 email_addresses: clerkUser.emailAddresses.map((e) => ({
                   email_address: e.emailAddress,
                 })),
-                username: clerkUser.username,
-                image_url: clerkUser.imageUrl,
+                username:   clerkUser.username,
+                image_url:  clerkUser.imageUrl,
                 first_name: clerkUser.firstName,
-                last_name: clerkUser.lastName,
+                last_name:  clerkUser.lastName,
               },
             })
           } catch {
@@ -45,7 +50,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           }
 
           await fetchUser()
-          await fetchCart()
+          await fetchCart()   // ← pulls server cart; works on every device
         } catch (err) {
           console.error('UserProvider sync failed:', err)
         }
@@ -54,6 +59,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       syncAndFetch()
     } else if (isLoaded && !isSignedIn) {
       clearUser()
+      resetCart()   // ← wipe in-memory cart when user signs out
     }
   }, [isSignedIn, isLoaded, clerkUser])
 

@@ -1,5 +1,4 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
 import { apiClient } from '@/lib/api'
 
 interface CartItem {
@@ -23,72 +22,71 @@ interface CartStore {
   closeCart: () => void
   toggleCart: () => void
   computeTotals: () => void
+  reset: () => void
 }
 
-export const useCartStore = create<CartStore>()(
-  persist(
-    (set, get) => ({
-      items: [],
-      isOpen: false,
-      isLoading: false,
-      total: 0,
-      itemCount: 0,
+export const useCartStore = create<CartStore>()((set, get) => ({
+  items: [],
+  isOpen: false,
+  isLoading: false,
+  total: 0,
+  itemCount: 0,
 
-      computeTotals: () => {
-        const { items } = get()
-        const total = items.reduce(
-          (sum, item) => sum + (item.product?.price || 0) * item.quantity,
-          0
-        )
-        const itemCount = items.reduce((sum, item) => sum + item.quantity, 0)
-        set({ total, itemCount })
-      },
+  computeTotals: () => {
+    const { items } = get()
+    const total = items.reduce(
+      (sum, item) => sum + (item.product?.price || 0) * item.quantity,
+      0
+    )
+    const itemCount = items.reduce((sum, item) => sum + item.quantity, 0)
+    set({ total, itemCount })
+  },
 
-      fetchCart: async () => {
-        try {
-          set({ isLoading: true })
-          const { data } = await apiClient.cart.get()
-          set({ items: data.data?.items || [] })
-          get().computeTotals()
-        } catch {
-          // silent
-        } finally {
-          set({ isLoading: false })
-        }
-      },
-
-      addItem: async (productId, size, quantity = 1) => {
-        set({ isLoading: true })
-        const { data } = await apiClient.cart.add({ productId, size, quantity })
-        set({ items: data.data?.items || [] })
-        get().computeTotals()
-        set({ isLoading: false, isOpen: true })
-      },
-
-      updateItem: async (productId, size, quantity) => {
-        const { data } = await apiClient.cart.update(productId, size, { quantity })
-        set({ items: data.data?.items || [] })
-        get().computeTotals()
-      },
-
-      removeItem: async (productId, size) => {
-        const { data } = await apiClient.cart.remove(productId, size)
-        set({ items: data.data?.items || [] })
-        get().computeTotals()
-      },
-
-      clearCart: async () => {
-        await apiClient.cart.clear()
-        set({ items: [], total: 0, itemCount: 0 })
-      },
-
-      openCart: () => set({ isOpen: true }),
-      closeCart: () => set({ isOpen: false }),
-      toggleCart: () => set((s) => ({ isOpen: !s.isOpen })),
-    }),
-    {
-      name: 'shoppintrest-cart',
-      partialize: (state) => ({ items: state.items }),
+  fetchCart: async () => {
+    try {
+      set({ isLoading: true })
+      const { data } = await apiClient.cart.get()
+      set({ items: data.data?.items || [] })
+      get().computeTotals()
+    } catch {
+      // unauthenticated users have no cart — stay empty
+    } finally {
+      set({ isLoading: false })
     }
-  )
-)
+  },
+
+  addItem: async (productId, size, quantity = 1) => {
+    try {
+      set({ isLoading: true })
+      const { data } = await apiClient.cart.add({ productId, size, quantity })
+      set({ items: data.data?.items || [], isOpen: true })
+      get().computeTotals()
+    } finally {
+      set({ isLoading: false })
+    }
+  },
+
+  updateItem: async (productId, size, quantity) => {
+    const { data } = await apiClient.cart.update(productId, size, { quantity })
+    set({ items: data.data?.items || [] })
+    get().computeTotals()
+  },
+
+  removeItem: async (productId, size) => {
+    const { data } = await apiClient.cart.remove(productId, size)
+    set({ items: data.data?.items || [] })
+    get().computeTotals()
+  },
+
+  clearCart: async () => {
+    await apiClient.cart.clear()
+    set({ items: [], total: 0, itemCount: 0 })
+  },
+
+  // Call this on sign-out so the next user gets a clean slate
+  reset: () => set({ items: [], total: 0, itemCount: 0, isOpen: false }),
+
+  openCart: () => set({ isOpen: true }),
+  closeCart: () => set({ isOpen: false }),
+  toggleCart: () => set((s) => ({ isOpen: !s.isOpen })),
+}))
