@@ -5,8 +5,17 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Heart, ShoppingBag, Share2, ChevronLeft,
-  ChevronRight, Star, Bookmark,
+  Heart,
+  ShoppingBag,
+  ArrowUpRight,
+  ChevronLeft,
+  ChevronRight,
+  Star,
+  BookmarkPlus,
+  Package,
+  RotateCcw,
+  Zap,
+  TrendingUp,
 } from 'lucide-react'
 import { useAuth } from '@clerk/nextjs'
 import { toast } from 'sonner'
@@ -14,8 +23,6 @@ import { apiClient } from '@/lib/api'
 import { useCartStore } from '@/store/useCartStore'
 import { useUserStore } from '@/store/useUserStore'
 import { formatPrice, cn } from '@/lib/utils'
-import { Button } from '@/components/ui/Button'
-import { Badge } from '@/components/ui/Badge'
 import { Avatar } from '@/components/ui/Avatar'
 import { ReviewSection } from '@/components/product/ReviewSection'
 
@@ -27,16 +34,16 @@ export function ProductDetail({ id }: Props) {
   const isSaved           = useUserStore((s) => s.isSaved(id))
   const toggleSaveProduct = useUserStore((s) => s.toggleSaveProduct)
 
-  const [product,             setProduct]             = useState<any>(null)
-  const [isLoading,           setIsLoading]           = useState(true)
-  const [selectedSize,        setSelectedSize]        = useState<string>('')
-  const [selectedImage,       setSelectedImage]       = useState(0)
-  const [isAddingToCart,      setIsAddingToCart]      = useState(false)
-  const [isSaving,            setIsSaving]            = useState(false)
-  const [isZoomed,            setIsZoomed]            = useState(false)
-  const [zoomPos,             setZoomPos]             = useState({ x: 50, y: 50 })
-  const [collections,         setCollections]         = useState<any[]>([])
-  const [showCollectionPicker,setShowCollectionPicker]= useState(false)
+  const [product,              setProduct]              = useState<any>(null)
+  const [isLoading,            setIsLoading]            = useState(true)
+  const [selectedSize,         setSelectedSize]         = useState<string>('')
+  const [selectedImage,        setSelectedImage]        = useState(0)
+  const [isAddingToCart,       setIsAddingToCart]       = useState(false)
+  const [isSaving,             setIsSaving]             = useState(false)
+  const [isZoomed,             setIsZoomed]             = useState(false)
+  const [zoomPos,              setZoomPos]              = useState({ x: 50, y: 50 })
+  const [collections,          setCollections]          = useState<any[]>([])
+  const [showCollectionPicker, setShowCollectionPicker] = useState(false)
 
   useEffect(() => {
     setIsLoading(true)
@@ -110,9 +117,12 @@ export function ProductDetail({ id }: Props) {
 
   const selectedVariant = product?.variants?.find((v: any) => v.size === selectedSize)
   const isOutOfStock    = !selectedVariant || selectedVariant.inventory === 0
+  const discount        = product?.comparePrice > product?.price
+    ? Math.round(((product.comparePrice - product.price) / product.comparePrice) * 100)
+    : null
 
   if (isLoading) return null
-  if (!product)  return (
+  if (!product) return (
     <div className="container-wide py-32 text-center"
          style={{ color: 'hsl(var(--muted))' }}>
       Product not found
@@ -123,30 +133,33 @@ export function ProductDetail({ id }: Props) {
     <div className="container-wide py-8 lg:py-12">
 
       {/* ── Breadcrumb ── */}
-      <nav className="flex items-center gap-2 mb-8"
-           style={{ fontSize: 'var(--text-xs)', color: 'hsl(var(--muted))' }}>
+      <nav
+        className="flex items-center gap-1.5 mb-10"
+        style={{ fontSize: 'var(--text-xs)', color: 'hsl(var(--muted))' }}
+      >
         {[
-          { href: '/',                                   label: 'Home' },
-          { href: '/explore',                            label: 'Explore' },
-          { href: `/explore?category=${product.category}`, label: product.category, capitalize: true },
+          { href: '/',                                      label: 'Home'            },
+          { href: '/explore',                               label: 'Explore'         },
+          { href: `/explore?category=${product.category}`, label: product.category,
+            capitalize: true                                                          },
         ].map((crumb, i, arr) => (
-          <span key={crumb.href} className="flex items-center gap-2">
+          <span key={crumb.href} className="flex items-center gap-1.5">
             <Link
               href={crumb.href}
               className={cn(
-                'transition-colors duration-[var(--duration-hover)]',
+                'hover:text-[hsl(var(--foreground))] transition-colors',
+                'duration-[var(--duration-hover)]',
                 crumb.capitalize && 'capitalize'
               )}
-              style={{ color: 'hsl(var(--muted))' }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = 'hsl(var(--foreground))')}
-              onMouseLeave={(e) => (e.currentTarget.style.color = 'hsl(var(--muted))')}
             >
               {crumb.label}
             </Link>
-            {i < arr.length - 1 && <span>/</span>}
+            {i < arr.length - 1 && (
+              <span style={{ color: 'hsl(var(--border))' }}>/</span>
+            )}
           </span>
         ))}
-        <span>/</span>
+        <span style={{ color: 'hsl(var(--border))' }}>/</span>
         <span
           className="truncate max-w-[200px]"
           style={{ color: 'hsl(var(--foreground))' }}
@@ -155,7 +168,7 @@ export function ProductDetail({ id }: Props) {
         </span>
       </nav>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 xl:gap-16">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 xl:gap-20">
 
         {/* ══════════════════════════════════════════════════
             LEFT — Images
@@ -164,9 +177,13 @@ export function ProductDetail({ id }: Props) {
 
           {/* Main image */}
           <div
-            className="relative aspect-[4/5] rounded-[var(--radius-2xl)] overflow-hidden
-                       cursor-zoom-in select-none shadow-[var(--shadow-card)]"
-            style={{ background: 'hsl(var(--surface))' }}
+            className="relative aspect-[4/5] overflow-hidden
+                       cursor-zoom-in select-none"
+            style={{
+              background:   'hsl(var(--surface))',
+              borderRadius: 'var(--radius-2xl)',
+              boxShadow:    'var(--shadow-card)',
+            }}
             onMouseMove={handleMouseMove}
             onMouseEnter={() => setIsZoomed(true)}
             onMouseLeave={() => setIsZoomed(false)}
@@ -205,18 +222,84 @@ export function ProductDetail({ id }: Props) {
               </motion.div>
             </AnimatePresence>
 
+            {/* Sold Out — diagonal ribbon (matches ProductCard) */}
+            {isOutOfStock && (
+              <div
+                className="absolute inset-0 z-20 overflow-hidden pointer-events-none"
+                style={{ borderRadius: 'var(--radius-2xl)' }}
+              >
+                <div
+                  className="absolute inset-0"
+                  style={{ background: 'rgba(0,0,0,0.22)' }}
+                />
+                <div
+                  className="absolute flex items-center justify-center"
+                  style={{
+                    top:                 '14%',
+                    right:               '-28%',
+                    width:               '90%',
+                    padding:             '0.45rem 0',
+                    background:          'rgba(12,12,12,0.82)',
+                    backdropFilter:      'blur(8px)',
+                    WebkitBackdropFilter:'blur(8px)',
+                    transform:           'rotate(35deg)',
+                    borderTop:           '0.5px solid rgba(255,255,255,0.12)',
+                    borderBottom:        '0.5px solid rgba(255,255,255,0.12)',
+                  }}
+                >
+                  <span
+                    style={{
+                      color:         'white',
+                      fontSize:      '0.65rem',
+                      fontWeight:    700,
+                      letterSpacing: '0.2em',
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    Sold Out
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Top-left badges */}
+            <div className="absolute top-4 left-4 flex flex-col gap-2 z-10">
+              {product.isFeatured && (
+                <span className="badge badge-red">Featured</span>
+              )}
+              {discount && !isOutOfStock && (
+                <motion.span
+                  initial={{ opacity: 0, scale: 0.8, y: -4 }}
+                  animate={{ opacity: 1, scale: 1,   y: 0  }}
+                  transition={{ duration: 0.3, ease: [0.34, 1.56, 0.64, 1] }}
+                  className="inline-flex items-center font-bold"
+                  style={{
+                    fontSize:      '0.68rem',
+                    padding:       '0.25rem 0.6rem',
+                    borderRadius:  'var(--radius-pill)',
+                    background:    'hsl(var(--accent))',
+                    color:         'white',
+                    boxShadow:     'var(--shadow-red)',
+                    letterSpacing: '0.01em',
+                  }}
+                >
+                  −{discount}%
+                </motion.span>
+              )}
+            </div>
+
             {/* Nav arrows */}
             {product.images?.length > 1 && (
               <>
                 {[
                   {
-                    side: 'left',
+                    side: 'left' as const,
                     icon: <ChevronLeft size={16} />,
                     onClick: () => setSelectedImage((p) =>
                       p === 0 ? product.images.length - 1 : p - 1),
                   },
                   {
-                    side: 'right',
+                    side: 'right' as const,
                     icon: <ChevronRight size={16} />,
                     onClick: () => setSelectedImage((p) =>
                       p === product.images.length - 1 ? 0 : p + 1),
@@ -225,25 +308,23 @@ export function ProductDetail({ id }: Props) {
                   <button
                     key={side}
                     onClick={onClick}
-                    className="btn-glass absolute top-1/2 -translate-y-1/2 w-9 h-9 p-0
-                               flex items-center justify-center rounded-full"
-                    style={{ [side]: '1rem' }}
+                    className="absolute top-1/2 -translate-y-1/2 w-9 h-9 p-0
+                               flex items-center justify-center rounded-full
+                               transition-all duration-[var(--duration-hover)]"
+                    style={{
+                      [side]:             '1rem',
+                      background:         'rgba(255,255,255,0.92)',
+                      backdropFilter:     'blur(12px)',
+                      WebkitBackdropFilter:'blur(12px)',
+                      color:              'hsl(var(--foreground))',
+                      boxShadow:          '0 2px 12px rgba(0,0,0,0.12)',
+                    }}
                   >
                     {icon}
                   </button>
                 ))}
               </>
             )}
-
-            {/* Badges */}
-            <div className="absolute top-4 left-4 flex flex-col gap-2 z-10">
-              {product.isFeatured && (
-                <span className="badge badge-red">Featured</span>
-              )}
-              {isOutOfStock && (
-                <span className="badge badge-muted">Sold Out</span>
-              )}
-            </div>
           </div>
 
           {/* Thumbnails */}
@@ -254,12 +335,17 @@ export function ProductDetail({ id }: Props) {
                   key={i}
                   onClick={() => setSelectedImage(i)}
                   className={cn(
-                    'relative w-16 h-20 rounded-[var(--radius)] overflow-hidden shrink-0',
-                    'border-2 transition-all duration-[var(--duration-hover)]',
-                    i === selectedImage
-                      ? 'border-[hsl(var(--accent))] shadow-[var(--shadow-red)]'
-                      : 'border-transparent opacity-60 hover:opacity-100'
+                    'relative w-16 h-20 shrink-0 overflow-hidden',
+                    'transition-all duration-[var(--duration-hover)]',
                   )}
+                  style={{
+                    borderRadius: 'var(--radius)',
+                    border:       i === selectedImage
+                      ? '2px solid hsl(var(--accent))'
+                      : '2px solid transparent',
+                    opacity:      i === selectedImage ? 1 : 0.55,
+                    boxShadow:    i === selectedImage ? 'var(--shadow-red)' : 'none',
+                  }}
                 >
                   <Image
                     src={img.url}
@@ -277,11 +363,11 @@ export function ProductDetail({ id }: Props) {
         {/* ══════════════════════════════════════════════════
             RIGHT — Info
         ══════════════════════════════════════════════════ */}
-        <div className="lg:sticky lg:top-28 lg:self-start space-y-6">
+        <div className="lg:sticky lg:top-28 lg:self-start space-y-7">
 
-          {/* Brand + action icons */}
-          <div className="flex items-start justify-between">
-            <div>
+          {/* Brand + action row */}
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
               <Link
                 href={`/explore?brand=${product.brand}`}
                 className="eyebrow hover:opacity-70 transition-opacity
@@ -290,62 +376,96 @@ export function ProductDetail({ id }: Props) {
                 {product.brand}
               </Link>
               <h1
-                className="font-display font-bold tracking-[-0.03em] leading-[1.1] mt-1"
-                style={{ fontSize: 'clamp(1.5rem, 3vw, 2rem)' }}
+                className="font-display font-bold tracking-[-0.03em] leading-[1.1] mt-1.5"
+                style={{ fontSize: 'clamp(1.5rem, 3vw, 2.1rem)' }}
               >
                 {product.title}
               </h1>
             </div>
 
-            <div className="flex gap-2 shrink-0 ml-4">
-              {/* Save */}
-              <button
+            {/* Action icons */}
+            <div className="flex gap-1.5 shrink-0">
+              {/* Save / heart */}
+              <motion.button
+                whileTap={{ scale: 0.88 }}
                 onClick={handleSave}
                 disabled={isSaving}
-                className="btn-icon"
-                style={isSaved ? {
-                  background:  'hsl(var(--foreground))',
-                  color:       'hsl(var(--background))',
-                  borderColor: 'hsl(var(--foreground))',
-                } : undefined}
                 aria-label="Save product"
+                className="w-10 h-10 flex items-center justify-center rounded-full
+                           transition-all duration-[var(--duration-hover)]"
+                style={isSaved ? {
+                  background:  'hsl(var(--accent))',
+                  color:       'white',
+                  boxShadow:   'var(--shadow-red)',
+                } : {
+                  background:  'hsl(var(--background-secondary))',
+                  border:      '1px solid hsl(var(--border))',
+                  color:       'hsl(var(--muted))',
+                }}
               >
-                <Heart size={16} className={cn(isSaved && 'fill-current')} />
-              </button>
+                <Heart
+                  size={16}
+                  className={cn(isSaved && 'fill-current')}
+                />
+              </motion.button>
 
               {/* Share */}
-              <button
+              <motion.button
+                whileTap={{ scale: 0.88 }}
                 onClick={handleShare}
-                className="btn-icon"
                 aria-label="Share"
+                className="w-10 h-10 flex items-center justify-center rounded-full
+                           transition-all duration-[var(--duration-hover)]"
+                style={{
+                  background: 'hsl(var(--background-secondary))',
+                  border:     '1px solid hsl(var(--border))',
+                  color:      'hsl(var(--muted))',
+                }}
               >
-                <Share2 size={16} />
-              </button>
+                <ArrowUpRight size={16} />
+              </motion.button>
 
               {/* Collection picker */}
               {isSignedIn && (
                 <div className="relative">
-                  <button
+                  <motion.button
+                    whileTap={{ scale: 0.88 }}
                     onClick={() => setShowCollectionPicker(!showCollectionPicker)}
-                    className="btn-icon"
                     aria-label="Add to collection"
+                    className="w-10 h-10 flex items-center justify-center rounded-full
+                               transition-all duration-[var(--duration-hover)]"
+                    style={{
+                      background:  showCollectionPicker
+                        ? 'hsl(var(--foreground))'
+                        : 'hsl(var(--background-secondary))',
+                      border:      '1px solid hsl(var(--border))',
+                      color:       showCollectionPicker
+                        ? 'hsl(var(--background))'
+                        : 'hsl(var(--muted))',
+                    }}
                   >
-                    <Bookmark size={16} />
-                  </button>
+                    <BookmarkPlus size={16} />
+                  </motion.button>
 
                   <AnimatePresence>
                     {showCollectionPicker && (
                       <motion.div
                         initial={{ opacity: 0, y: 8, scale: 0.96 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{   opacity: 0, y: 8, scale: 0.96 }}
+                        animate={{ opacity: 1, y: 0, scale: 1    }}
+                        exit={{   opacity: 0, y: 8, scale: 0.96  }}
                         transition={{ duration: 0.15, ease: [0.22, 1, 0.36, 1] }}
-                        className="glass-surface absolute right-0 top-12 z-20 w-56
-                                   rounded-[var(--radius-lg)] overflow-hidden"
+                        className="absolute right-0 top-12 z-30 w-56 overflow-hidden"
+                        style={{
+                          background:   'hsl(var(--surface-elevated))',
+                          border:       '1px solid hsl(var(--border))',
+                          borderRadius: 'var(--radius-lg)',
+                          boxShadow:    'var(--shadow-float)',
+                        }}
                       >
-                        <div className="p-3">
+                        <div className="p-2">
                           <p
-                            className="text-xs font-semibold px-2 pb-2"
+                            className="text-[10px] font-semibold uppercase tracking-widest
+                                       px-3 py-2"
                             style={{ color: 'hsl(var(--muted))' }}
                           >
                             Save to collection
@@ -353,13 +473,11 @@ export function ProductDetail({ id }: Props) {
                           {collections.length === 0 ? (
                             <Link
                               href="/collections/new"
-                              className="block px-3 py-2.5 text-sm rounded-[var(--radius-sm)]
-                                         transition-colors duration-[var(--duration-hover)]"
+                              className="flex items-center gap-2 px-3 py-2.5 text-sm
+                                         rounded-[var(--radius-sm)]
+                                         hover:bg-[hsl(var(--accent-muted))]
+                                         transition-colors duration-[var(--duration-fast)]"
                               style={{ color: 'hsl(var(--foreground))' }}
-                              onMouseEnter={(e) =>
-                                (e.currentTarget.style.background = 'hsl(var(--accent-muted))')}
-                              onMouseLeave={(e) =>
-                                (e.currentTarget.style.background = 'transparent')}
                             >
                               + Create collection
                             </Link>
@@ -368,14 +486,11 @@ export function ProductDetail({ id }: Props) {
                               <button
                                 key={col._id}
                                 onClick={() => handleAddToCollection(col._id)}
-                                className="w-full text-left px-3 py-2.5 text-sm
-                                           rounded-[var(--radius-sm)] truncate
-                                           transition-colors duration-[var(--duration-hover)]"
+                                className="w-full text-left px-3 py-2.5 text-sm truncate
+                                           rounded-[var(--radius-sm)]
+                                           hover:bg-[hsl(var(--accent-muted))]
+                                           transition-colors duration-[var(--duration-fast)]"
                                 style={{ color: 'hsl(var(--foreground))' }}
-                                onMouseEnter={(e) =>
-                                  (e.currentTarget.style.background = 'hsl(var(--accent-muted))')}
-                                onMouseLeave={(e) =>
-                                  (e.currentTarget.style.background = 'transparent')}
                               >
                                 {col.title}
                               </button>
@@ -392,12 +507,12 @@ export function ProductDetail({ id }: Props) {
 
           {/* Rating */}
           {product.rating > 0 && (
-            <div className="flex items-center gap-2">
-              <div className="flex">
+            <div className="flex items-center gap-2.5">
+              <div className="flex gap-0.5">
                 {Array.from({ length: 5 }).map((_, i) => (
                   <Star
                     key={i}
-                    size={14}
+                    size={13}
                     style={{
                       color: i < Math.round(product.rating)
                         ? 'hsl(var(--accent))'
@@ -408,61 +523,114 @@ export function ProductDetail({ id }: Props) {
                 ))}
               </div>
               <span
-                className="text-sm"
+                className="text-xs"
                 style={{ color: 'hsl(var(--muted))' }}
               >
-                {product.rating.toFixed(1)} ({product.reviewCount} reviews)
+                {product.rating.toFixed(1)}
               </span>
+              <span
+                className="text-xs"
+                style={{ color: 'hsl(var(--border))' }}
+              >
+                ·
+              </span>
+              <span
+                className="text-xs underline underline-offset-2 cursor-pointer
+                           hover:text-[hsl(var(--foreground))] transition-colors"
+                style={{ color: 'hsl(var(--muted))' }}
+              >
+                {product.reviewCount} reviews
+              </span>
+              {product.saves > 0 && (
+                <>
+                  <span style={{ color: 'hsl(var(--border))' }}>·</span>
+                  <span
+                    className="flex items-center gap-1 text-xs"
+                    style={{ color: 'hsl(var(--muted))' }}
+                  >
+                    <TrendingUp size={11} />
+                    {product.saves} saves
+                  </span>
+                </>
+              )}
             </div>
           )}
 
-          {/* Price */}
+          {/* ── Price ── */}
           <div className="flex items-baseline gap-3">
-            <span
-              className="font-display font-bold tracking-[-0.03em]"
-              style={{ fontSize: 'clamp(1.5rem, 3vw, 2rem)' }}
-            >
-              {formatPrice(product.price, 'KES')}
-            </span>
-            {product.comparePrice > product.price && (
+            {discount ? (
               <>
-                <span className="price-original text-lg">
+                <span
+                  className="font-display font-bold tracking-[-0.03em]"
+                  style={{
+                    fontSize: 'clamp(1.5rem, 3vw, 2.1rem)',
+                    color:    'hsl(var(--accent))',
+                  }}
+                >
+                  {formatPrice(product.price, 'KES')}
+                </span>
+                <span
+                  style={{
+                    fontSize:            '1.05rem',
+                    fontWeight:          400,
+                    color:               'hsl(var(--muted))',
+                    textDecoration:      'line-through',
+                    textDecorationColor: 'hsl(var(--muted) / 0.5)',
+                    letterSpacing:       '-0.01em',
+                  }}
+                >
                   {formatPrice(product.comparePrice, 'KES')}
                 </span>
-                <span className="badge badge-red">
-                  Save {Math.round(
-                    ((product.comparePrice - product.price) / product.comparePrice) * 100
-                  )}%
-                </span>
+                <motion.span
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1    }}
+                  transition={{ delay: 0.15, duration: 0.3, ease: [0.34, 1.56, 0.64, 1] }}
+                  className="inline-flex items-center font-bold"
+                  style={{
+                    fontSize:      '0.68rem',
+                    padding:       '0.22rem 0.55rem',
+                    borderRadius:  'var(--radius-pill)',
+                    background:    'hsl(var(--accent))',
+                    color:         'white',
+                    boxShadow:     'var(--shadow-red)',
+                    letterSpacing: '0.01em',
+                  }}
+                >
+                  Save {discount}%
+                </motion.span>
               </>
+            ) : (
+              <span
+                className="font-display font-bold tracking-[-0.03em]"
+                style={{ fontSize: 'clamp(1.5rem, 3vw, 2.1rem)' }}
+              >
+                {formatPrice(product.price, 'KES')}
+              </span>
             )}
           </div>
 
           {/* Description */}
           <p
             className="text-sm leading-relaxed"
-            style={{ color: 'hsl(var(--muted))', fontWeight: 300 }}
+            style={{ color: 'hsl(var(--muted))', fontWeight: 300, lineHeight: 1.75 }}
           >
             {product.description}
           </p>
 
-          {/* Size selector */}
+          {/* ── Size selector ── */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <span
-                className="text-sm font-medium"
+                className="text-xs font-semibold uppercase tracking-widest"
                 style={{ color: 'hsl(var(--foreground))' }}
               >
                 Select Size
               </span>
               <button
                 className="text-xs underline underline-offset-2
+                           hover:text-[hsl(var(--foreground))]
                            transition-colors duration-[var(--duration-hover)]"
                 style={{ color: 'hsl(var(--muted))' }}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.color = 'hsl(var(--foreground))')}
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.color = 'hsl(var(--muted))')}
               >
                 Size Guide
               </button>
@@ -478,29 +646,33 @@ export function ProductDetail({ id }: Props) {
                     onClick={() => inStock && setSelectedSize(variant.size)}
                     disabled={!inStock}
                     className={cn(
-                      'relative h-11 min-w-[3rem] px-4 rounded-[var(--radius-pill)]',
-                      'border text-sm font-medium',
+                      'relative h-11 min-w-[3rem] px-4',
+                      'text-sm font-medium',
                       'transition-all duration-[var(--duration-hover)]',
-                      isSelected
-                        ? 'border-[hsl(var(--accent))] shadow-[var(--shadow-red)]'
-                        : inStock
-                          ? 'border-[hsl(var(--border))] hover:border-[hsl(var(--foreground))]'
-                          : 'border-[hsl(var(--border))] opacity-40 cursor-not-allowed line-through',
+                      !inStock && 'cursor-not-allowed',
                     )}
-                    style={
-                      isSelected
-                        ? {
-                            background: 'hsl(var(--accent))',
-                            color:      'hsl(var(--accent-foreground))',
-                          }
-                        : {
-                            color: inStock
-                              ? 'hsl(var(--foreground))'
-                              : 'hsl(var(--muted))',
-                          }
-                    }
+                    style={{
+                      borderRadius: 'var(--radius-pill)',
+                      border:       isSelected
+                        ? '1.5px solid hsl(var(--accent))'
+                        : inStock
+                          ? '1.5px solid hsl(var(--border))'
+                          : '1.5px solid hsl(var(--border-subtle))',
+                      background: isSelected
+                        ? 'hsl(var(--accent))'
+                        : 'transparent',
+                      color: isSelected
+                        ? 'white'
+                        : inStock
+                          ? 'hsl(var(--foreground))'
+                          : 'hsl(var(--muted))',
+                      opacity:         !inStock ? 0.4 : 1,
+                      textDecoration:  !inStock ? 'line-through' : 'none',
+                      boxShadow:       isSelected ? 'var(--shadow-red)' : 'none',
+                    }}
                   >
                     {variant.size}
+                    {/* Low stock indicator */}
                     {inStock && variant.inventory <= 3 && (
                       <span
                         className="badge badge-red absolute -top-1.5 -right-1.5"
@@ -517,18 +689,27 @@ export function ProductDetail({ id }: Props) {
             {selectedVariant && (
               <p
                 className="text-xs"
-                style={{ color: 'hsl(var(--muted))' }}
+                style={{
+                  color: selectedVariant.inventory > 0
+                    ? selectedVariant.inventory <= 5
+                      ? 'hsl(var(--warning))'
+                      : 'hsl(var(--success))'
+                    : 'hsl(var(--destructive))',
+                }}
               >
                 {selectedVariant.inventory > 0
-                  ? `${selectedVariant.inventory} in stock`
+                  ? selectedVariant.inventory <= 5
+                    ? `Only ${selectedVariant.inventory} left — order soon`
+                    : `${selectedVariant.inventory} in stock`
                   : 'Out of stock'}
               </p>
             )}
           </div>
 
-          {/* Add to Cart */}
-          <div className="flex gap-3 pt-2">
-            <button
+          {/* ── Add to Cart ── */}
+          <div className="flex gap-3 pt-1">
+            <motion.button
+              whileTap={{ scale: isOutOfStock ? 1 : 0.97 }}
               onClick={handleAddToCart}
               disabled={isOutOfStock || isAddingToCart}
               className={cn(
@@ -536,42 +717,53 @@ export function ProductDetail({ id }: Props) {
                 (isOutOfStock || isAddingToCart) && 'opacity-50 cursor-not-allowed'
               )}
             >
-              <ShoppingBag size={18} />
+              <ShoppingBag size={17} />
               {isAddingToCart
                 ? 'Adding…'
                 : isOutOfStock
                   ? 'Out of Stock'
                   : 'Add to Cart'}
-            </button>
+            </motion.button>
           </div>
 
-          {/* Trust badges */}
-          <div className="grid grid-cols-3 gap-3 pt-2">
+          {/* ── Trust badges ── */}
+          <div className="grid grid-cols-3 gap-2.5">
             {[
-              { icon: '🔒', label: 'Secure Checkout', sub: 'M-Pesa protected' },
-              { icon: '↩️', label: 'Free Returns',    sub: 'Within 30 days'   },
-              { icon: '🚚', label: 'Fast Delivery',   sub: 'Nairobi same day' },
+              {
+                icon:  <Package size={16} />,
+                label: 'Secure Checkout',
+                sub:   'M-Pesa protected',
+              },
+              {
+                icon:  <RotateCcw size={16} />,
+                label: 'Free Returns',
+                sub:   'Within 30 days',
+              },
+              {
+                icon:  <Zap size={16} />,
+                label: 'Fast Delivery',
+                sub:   'Nairobi same day',
+              },
             ].map((item) => (
               <div
                 key={item.label}
-                className="flex flex-col items-center text-center p-3
-                           rounded-[var(--radius)] gap-1
-                           border shadow-[var(--shadow-card)]"
+                className="flex flex-col items-center text-center p-3 gap-2"
                 style={{
-                  background:  'hsl(var(--surface))',
-                  borderColor: 'hsl(var(--border))',
+                  background:   'hsl(var(--surface))',
+                  borderRadius: 'var(--radius)',
+                  border:       '1px solid hsl(var(--border))',
                 }}
               >
-                <span className="text-lg">{item.icon}</span>
+                <span style={{ color: 'hsl(var(--accent))' }}>{item.icon}</span>
                 <p
-                  className="text-xs font-medium leading-tight"
+                  className="text-[11px] font-semibold leading-tight"
                   style={{ color: 'hsl(var(--foreground))' }}
                 >
                   {item.label}
                 </p>
                 <p
-                  className="text-[10px]"
-                  style={{ color: 'hsl(var(--muted))' }}
+                  className="text-[10px] leading-snug"
+                  style={{ color: 'hsl(var(--muted))', fontWeight: 300 }}
                 >
                   {item.sub}
                 </p>
@@ -581,7 +773,7 @@ export function ProductDetail({ id }: Props) {
 
           {/* Tags */}
           {product.tags?.length > 0 && (
-            <div className="flex flex-wrap gap-2 pt-2">
+            <div className="flex flex-wrap gap-2">
               {product.tags.map((tag: string) => (
                 <Link
                   key={tag}
@@ -594,14 +786,14 @@ export function ProductDetail({ id }: Props) {
             </div>
           )}
 
-          {/* Seller */}
+          {/* Seller card */}
           {product.seller && (
             <div
-              className="flex items-center gap-3 p-4 rounded-[var(--radius-lg)]
-                         border shadow-[var(--shadow-card)]"
+              className="flex items-center gap-3 p-4"
               style={{
-                background:  'hsl(var(--surface))',
-                borderColor: 'hsl(var(--border))',
+                background:   'hsl(var(--surface))',
+                borderRadius: 'var(--radius-lg)',
+                border:       '1px solid hsl(var(--border))',
               }}
             >
               <Avatar
@@ -611,30 +803,37 @@ export function ProductDetail({ id }: Props) {
               />
               <div className="flex-1 min-w-0">
                 <p
-                  className="text-xs"
+                  className="text-[10px] uppercase tracking-widest font-semibold"
                   style={{ color: 'hsl(var(--muted))' }}
                 >
                   Sold by
                 </p>
                 <Link
                   href={`/profile/${product.seller.username}`}
-                  className="text-sm font-medium transition-opacity
-                             duration-[var(--duration-hover)] hover:opacity-70"
+                  className="text-sm font-semibold flex items-center gap-1 mt-0.5
+                             hover:text-[hsl(var(--accent))]
+                             transition-colors duration-[var(--duration-hover)]"
                   style={{ color: 'hsl(var(--foreground))' }}
                 >
                   {product.seller.displayName}
+                  <ArrowUpRight size={12} style={{ opacity: 0.5 }} />
                 </Link>
               </div>
               {product.saves > 0 && (
-                <div className="text-right">
+                <div
+                  className="text-right pl-3"
+                  style={{
+                    borderLeft: '1px solid hsl(var(--border))',
+                  }}
+                >
                   <p
-                    className="text-sm font-semibold"
+                    className="text-base font-bold tracking-tight"
                     style={{ color: 'hsl(var(--foreground))' }}
                   >
                     {product.saves}
                   </p>
                   <p
-                    className="text-[10px]"
+                    className="text-[10px] uppercase tracking-wide"
                     style={{ color: 'hsl(var(--muted))' }}
                   >
                     saves

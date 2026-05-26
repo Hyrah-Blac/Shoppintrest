@@ -147,17 +147,67 @@ export function ProductCard({ product, priority = false, className }: ProductCar
               <span className="badge badge-red">Featured</span>
             )}
             {discount && !product.isFeatured && (
-              <span
-                className="badge"
-                style={{ background: 'hsl(var(--destructive))', color: 'white' }}
+              <motion.span
+                initial={{ opacity: 0, scale: 0.8, y: -4 }}
+                animate={{ opacity: 1, scale: 1,   y: 0  }}
+                transition={{ duration: 0.3, ease: [0.34, 1.56, 0.64, 1] }}
+                className="inline-flex items-center font-bold"
+                style={{
+                  fontSize:      '0.68rem',
+                  padding:       '0.22rem 0.55rem',
+                  borderRadius:  'var(--radius-pill)',
+                  background:    'hsl(var(--accent))',
+                  color:         'white',
+                  boxShadow:     'var(--shadow-red)',
+                  letterSpacing: '0.01em',
+                }}
               >
                 −{discount}%
-              </span>
-            )}
-            {product.totalInventory === 0 && (
-              <span className="badge badge-muted">Sold Out</span>
+              </motion.span>
             )}
           </div>
+
+          {/* ── Sold Out diagonal ribbon ── */}
+          {product.totalInventory === 0 && (
+            <div
+              className="absolute inset-0 z-20 overflow-hidden pointer-events-none"
+              style={{ borderRadius: 'var(--radius-xl)' }}
+            >
+              {/* Subtle image tint */}
+              <div
+                className="absolute inset-0"
+                style={{ background: 'rgba(0,0,0,0.22)' }}
+              />
+              {/* Ribbon band */}
+              <div
+                className="absolute flex items-center justify-center"
+                style={{
+                  top:              '16%',
+                  right:            '-30%',
+                  width:            '95%',
+                  padding:          '0.38rem 0',
+                  background:       'rgba(12,12,12,0.80)',
+                  backdropFilter:   'blur(8px)',
+                  WebkitBackdropFilter: 'blur(8px)',
+                  transform:        'rotate(35deg)',
+                  borderTop:        '0.5px solid rgba(255,255,255,0.12)',
+                  borderBottom:     '0.5px solid rgba(255,255,255,0.12)',
+                }}
+              >
+                <span
+                  style={{
+                    color:         'white',
+                    fontSize:      '0.58rem',
+                    fontWeight:    700,
+                    letterSpacing: '0.2em',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  Sold Out
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* ── pin-actions — desktop hover only, clean on mobile ── */}
           <div className="pin-actions z-20 hidden md:flex">
@@ -228,18 +278,32 @@ export function ProductCard({ product, priority = false, className }: ProductCar
             {product.title}
           </p>
 
-          <div className="flex items-center gap-2 pt-0.5">
-            <span className="price">
-              {formatPrice(product.price, 'KES')}
-            </span>
-            {product.comparePrice && product.comparePrice > product.price && (
-              <span className="price-original">
-                {formatPrice(product.comparePrice, 'KES')}
-              </span>
-            )}
-            {discount && (
-              <span className="price-sale text-xs font-semibold">
-                −{discount}%
+          <div className="flex items-center gap-2 pt-1">
+            {/* Sale: accent red price + muted strikethrough */}
+            {discount ? (
+              <>
+                <span
+                  className="price"
+                  style={{ color: 'hsl(var(--accent))', fontWeight: 700 }}
+                >
+                  {formatPrice(product.price, 'KES')}
+                </span>
+                <span
+                  style={{
+                    fontSize:       '0.78rem',
+                    fontWeight:     400,
+                    color:          'hsl(var(--muted))',
+                    textDecoration: 'line-through',
+                    textDecorationColor: 'hsl(var(--muted) / 0.6)',
+                    letterSpacing:  '-0.01em',
+                  }}
+                >
+                  {formatPrice(product.comparePrice, 'KES')}
+                </span>
+              </>
+            ) : (
+              <span className="price">
+                {formatPrice(product.price, 'KES')}
               </span>
             )}
           </div>
