@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Heart, ShoppingBag, Eye } from 'lucide-react'
 import { useAuth } from '@clerk/nextjs'
@@ -18,6 +19,7 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product, priority = false, className }: ProductCardProps) {
+  const router            = useRouter()
   const { isSignedIn }    = useAuth()
   const isSaved           = useUserStore((s) => s.isSaved(product._id))
   const toggleSaveProduct = useUserStore((s) => s.toggleSaveProduct)
@@ -56,6 +58,11 @@ export function ProductCard({ product, priority = false, className }: ProductCar
     } finally { setIsAdding(false) }
   }
 
+  // Mobile tap → navigate to product detail
+  const handleMobileTap = () => {
+    router.push(`/product/${product._id}`)
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -67,7 +74,7 @@ export function ProductCard({ product, priority = false, className }: ProductCar
     >
       <Link href={`/product/${product._id}`}>
 
-        {/* ── Image Container — card-pin blueprint component ── */}
+        {/* ── Image Container ── */}
         <div
           className={cn(
             'card-pin relative aspect-[3/4]',
@@ -98,8 +105,7 @@ export function ProductCard({ product, priority = false, className }: ProductCar
                 />
               ) : (
                 <div
-                  className="w-full h-full flex items-center justify-center
-                              text-xs tracking-wide"
+                  className="w-full h-full flex items-center justify-center text-xs tracking-wide"
                   style={{ color: 'hsl(var(--muted))' }}
                 >
                   No image
@@ -111,9 +117,9 @@ export function ProductCard({ product, priority = false, className }: ProductCar
           {/* Pinterest-style gradient overlay */}
           <div className="pin-overlay" />
 
-          {/* Hover zones for multi-image swap */}
+          {/* Hover zones for multi-image swap — desktop only */}
           {hasMany && isHovered && (
-            <div className="absolute top-0 left-0 right-0 flex h-full z-10">
+            <div className="hidden md:flex absolute top-0 left-0 right-0 h-full z-10">
               {product.images.map((_: any, i: number) => (
                 <div
                   key={i}
@@ -126,7 +132,7 @@ export function ProductCard({ product, priority = false, className }: ProductCar
 
           {/* Image progress dots */}
           {hasMany && isHovered && (
-            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1 z-20">
+            <div className="hidden md:flex absolute bottom-3 left-1/2 -translate-x-1/2 gap-1 z-20">
               {product.images.slice(0, 5).map((_: any, i: number) => (
                 <motion.div
                   key={i}
@@ -148,61 +154,111 @@ export function ProductCard({ product, priority = false, className }: ProductCar
             {discount && !product.isFeatured && (
               <span
                 className="badge"
-                style={{
-                  background: 'hsl(var(--destructive))',
-                  color:      'white',
-                }}
+                style={{ background: 'hsl(var(--destructive))', color: 'white' }}
               >
                 −{discount}%
               </span>
             )}
             {product.totalInventory === 0 && (
-              <span
-                className="badge badge-muted"
-              >
-                Sold Out
-              </span>
+              <span className="badge badge-muted">Sold Out</span>
             )}
           </div>
 
-          {/* ── pin-actions (top-right) — blueprint overlay component ── */}
-          <div className="pin-actions z-20">
-            {/* Save */}
+          {/* ── pin-actions (top-right) ──
+               Desktop: shown on hover via pin-actions CSS class
+               Mobile:  always visible with dark backdrop so icons
+                        are legible over any image colour including white ── */}
+          <div
+            className={cn(
+              'absolute top-2.5 right-2.5 z-20 flex flex-col gap-1.5',
+              // Desktop — use the existing hover-driven CSS
+              'md:pin-actions',
+              // Mobile — always visible
+              'flex md:hidden',
+            )}
+          >
+            {/* Save / heart */}
             <button
               onClick={handleSave}
               disabled={isSaving}
               aria-label="Save product"
               className={cn(
-                'btn-glass w-9 h-9 p-0 flex items-center justify-center rounded-full',
-                isSaved && 'text-[hsl(var(--accent))]'
-              )}
-              style={
+                // Dark semi-transparent pill so icon is always visible
+                // on any image colour (white, pale, vivid)
+                'w-8 h-8 p-0 flex items-center justify-center rounded-full',
+                'bg-black/40 hover:bg-black/60 backdrop-blur-sm',
+                'transition-colors duration-[var(--duration-hover)]',
                 isSaved
-                  ? { background: 'rgba(255,255,255,1)' }
-                  : undefined
-              }
+                  ? 'text-[hsl(var(--accent))]'
+                  : 'text-white',
+              )}
+            >
+              <Heart size={13} className={cn(isSaved && 'fill-current')} />
+            </button>
+
+            {/* Quick view — opens product detail */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                router.push(`/product/${product._id}`)
+              }}
+              aria-label="View product"
+              className={cn(
+                'w-8 h-8 p-0 flex items-center justify-center rounded-full',
+                'bg-black/40 hover:bg-black/60 backdrop-blur-sm',
+                'transition-colors duration-[var(--duration-hover)]',
+                'text-white',
+              )}
+            >
+              <Eye size={13} />
+            </button>
+          </div>
+
+          {/* Desktop-only pin-actions (original hover behaviour, same dark style) */}
+          <div className="pin-actions z-20 hidden md:flex">
+            <button
+              onClick={handleSave}
+              disabled={isSaving}
+              aria-label="Save product"
+              className={cn(
+                'w-9 h-9 p-0 flex items-center justify-center rounded-full',
+                'bg-black/40 hover:bg-black/60 backdrop-blur-sm',
+                'transition-colors duration-[var(--duration-hover)]',
+                isSaved
+                  ? 'text-[hsl(var(--accent))]'
+                  : 'text-white',
+              )}
             >
               <Heart size={14} className={cn(isSaved && 'fill-current')} />
             </button>
 
-           {/* Quick view */}
-<button
-  type="button"
-  onClick={(e) => {
-    e.preventDefault()
-    e.stopPropagation()
-    window.location.href = `/product/${product._id}`
-  }}
-  aria-label="View product"
-  className="btn-glass w-9 h-9 p-0 flex items-center justify-center rounded-full"
->
-  <Eye size={14} />
-</button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                router.push(`/product/${product._id}`)
+              }}
+              aria-label="View product"
+              className={cn(
+                'w-9 h-9 p-0 flex items-center justify-center rounded-full',
+                'bg-black/40 hover:bg-black/60 backdrop-blur-sm',
+                'transition-colors duration-[var(--duration-hover)]',
+                'text-white',
+              )}
+            >
+              <Eye size={14} />
+            </button>
           </div>
 
-          {/* ── pin-bottom-action — Quick Add ── */}
+          {/* ── Quick Add — desktop only, shown on hover ──
+               Hidden on mobile so accidental taps are impossible.
+               The whole card is already a <Link> so mobile tap
+               goes straight to the product detail page. ── */}
           {product.totalInventory > 0 && (
-            <div className="pin-bottom-action z-20">
+            <div className="pin-bottom-action z-20 hidden md:flex">
               <button
                 onClick={handleQuickAdd}
                 disabled={isAdding}
@@ -218,12 +274,10 @@ export function ProductCard({ product, priority = false, className }: ProductCar
         {/* ── Product Info ── */}
         <div className="mt-3.5 space-y-1 px-0.5">
 
-          {/* Brand — eyebrow style */}
           {product.brand && (
             <p className="eyebrow">{product.brand}</p>
           )}
 
-          {/* Title */}
           <p
             className="text-sm font-medium line-clamp-2 leading-snug"
             style={{ color: 'hsl(var(--foreground))' }}
@@ -231,7 +285,6 @@ export function ProductCard({ product, priority = false, className }: ProductCar
             {product.title}
           </p>
 
-          {/* Price row */}
           <div className="flex items-center gap-2 pt-0.5">
             <span className="price">
               {formatPrice(product.price, 'KES')}
@@ -248,7 +301,6 @@ export function ProductCard({ product, priority = false, className }: ProductCar
             )}
           </div>
 
-          {/* Rating */}
           {product.rating > 0 && (
             <div className="flex items-center gap-1.5 pt-0.5">
               <div className="flex gap-px">

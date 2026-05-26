@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { motion } from 'framer-motion'
-import { SlidersHorizontal, X } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { SlidersHorizontal, X, ChevronDown } from 'lucide-react'
 import { apiClient } from '@/lib/api'
 import { MasonryGrid } from '@/components/product/MasonryGrid'
 import { cn } from '@/lib/utils'
@@ -21,13 +21,97 @@ const CATEGORIES = [
 ]
 
 const SORT_OPTIONS = [
-  { label: 'Newest',       value: 'newest'     },
-  { label: 'Trending',     value: 'popular'    },
-  { label: 'Price: Low',   value: 'price_asc'  },
-  { label: 'Price: High',  value: 'price_desc' },
-  { label: 'Top Rated',    value: 'rating'     },
+  { label: 'Newest',      value: 'newest'     },
+  { label: 'Trending',    value: 'popular'    },
+  { label: 'Price: Low',  value: 'price_asc'  },
+  { label: 'Price: High', value: 'price_desc' },
+  { label: 'Top Rated',   value: 'rating'     },
 ]
 
+// ─── Custom sort dropdown — matches pill style, works in dark mode ─────────
+function SortDropdown({
+  value,
+  onChange,
+}: {
+  value: string
+  onChange: (v: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref             = useRef<HTMLDivElement>(null)
+  const current         = SORT_OPTIONS.find((o) => o.value === value)
+
+  // Close on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className={cn(
+          'pill gap-1.5 h-9 pr-2.5',
+          open && 'border-[hsl(var(--foreground))] bg-[hsl(var(--foreground))] text-[hsl(var(--background))]'
+        )}
+      >
+        {current?.label ?? 'Sort'}
+        <ChevronDown
+          size={12}
+          className={cn(
+            'transition-transform duration-200',
+            open && 'rotate-180'
+          )}
+        />
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: 6, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{   opacity: 0, y: 4, scale: 0.97 }}
+            transition={{ duration: 0.15, ease: [0.22, 1, 0.36, 1] }}
+            className="absolute right-0 top-[calc(100%+6px)] z-50 min-w-[160px]
+                       rounded-[var(--radius-lg)] overflow-hidden"
+            style={{
+              background:  'hsl(var(--surface-elevated))',
+              border:      '1px solid hsl(var(--border))',
+              boxShadow:   'var(--shadow-float)',
+            }}
+          >
+            {SORT_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => { onChange(opt.value); setOpen(false) }}
+                className={cn(
+                  'w-full text-left px-4 py-2.5 text-sm',
+                  'transition-colors duration-[var(--duration-fast)]',
+                  'hover:bg-[hsl(var(--background-secondary))]',
+                  opt.value === value
+                    ? 'font-semibold text-[hsl(var(--accent))]'
+                    : 'font-normal text-[hsl(var(--foreground))]'
+                )}
+              >
+                {opt.value === value && (
+                  <span className="mr-2 text-[hsl(var(--accent))]">✦</span>
+                )}
+                {opt.label}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────
 export default function ExplorePage() {
   const router       = useRouter()
   const searchParams = useSearchParams()
@@ -91,7 +175,7 @@ export default function ExplorePage() {
     await fetchProducts(next, true)
   }
 
-  /* Infinite scroll */
+  // Infinite scroll
   useEffect(() => {
     const handleScroll = () => {
       if (
@@ -103,6 +187,8 @@ export default function ExplorePage() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [hasMore, isFetchingMore, isLoading, page])
 
+  const activeFilterCount = [category, featured].filter(Boolean).length
+
   return (
     <div className="min-h-screen">
 
@@ -110,23 +196,27 @@ export default function ExplorePage() {
           Sticky filter bar
       ══════════════════════════════════════════════════ */}
       <div
-        className="border-b sticky top-[72px] z-30"
+        className="sticky top-[72px] z-30 border-b"
         style={{
-          background:  'hsl(var(--background))',
+          background:  'hsl(var(--background) / 0.92)',
           borderColor: 'hsl(var(--border))',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
         }}
       >
-        <div className="container-wide py-4">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+        <div className="container-wide py-3">
 
-            {/* Category pills */}
-            <div className="flex gap-2 overflow-x-auto scrollbar-hide flex-1">
+          {/* ── Row 1: categories + desktop sort/filter ── */}
+          <div className="flex items-center gap-3">
+
+            {/* Category pills — scrollable */}
+            <div className="flex gap-2 overflow-x-auto scrollbar-hide flex-1 pb-0.5">
               {CATEGORIES.map((cat) => (
                 <button
                   key={cat.value}
                   onClick={() => setParam('category', cat.value)}
                   className={cn(
-                    'pill whitespace-nowrap shrink-0',
+                    'pill whitespace-nowrap shrink-0 text-xs h-8',
                     category === cat.value && 'active'
                   )}
                 >
@@ -135,79 +225,95 @@ export default function ExplorePage() {
               ))}
             </div>
 
-            {/* Sort + Filters */}
-            <div className="flex items-center gap-2 shrink-0">
-              {/* Sort select — blueprint styled */}
-              <select
+            {/* Sort + Filters — DESKTOP ONLY */}
+            <div className="hidden md:flex items-center gap-2 shrink-0">
+              <SortDropdown
                 value={sort}
-                onChange={(e) => setParam('sort', e.target.value)}
-                className="h-9 px-3 text-sm outline-none cursor-pointer
-                           transition-[border-color,box-shadow]
-                           duration-[var(--duration-hover)]"
-                style={{
-                  borderRadius: 'var(--radius-pill)',
-                  border:       '1.5px solid hsl(var(--border))',
-                  background:   'hsl(var(--background))',
-                  color:        'hsl(var(--foreground))',
-                  fontFamily:   "'DM Sans', sans-serif",
-                }}
-                onFocus={(e) => {
-                  e.currentTarget.style.borderColor = 'hsl(var(--accent) / 0.6)'
-                  e.currentTarget.style.boxShadow   = '0 0 0 3px hsl(var(--accent) / 0.12)'
-                }}
-                onBlur={(e) => {
-                  e.currentTarget.style.borderColor = 'hsl(var(--border))'
-                  e.currentTarget.style.boxShadow   = 'none'
-                }}
-              >
-                {SORT_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => setParam('sort', v)}
+              />
 
               <button
                 onClick={() => {}}
-                className="btn-ghost gap-2 h-9 px-3 text-sm"
+                className={cn(
+                  'pill gap-2 h-9',
+                  activeFilterCount > 0 && 'active'
+                )}
               >
-                <SlidersHorizontal size={14} />
+                <SlidersHorizontal size={13} />
                 Filters
+                {activeFilterCount > 0 && (
+                  <span
+                    className="badge badge-red ml-0.5"
+                    style={{ fontSize: '0.6rem', padding: '0.1rem 0.4rem' }}
+                  >
+                    {activeFilterCount}
+                  </span>
+                )}
               </button>
             </div>
           </div>
 
-          {/* Active filter chips */}
-          {(category || featured) && (
-            <div className="flex items-center gap-2 mt-3">
-              <span
-                className="text-xs"
-                style={{ color: 'hsl(var(--muted))' }}
+          {/* ── Active filter chips ── */}
+          <AnimatePresence>
+            {(category || featured) && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{   opacity: 0, height: 0 }}
+                transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                className="overflow-hidden"
               >
-                Active:
-              </span>
-              {category && (
-                <button
-                  onClick={() => setParam('category', '')}
-                  className="badge badge-red flex items-center gap-1 cursor-pointer
-                             hover:opacity-80 transition-opacity"
-                >
-                  {category}
-                  <X size={9} />
-                </button>
-              )}
-              {featured && (
-                <button
-                  onClick={() => setParam('featured', '')}
-                  className="badge badge-red flex items-center gap-1 cursor-pointer
-                             hover:opacity-80 transition-opacity"
-                >
-                  Featured
-                  <X size={9} />
-                </button>
-              )}
-            </div>
-          )}
+                <div className="flex items-center gap-2 pt-2.5">
+                  <span
+                    className="text-[11px] font-medium tracking-wide uppercase"
+                    style={{ color: 'hsl(var(--muted))' }}
+                  >
+                    Active
+                  </span>
+
+                  {category && (
+                    <motion.button
+                      layout
+                      initial={{ opacity: 0, scale: 0.85 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{   opacity: 0, scale: 0.85 }}
+                      onClick={() => setParam('category', '')}
+                      className="badge badge-red flex items-center gap-1 cursor-pointer
+                                 hover:opacity-80 transition-opacity capitalize"
+                    >
+                      {category}
+                      <X size={9} />
+                    </motion.button>
+                  )}
+
+                  {featured && (
+                    <motion.button
+                      layout
+                      initial={{ opacity: 0, scale: 0.85 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{   opacity: 0, scale: 0.85 }}
+                      onClick={() => setParam('featured', '')}
+                      className="badge badge-red flex items-center gap-1 cursor-pointer
+                                 hover:opacity-80 transition-opacity"
+                    >
+                      Featured
+                      <X size={9} />
+                    </motion.button>
+                  )}
+
+                  {/* Clear all */}
+                  <button
+                    onClick={() => router.push('/explore')}
+                    className="text-[11px] underline underline-offset-2
+                               transition-colors duration-[var(--duration-hover)]"
+                    style={{ color: 'hsl(var(--muted))' }}
+                  >
+                    Clear all
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 
@@ -216,17 +322,31 @@ export default function ExplorePage() {
       ══════════════════════════════════════════════════ */}
       <div className="container-wide py-8">
 
-        {/* Result count */}
+        {/* Result count + mobile sort row */}
         {!isLoading && (
-          <motion.p
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="text-sm mb-6"
-            style={{ color: 'hsl(var(--muted))' }}
+            className="flex items-center justify-between mb-6"
           >
-            {total.toLocaleString()} {total === 1 ? 'product' : 'products'}
-            {category && ` in ${category}`}
-          </motion.p>
+            <p
+              className="text-sm"
+              style={{ color: 'hsl(var(--muted))' }}
+            >
+              <span className="font-medium" style={{ color: 'hsl(var(--foreground))' }}>
+                {total.toLocaleString()}
+              </span>{' '}
+              {total === 1 ? 'product' : 'products'}
+              {category && (
+                <span> in <span className="capitalize">{category}</span></span>
+              )}
+            </p>
+
+            {/* Sort — MOBILE ONLY — shown inline with count */}
+            {/* Sort is intentionally desktop-only per design decision.
+                On mobile, the default sort (newest) is applied silently.
+                This prevents accidental sort changes on small screens. */}
+          </motion.div>
         )}
 
         {/* Masonry grid */}
@@ -246,11 +366,7 @@ export default function ExplorePage() {
                   className="w-1.5 h-1.5 rounded-full"
                   style={{ background: 'hsl(var(--accent))' }}
                   animate={{ y: [0, -8, 0] }}
-                  transition={{
-                    duration: 0.6,
-                    repeat:   Infinity,
-                    delay:    i * 0.15,
-                  }}
+                  transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.15 }}
                 />
               ))}
             </div>
@@ -259,37 +375,43 @@ export default function ExplorePage() {
 
         {/* End of results */}
         {!hasMore && products.length > 0 && (
-          <p
-            className="text-center text-sm py-10"
+          <motion.p
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center text-sm py-10 tracking-wider"
             style={{ color: 'hsl(var(--muted-foreground))' }}
           >
-            You&apos;ve seen everything ✦
-          </p>
+            ✦ &nbsp; You&apos;ve seen everything &nbsp; ✦
+          </motion.p>
         )}
 
         {/* Empty state */}
         {!isLoading && products.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-24 text-center">
-            <p className="text-4xl mb-4">✦</p>
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col items-center justify-center py-24 text-center"
+          >
+            <p className="text-5xl mb-5 opacity-30">✦</p>
             <p
-              className="font-medium mb-2"
+              className="font-display font-bold text-xl mb-2 tracking-tight"
               style={{ color: 'hsl(var(--foreground))' }}
             >
-              No products found
+              Nothing here yet
             </p>
             <p
-              className="text-sm mb-6"
-              style={{ color: 'hsl(var(--muted))', fontWeight: 300 }}
+              className="text-sm mb-8 font-light"
+              style={{ color: 'hsl(var(--muted))' }}
             >
-              Try adjusting your filters
+              Try a different category or clear your filters
             </p>
             <button
               onClick={() => router.push('/explore')}
-              className="btn-ghost"
+              className="btn-save"
             >
               Clear filters
             </button>
-          </div>
+          </motion.div>
         )}
       </div>
     </div>
