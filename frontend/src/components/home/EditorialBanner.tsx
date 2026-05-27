@@ -180,9 +180,9 @@ export function EditorialBanner() {
                   />
                 </Link>
 
-                {/* Ghost — inverts with the panel */}
+                {/* Ghost */}
                 <Link
-                  href="/sign-up"
+                  href="/collections/new"
                   className="editorial-ghost group inline-flex items-center gap-2
                              px-7 py-3.5 rounded-[var(--radius-pill)] text-sm font-medium
                              transition-all duration-[var(--duration-hover)]"

@@ -1,19 +1,21 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useAuth, UserButton } from '@clerk/nextjs'
+import { useAuth } from '@clerk/nextjs'
 import {
   Search, ShoppingBag, Heart, Bell,
   Menu, X, Compass, BookMarked,
-  MessageCircle, ChevronRight, LogOut, User
+  MessageCircle, ChevronRight, LogOut,
+  User, Settings, LayoutDashboard, ChevronDown,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useCartStore } from '@/store/useCartStore'
 import { useNotificationStore } from '@/store/useNotificationStore'
+import { useUserStore } from '@/store/useUserStore'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import { SearchModal } from '@/components/search/SearchModal'
 
@@ -28,14 +30,20 @@ const mobileOnlyLinks = [
 ]
 
 export function Navbar() {
-  const pathname        = usePathname()
+  const pathname              = usePathname()
   const { isSignedIn, signOut } = useAuth()
-  const [isScrolled,    setIsScrolled]   = useState(false)
-  const [isMobileOpen,  setIsMobileOpen] = useState(false)
-  const [isSearchOpen,  setIsSearchOpen] = useState(false)
+  const user                  = useUserStore((s) => s.user)
+  const isAdmin               = user?.role === 'admin'
+
+  const [isScrolled,   setIsScrolled]   = useState(false)
+  const [isMobileOpen, setIsMobileOpen] = useState(false)
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const [isUserOpen,   setIsUserOpen]   = useState(false)
+
   const itemCount   = useCartStore((s) => s.itemCount)
   const toggleCart  = useCartStore((s) => s.toggleCart)
   const unreadCount = useNotificationStore((s) => s.unreadCount)
+  const dropdownRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const onScroll = () => setIsScrolled(window.scrollY > 24)
@@ -50,9 +58,28 @@ export function Navbar() {
     return () => { document.body.style.overflow = '' }
   }, [isMobileOpen])
 
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsUserOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  // Close dropdown on route change
+  useEffect(() => { setIsUserOpen(false) }, [pathname])
+
   const allMobileLinks = isSignedIn
     ? [...navLinks, ...mobileOnlyLinks]
     : navLinks
+
+  // Avatar initials fallback
+  const initials = user?.displayName
+    ? user.displayName.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
+    : user?.email?.[0]?.toUpperCase() ?? 'U'
 
   return (
     <>
@@ -117,7 +144,11 @@ export function Navbar() {
             {isSignedIn ? (
               <>
                 {/* Notifications — desktop only */}
-                <Link href="/notifications" className="btn-icon relative hidden md:inline-flex" aria-label="Notifications">
+                <Link
+                  href="/notifications"
+                  className="btn-icon relative hidden md:inline-flex"
+                  aria-label="Notifications"
+                >
                   <Bell size={17} />
                   {unreadCount > 0 && (
                     <span className="badge badge-red badge-notification">
@@ -144,7 +175,7 @@ export function Navbar() {
                   <MessageCircle size={17} className={cn(pathname === '/messages' && 'fill-current')} />
                 </Link>
 
-                {/* Cart — ALWAYS visible */}
+                {/* Cart — always visible */}
                 <button onClick={toggleCart} aria-label="Cart" className="btn-icon relative">
                   <ShoppingBag size={17} />
                   <AnimatePresence>
@@ -163,17 +194,174 @@ export function Navbar() {
                   </AnimatePresence>
                 </button>
 
-                {/* Avatar — desktop only */}
-                <div className="ml-1 pl-2 md:border-l border-[hsl(var(--border))] hidden md:block">
-                  <UserButton
-                    afterSignOutUrl="/"
-                    appearance={{ elements: { avatarBox: 'w-7 h-7 rounded-[var(--radius-sm)]' } }}
-                  />
+                {/* ── Custom Avatar Dropdown — desktop only ── */}
+                <div
+                  ref={dropdownRef}
+                  className="relative ml-1 pl-2 border-l border-[hsl(var(--border))] hidden md:block"
+                >
+                  <button
+                    onClick={() => setIsUserOpen(!isUserOpen)}
+                    aria-label="Account menu"
+                    className={cn(
+                      'flex items-center gap-2 pl-1 pr-2 py-1 rounded-[var(--radius-sm)]',
+                      'transition-all duration-[var(--duration-hover)]',
+                      'hover:bg-[hsl(var(--surface))]',
+                      isUserOpen && 'bg-[hsl(var(--surface))]'
+                    )}
+                  >
+                    {/* Avatar circle */}
+                    <div
+                      className="w-7 h-7 rounded-[var(--radius-sm)] flex items-center
+                                 justify-center text-white text-xs font-bold shrink-0 overflow-hidden"
+                      style={{ background: 'hsl(var(--accent))' }}
+                    >
+                      {user?.avatar ? (
+                        <Image
+                          src={user.avatar}
+                          alt={user.displayName || 'Avatar'}
+                          width={28}
+                          height={28}
+                          className="object-cover w-full h-full"
+                        />
+                      ) : (
+                        initials
+                      )}
+                    </div>
+                    <ChevronDown
+                      size={12}
+                      className={cn(
+                        'text-[hsl(var(--muted))] transition-transform duration-200',
+                        isUserOpen && 'rotate-180'
+                      )}
+                    />
+                  </button>
+
+                  {/* Dropdown panel */}
+                  <AnimatePresence>
+                    {isUserOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 6, scale: 0.97 }}
+                        animate={{ opacity: 1, y: 0, scale: 1    }}
+                        exit={{   opacity: 0, y: 6, scale: 0.97  }}
+                        transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                        className="absolute right-0 top-full mt-2 w-64 overflow-hidden z-50"
+                        style={{
+                          borderRadius: 'var(--radius-xl)',
+                          background:   'hsl(var(--surface))',
+                          border:       '1px solid hsl(var(--border))',
+                          boxShadow:    'var(--shadow-float)',
+                        }}
+                      >
+                        {/* User info header */}
+                        <div
+                          className="px-4 py-3.5 flex items-center gap-3"
+                          style={{ borderBottom: '1px solid hsl(var(--border))' }}
+                        >
+                          <div
+                            className="w-10 h-10 rounded-[var(--radius-sm)] flex items-center
+                                       justify-center text-white text-sm font-bold shrink-0 overflow-hidden"
+                            style={{ background: 'hsl(var(--accent))' }}
+                          >
+                            {user?.avatar ? (
+                              <Image
+                                src={user.avatar}
+                                alt={user.displayName || 'Avatar'}
+                                width={40}
+                                height={40}
+                                className="object-cover w-full h-full"
+                              />
+                            ) : (
+                              initials
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <p
+                              className="text-sm font-semibold truncate"
+                              style={{ color: 'hsl(var(--foreground))' }}
+                            >
+                              {user?.displayName || 'Your account'}
+                            </p>
+                            <p
+                              className="text-xs truncate"
+                              style={{ color: 'hsl(var(--muted))' }}
+                            >
+                              {user?.email}
+                            </p>
+                            {isAdmin && (
+                              <span
+                                className="inline-flex items-center mt-1 text-[9px] font-bold
+                                           uppercase tracking-[0.12em] px-1.5 py-0.5
+                                           rounded-[var(--radius-pill)]"
+                                style={{
+                                  background: 'hsl(var(--accent) / 0.12)',
+                                  color:      'hsl(var(--accent))',
+                                }}
+                              >
+                                Admin
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Menu items */}
+                        <div className="p-1.5">
+
+                          {/* Admin dashboard — only if admin */}
+                          {isAdmin && (
+                            <DropdownItem
+                              href="/admin"
+                              icon={LayoutDashboard}
+                              label="Admin Dashboard"
+                              accent
+                            />
+                          )}
+
+                          <DropdownItem href="/profile"    icon={User}     label="Your Profile"   />
+                          <DropdownItem href="/saved"      icon={Heart}    label="Saved Items"    />
+                          <DropdownItem href="/settings"   icon={Settings} label="Settings"       />
+                        </div>
+
+                        {/* Sign out */}
+                        <div
+                          className="p-1.5"
+                          style={{ borderTop: '1px solid hsl(var(--border))' }}
+                        >
+                          <button
+                            onClick={() => { setIsUserOpen(false); signOut() }}
+                            className="w-full flex items-center gap-3 px-3 py-2.5
+                                       rounded-[var(--radius-sm)] text-sm font-medium
+                                       transition-all duration-[var(--duration-hover)]
+                                       group"
+                            style={{ color: 'hsl(var(--muted))' }}
+                            onMouseEnter={e => {
+                              const el = e.currentTarget
+                              el.style.background = 'hsl(var(--accent) / 0.08)'
+                              el.style.color      = 'hsl(var(--accent))'
+                            }}
+                            onMouseLeave={e => {
+                              const el = e.currentTarget
+                              el.style.background = 'transparent'
+                              el.style.color      = 'hsl(var(--muted))'
+                            }}
+                          >
+                            <span
+                              className="w-7 h-7 rounded-[var(--radius-sm)] flex items-center
+                                         justify-center shrink-0"
+                              style={{ background: 'hsl(var(--accent) / 0.08)' }}
+                            >
+                              <LogOut size={13} style={{ color: 'hsl(var(--accent))' }} />
+                            </span>
+                            Sign out
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               </>
             ) : (
               <>
-                {/* Cart for signed-out users too */}
+                {/* Cart for signed-out users */}
                 <button onClick={toggleCart} aria-label="Cart" className="btn-icon relative">
                   <ShoppingBag size={17} />
                   <AnimatePresence>
@@ -229,7 +417,7 @@ export function Navbar() {
 
         {/* ══════════════════════════════════════════
             MOBILE DROPDOWN
-            ══════════════════════════════════════════ */}
+        ══════════════════════════════════════════ */}
         <AnimatePresence>
           {isMobileOpen && (
             <>
@@ -252,8 +440,8 @@ export function Navbar() {
                 className="md:hidden mx-3 mt-2 mb-1 rounded-[var(--radius-lg)] overflow-hidden"
                 style={{
                   background: 'hsl(var(--surface))',
-                  border: '1px solid hsl(var(--border))',
-                  boxShadow: 'var(--shadow-float)',
+                  border:     '1px solid hsl(var(--border))',
+                  boxShadow:  'var(--shadow-float)',
                 }}
               >
                 {/* ── Nav Links ── */}
@@ -280,7 +468,8 @@ export function Navbar() {
                         >
                           <span
                             className={cn(
-                              'w-7 h-7 rounded-[var(--radius-sm)] flex items-center justify-center shrink-0 transition-colors duration-[var(--duration-hover)]',
+                              'w-7 h-7 rounded-[var(--radius-sm)] flex items-center justify-center shrink-0',
+                              'transition-colors duration-[var(--duration-hover)]',
                               active
                                 ? 'bg-[hsl(var(--accent)/0.15)] text-[hsl(var(--accent))]'
                                 : 'bg-[hsl(var(--background-secondary))] text-[hsl(var(--muted))] group-hover:text-[hsl(var(--foreground))]'
@@ -305,6 +494,48 @@ export function Navbar() {
                       </motion.div>
                     )
                   })}
+
+                  {/* Admin link — mobile, inside nav list */}
+                  {isAdmin && (
+                    <motion.div
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0   }}
+                      transition={{ delay: allMobileLinks.length * 0.04, duration: 0.2 }}
+                    >
+                      <Link
+                        href="/admin"
+                        className={cn(
+                          'group flex items-center gap-3 px-3 py-2.5 rounded-[var(--radius-sm)]',
+                          'transition-all duration-[var(--duration-hover)]',
+                          pathname.startsWith('/admin')
+                            ? 'bg-[hsl(var(--accent-muted))] text-[hsl(var(--accent))]'
+                            : 'text-[hsl(var(--muted))] hover:bg-[hsl(var(--background-secondary))] hover:text-[hsl(var(--foreground))]'
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            'w-7 h-7 rounded-[var(--radius-sm)] flex items-center justify-center shrink-0',
+                            pathname.startsWith('/admin')
+                              ? 'bg-[hsl(var(--accent)/0.15)] text-[hsl(var(--accent))]'
+                              : 'bg-[hsl(var(--accent)/0.10)] text-[hsl(var(--accent))]'
+                          )}
+                        >
+                          <LayoutDashboard size={14} />
+                        </span>
+                        <span className="flex-1 text-sm font-medium">Admin Dashboard</span>
+                        <span
+                          className="text-[9px] font-bold uppercase tracking-[0.12em]
+                                     px-1.5 py-0.5 rounded-[var(--radius-pill)]"
+                          style={{
+                            background: 'hsl(var(--accent) / 0.12)',
+                            color:      'hsl(var(--accent))',
+                          }}
+                        >
+                          Admin
+                        </span>
+                      </Link>
+                    </motion.div>
+                  )}
                 </div>
 
                 {/* ── Divider ── */}
@@ -352,37 +583,108 @@ export function Navbar() {
                 >
                   {isSignedIn ? (
                     <div className="flex items-center gap-3">
-                      <UserButton
-                        afterSignOutUrl="/"
-                        appearance={{ elements: { avatarBox: 'w-8 h-8 rounded-[var(--radius-sm)]' } }}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-[hsl(var(--foreground))] truncate">Your account</p>
-                        <p className="text-xs text-[hsl(var(--muted))] truncate">Profile & settings</p>
+                      {/* Avatar */}
+                      <div
+                        className="w-9 h-9 rounded-[var(--radius-sm)] flex items-center
+                                   justify-center text-white text-sm font-bold shrink-0 overflow-hidden"
+                        style={{ background: 'hsl(var(--accent))' }}
+                      >
+                        {user?.avatar ? (
+                          <Image
+                            src={user.avatar}
+                            alt={user.displayName || 'Avatar'}
+                            width={36}
+                            height={36}
+                            className="object-cover w-full h-full"
+                          />
+                        ) : (
+                          initials
+                        )}
                       </div>
-                      <button
+
+                      {/* Name + email */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p
+                            className="text-sm font-semibold truncate"
+                            style={{ color: 'hsl(var(--foreground))' }}
+                          >
+                            {user?.displayName || 'Your account'}
+                          </p>
+                          {isAdmin && (
+                            <span
+                              className="text-[9px] font-bold uppercase tracking-[0.1em]
+                                         px-1.5 py-0.5 rounded-[var(--radius-pill)] shrink-0"
+                              style={{
+                                background: 'hsl(var(--accent) / 0.12)',
+                                color:      'hsl(var(--accent))',
+                              }}
+                            >
+                              Admin
+                            </span>
+                          )}
+                        </div>
+                        <p
+                          className="text-xs truncate"
+                          style={{ color: 'hsl(var(--muted))' }}
+                        >
+                          {user?.email}
+                        </p>
+                      </div>
+
+                      {/* Sign out pill */}
+                      <motion.button
+                        whileTap={{ scale: 0.94 }}
                         onClick={() => signOut()}
                         aria-label="Sign out"
-                        className={cn(
-                          'flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-pill)]',
-                          'text-xs font-medium text-[hsl(var(--muted))]',
-                          'border border-[hsl(var(--border))]',
-                          'hover:border-[hsl(var(--accent)/0.4)] hover:text-[hsl(var(--accent))]',
-                          'transition-all duration-[var(--duration-hover)]'
-                        )}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-[var(--radius-pill)]
+                                   text-xs font-semibold shrink-0
+                                   transition-all duration-[var(--duration-hover)]"
+                        style={{
+                          background:  'hsl(var(--accent) / 0.08)',
+                          color:       'hsl(var(--accent))',
+                          border:      '1px solid hsl(var(--accent) / 0.2)',
+                        }}
+                        onMouseEnter={e => {
+                          const el = e.currentTarget
+                          el.style.background = 'hsl(var(--accent))'
+                          el.style.color      = 'white'
+                        }}
+                        onMouseLeave={e => {
+                          const el = e.currentTarget
+                          el.style.background = 'hsl(var(--accent) / 0.08)'
+                          el.style.color      = 'hsl(var(--accent))'
+                        }}
                       >
-                        <LogOut size={12} />
+                        <LogOut size={11} />
                         Sign out
-                      </button>
+                      </motion.button>
                     </div>
                   ) : (
                     <div className="flex items-center gap-3">
-                      <span className="w-8 h-8 rounded-[var(--radius-sm)] flex items-center justify-center bg-[hsl(var(--background-secondary))] text-[hsl(var(--muted))] shrink-0">
+                      <span
+                        className="w-9 h-9 rounded-[var(--radius-sm)] flex items-center
+                                   justify-center shrink-0"
+                        style={{
+                          background: 'hsl(var(--background-secondary))',
+                          color:      'hsl(var(--muted))',
+                        }}
+                      >
                         <User size={15} />
                       </span>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-[hsl(var(--foreground))]">Join Shoppin</p>
-                        <p className="text-xs text-[hsl(var(--muted))]">Save & discover what you love</p>
+                        <p
+                          className="text-sm font-medium"
+                          style={{ color: 'hsl(var(--foreground))' }}
+                        >
+                          Join Shoppin
+                        </p>
+                        <p
+                          className="text-xs"
+                          style={{ color: 'hsl(var(--muted))' }}
+                        >
+                          Save & discover what you love
+                        </p>
                       </div>
                       <Link href="/sign-up" className="btn-save text-xs px-3 py-1.5 shrink-0">
                         Join free
@@ -404,10 +706,9 @@ export function Navbar() {
   )
 }
 
+/* ── Reusable nav icon button ── */
 function NavIconBtn({
-  onClick,
-  label,
-  children,
+  onClick, label, children,
 }: {
   onClick?: () => void
   label: string
@@ -417,5 +718,50 @@ function NavIconBtn({
     <button onClick={onClick} aria-label={label} className="btn-icon">
       {children}
     </button>
+  )
+}
+
+/* ── Dropdown menu item ── */
+function DropdownItem({
+  href, icon: Icon, label, accent = false,
+}: {
+  href:    string
+  icon:    React.ElementType
+  label:   string
+  accent?: boolean
+}) {
+  return (
+    <Link
+      href={href}
+      className="flex items-center gap-3 px-3 py-2.5 rounded-[var(--radius-sm)]
+                 text-sm font-medium transition-all duration-[var(--duration-hover)] group"
+      style={{ color: accent ? 'hsl(var(--accent))' : 'hsl(var(--muted))' }}
+      onMouseEnter={e => {
+        const el = e.currentTarget as HTMLElement
+        el.style.background = accent
+          ? 'hsl(var(--accent) / 0.08)'
+          : 'hsl(var(--background-secondary))'
+        el.style.color = accent
+          ? 'hsl(var(--accent))'
+          : 'hsl(var(--foreground))'
+      }}
+      onMouseLeave={e => {
+        const el = e.currentTarget as HTMLElement
+        el.style.background = 'transparent'
+        el.style.color = accent ? 'hsl(var(--accent))' : 'hsl(var(--muted))'
+      }}
+    >
+      <span
+        className="w-7 h-7 rounded-[var(--radius-sm)] flex items-center justify-center shrink-0"
+        style={{
+          background: accent
+            ? 'hsl(var(--accent) / 0.10)'
+            : 'hsl(var(--background-secondary))',
+        }}
+      >
+        <Icon size={13} style={{ color: 'hsl(var(--accent))' }} />
+      </span>
+      {label}
+    </Link>
   )
 }
