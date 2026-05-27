@@ -184,18 +184,32 @@ export default function SavedPage() {
                   <ProductCard product={product} />
 
                   {/* ══════════════════════════════════════
-                      Pinterest-style unsave — red filled
-                      heart, top-right, shown on hover
+                      DESKTOP — red filled heart, top-right,
+                      visible only on hover
                   ══════════════════════════════════════ */}
                   <div
                     className="absolute top-2.5 right-2.5 z-50
+                               hidden md:block
                                opacity-0 group-hover/saved:opacity-100
-                               transition-opacity duration-150 pointer-events-none
+                               transition-opacity duration-150
+                               pointer-events-none
                                group-hover/saved:pointer-events-auto"
                   >
+                    <UnsaveButton
+                      isRemoving={removing.has(product._id)}
+                      onRemove={() => handleRemove(product._id)}
+                      showTooltip
+                    />
+                  </div>
+
+                  {/* ══════════════════════════════════════
+                      MOBILE — always-visible pill at the
+                      bottom of the card, never needs hover
+                  ══════════════════════════════════════ */}
+                  <div className="absolute bottom-[4.5rem] left-0 right-0 z-50
+                                  flex justify-center md:hidden">
                     <motion.button
-                      whileHover={{ scale: 1.1  }}
-                      whileTap={{   scale: 0.88 }}
+                      whileTap={{ scale: 0.9 }}
                       onClick={(e) => {
                         e.preventDefault()
                         e.stopPropagation()
@@ -203,76 +217,43 @@ export default function SavedPage() {
                       }}
                       disabled={removing.has(product._id)}
                       aria-label="Remove from saved"
-                      className="flex items-center justify-center
-                                 rounded-full disabled:cursor-not-allowed
-                                 transition-colors duration-150"
+                      className="flex items-center gap-1.5 px-3 py-1.5
+                                 rounded-[var(--radius-pill)]
+                                 disabled:opacity-60 disabled:cursor-not-allowed
+                                 transition-opacity duration-150"
                       style={{
-                        width:      '2.25rem',
-                        height:     '2.25rem',
-                        background: removing.has(product._id)
-                          ? 'rgba(0,0,0,0.45)'
-                          : 'hsl(var(--accent))',
-                        boxShadow: '0 2px 12px rgba(0,0,0,0.28)',
+                        background:          'hsl(var(--accent))',
+                        boxShadow:           '0 2px 12px rgba(0,0,0,0.28)',
+                        backdropFilter:      'blur(8px)',
+                        WebkitBackdropFilter:'blur(8px)',
                       }}
                     >
-                      <AnimatePresence mode="wait">
-                        {removing.has(product._id) ? (
-
-                          /* Spinner while removing */
-                          <motion.div
-                            key="spinner"
-                            initial={{ opacity: 0, scale: 0.6 }}
-                            animate={{ opacity: 1, scale: 1   }}
-                            exit={{   opacity: 0, scale: 0.6  }}
-                            className="w-3.5 h-3.5 rounded-full border-2
-                                       border-white/30 border-t-white"
-                            style={{
-                              animation: 'spin 0.7s linear infinite',
-                            }}
-                          />
-
-                        ) : (
-
-                          /* Filled white heart — Pinterest exact */
-                          <motion.svg
-                            key="heart"
-                            initial={{ scale: 0.6, opacity: 0 }}
-                            animate={{ scale: 1,   opacity: 1 }}
-                            exit={{    scale: 0.6, opacity: 0 }}
-                            transition={{
-                              type:      'spring',
-                              stiffness: 400,
-                              damping:   20,
-                            }}
-                            width="15"
-                            height="15"
-                            viewBox="0 0 24 24"
-                            fill="white"
-                          >
-                            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5
-                                     2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09
-                                     C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42
-                                     22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-                          </motion.svg>
-                        )}
-                      </AnimatePresence>
+                      {removing.has(product._id) ? (
+                        <motion.div
+                          animate={{ rotate: 360 }}
+                          transition={{ duration: 0.7, repeat: Infinity, ease: 'linear' }}
+                          className="w-3 h-3 rounded-full border-2
+                                     border-white/30 border-t-white"
+                        />
+                      ) : (
+                        <svg
+                          width="11" height="11"
+                          viewBox="0 0 24 24"
+                          fill="white"
+                        >
+                          <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5
+                                   2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09
+                                   C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42
+                                   22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                        </svg>
+                      )}
+                      <span
+                        className="text-white leading-none"
+                        style={{ fontSize: '0.68rem', fontWeight: 600, letterSpacing: '0.01em' }}
+                      >
+                        {removing.has(product._id) ? 'Removing…' : 'Unsave'}
+                      </span>
                     </motion.button>
-
-                    {/* Tooltip */}
-                    <div
-                      className="absolute top-full mt-1.5 left-1/2 -translate-x-1/2
-                                 whitespace-nowrap text-[10px] font-medium
-                                 px-2 py-1 rounded-[var(--radius-sm)]
-                                 pointer-events-none
-                                 opacity-0 group-hover/saved:opacity-100
-                                 transition-opacity delay-300 duration-150"
-                      style={{
-                        background: 'hsl(var(--foreground))',
-                        color:      'hsl(var(--background))',
-                      }}
-                    >
-                      Unsave
-                    </div>
                   </div>
 
                 </motion.div>
@@ -281,11 +262,95 @@ export default function SavedPage() {
           </div>
         )}
       </div>
-
-      {/* Spin keyframe */}
-      <style>{`
-        @keyframes spin { to { transform: rotate(360deg); } }
-      `}</style>
     </div>
   )
 }
+
+/* ─────────────────────────────────────────────
+   Shared unsave button — desktop hover version
+───────────────────────────────────────────── */
+function UnsaveButton({
+  isRemoving,
+  onRemove,
+  showTooltip = false,
+}: {
+  isRemoving:   boolean
+  onRemove:     () => void
+  showTooltip?: boolean
+}) {
+  return (
+    <div className="relative group/btn">
+      <motion.button
+        whileHover={{ scale: 1.1  }}
+        whileTap={{   scale: 0.88 }}
+        onClick={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          onRemove()
+        }}
+        disabled={isRemoving}
+        aria-label="Remove from saved"
+        className="flex items-center justify-center rounded-full
+                   disabled:cursor-not-allowed transition-colors duration-150"
+        style={{
+          width:      '2.25rem',
+          height:     '2.25rem',
+          background: isRemoving ? 'rgba(0,0,0,0.45)' : 'hsl(var(--accent))',
+          boxShadow:  '0 2px 12px rgba(0,0,0,0.28)',
+        }}
+      >
+        <AnimatePresence mode="wait">
+          {isRemoving ? (
+            <motion.div
+              key="spinner"
+              initial={{ opacity: 0, scale: 0.6 }}
+              animate={{ opacity: 1, scale: 1   }}
+              exit={{   opacity: 0, scale: 0.6  }}
+              className="w-3.5 h-3.5 rounded-full border-2 border-white/30 border-t-white"
+              style={{ animation: 'spin 0.7s linear infinite' }}
+            />
+          ) : (
+            <motion.svg
+              key="heart"
+              initial={{ scale: 0.6, opacity: 0 }}
+              animate={{ scale: 1,   opacity: 1 }}
+              exit={{    scale: 0.6, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+              width="15" height="15"
+              viewBox="0 0 24 24"
+              fill="white"
+            >
+              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5
+                       2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09
+                       C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42
+                       22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+            </motion.svg>
+          )}
+        </AnimatePresence>
+      </motion.button>
+
+      {/* Tooltip — desktop only */}
+      {showTooltip && (
+        <div
+          className="absolute top-full mt-1.5 left-1/2 -translate-x-1/2
+                     whitespace-nowrap text-[10px] font-medium
+                     px-2 py-1 rounded-[var(--radius-sm)]
+                     pointer-events-none
+                     opacity-0 group-hover/btn:opacity-100
+                     transition-opacity delay-300 duration-150"
+          style={{
+            background: 'hsl(var(--foreground))',
+            color:      'hsl(var(--background))',
+          }}
+        >
+          Unsave
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* Spin keyframe */
+const _style = (
+  <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+)
