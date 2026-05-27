@@ -2,25 +2,45 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
-import { motion } from 'framer-motion'
-import { Plus, Bookmark } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '@clerk/nextjs'
 import { apiClient } from '@/lib/api'
-import { Avatar } from '@/components/ui/Avatar'
-import { Skeleton } from '@/components/ui/Skeleton'
+import { ProductCard } from '@/components/product/ProductCard'
+import { ProductCardSkeleton } from '@/components/ui/Skeleton'
+import { toast } from 'sonner'
 
-export default function CollectionsPage() {
+export default function SavedPage() {
   const { isSignedIn } = useAuth()
-  const [collections, setCollections] = useState<any[]>([])
-  const [isLoading,   setIsLoading]   = useState(true)
+  const [products, setProducts]   = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [removing, setRemoving]   = useState<Set<string>>(new Set())
 
   useEffect(() => {
-    apiClient.collections.getAll({ limit: 40 })
-      .then(({ data }) => setCollections(data.data || []))
+    apiClient.users.getSaved({ limit: 40 })
+      .then(({ data }) => setProducts(data.data || []))
       .catch(() => {})
       .finally(() => setIsLoading(false))
   }, [])
+
+  const handleRemove = async (productId: string) => {
+    setProducts((prev) => prev.filter((p) => p._id !== productId))
+    setRemoving((prev) => new Set(prev).add(productId))
+    try {
+      await apiClient.users.saveProduct(productId)
+      toast.success('Removed from saved')
+    } catch {
+      toast.error('Could not remove, please try again')
+      apiClient.users.getSaved({ limit: 40 })
+        .then(({ data }) => setProducts(data.data || []))
+        .catch(() => {})
+    } finally {
+      setRemoving((prev) => {
+        const next = new Set(prev)
+        next.delete(productId)
+        return next
+      })
+    }
+  }
 
   return (
     <div className="min-h-screen">
@@ -35,7 +55,6 @@ export default function CollectionsPage() {
           borderColor: 'hsl(var(--border))',
         }}
       >
-        {/* Pinterest red top accent */}
         <div
           className="h-px"
           style={{
@@ -45,51 +64,53 @@ export default function CollectionsPage() {
         />
 
         <div className="container-wide py-12">
-          <div className="flex items-end justify-between gap-6 flex-wrap">
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <span className="eyebrow mb-3 block">Your</span>
+            <h1
+              className="font-display font-bold tracking-[-0.03em] leading-[1.1]"
+              style={{ fontSize: 'clamp(1.75rem, 4vw, var(--text-hero))' }}
+            >
+              Saved
+            </h1>
 
             <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-            >
-              <span className="eyebrow mb-3 block">Discover</span>
-              <h1
-                className="font-display font-bold tracking-[-0.03em] leading-[1.1]"
-                style={{ fontSize: 'clamp(1.75rem, 4vw, var(--text-hero))' }}
-              >
-                Collections
-              </h1>
+              className="mt-3 mb-3 h-[2px] w-12 rounded-full"
+              style={{ background: 'hsl(var(--accent))' }}
+              initial={{ scaleX: 0, originX: 0 }}
+              animate={{ scaleX: 1 }}
+              transition={{ duration: 0.45, delay: 0.15 }}
+            />
 
-              {/* Accent underline */}
-              <motion.div
-                className="mt-3 mb-3 h-[2px] w-12 rounded-full"
-                style={{ background: 'hsl(var(--accent))' }}
-                initial={{ scaleX: 0, originX: 0 }}
-                animate={{ scaleX: 1 }}
-                transition={{ duration: 0.45, delay: 0.15 }}
-              />
-
+            <div className="flex items-center gap-3">
               <p
-                className="text-sm max-w-md"
+                className="text-sm"
                 style={{ color: 'hsl(var(--muted))', fontWeight: 300 }}
               >
-                Curated boards from fashion lovers around the world
+                Products you've loved and saved
               </p>
-            </motion.div>
-
-            {isSignedIn && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.4, delay: 0.1 }}
-              >
-                <Link href="/collections/new" className="btn-save gap-2">
-                  <Plus size={15} />
-                  New Collection
-                </Link>
-              </motion.div>
-            )}
-          </div>
+              <AnimatePresence>
+                {products.length > 0 && !isLoading && (
+                  <motion.span
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1   }}
+                    exit={{   opacity: 0, scale: 0.8  }}
+                    className="text-xs px-2 py-0.5 rounded-[var(--radius-pill)]"
+                    style={{
+                      background: 'hsl(var(--accent-muted))',
+                      color:      'hsl(var(--accent))',
+                      fontWeight: 600,
+                    }}
+                  >
+                    {products.length} item{products.length !== 1 ? 's' : ''}
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </div>
+          </motion.div>
         </div>
       </div>
 
@@ -98,173 +119,173 @@ export default function CollectionsPage() {
       ══════════════════════════════════════════════════ */}
       <div className="container-wide py-12">
 
-        {/* Loading skeletons */}
         {isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3
-                          xl:grid-cols-4 gap-5">
-            {Array.from({ length: 12 }).map((_, i) => (
-              <div key={i} className="space-y-3">
-                <Skeleton
-                  className="aspect-[4/3]"
-                  style={{ borderRadius: 'var(--radius-xl)' }}
-                />
-                <Skeleton
-                  className="h-4 w-3/4"
-                  style={{ borderRadius: 'var(--radius-sm)' }}
-                />
-                <Skeleton
-                  className="h-3 w-1/2"
-                  style={{ borderRadius: 'var(--radius-sm)' }}
-                />
-              </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
+            {Array.from({ length: 15 }).map((_, i) => (
+              <ProductCardSkeleton key={i} />
             ))}
           </div>
 
-        ) : collections.length === 0 ? (
+        ) : !isSignedIn ? (
 
-          /* Empty state */
           <div className="py-32 text-center">
-            <p className="text-4xl mb-4">✦</p>
-            <p
-              className="font-medium mb-2"
-              style={{ color: 'hsl(var(--foreground))' }}
-            >
-              No collections yet
+            <p className="text-4xl mb-4">♡</p>
+            <p className="font-medium mb-2" style={{ color: 'hsl(var(--foreground))' }}>
+              Sign in to see your saved items
             </p>
-            <p
-              className="text-sm mb-6"
-              style={{ color: 'hsl(var(--muted))', fontWeight: 300 }}
-            >
-              Be the first to create one
+            <p className="text-sm mb-6" style={{ color: 'hsl(var(--muted))', fontWeight: 300 }}>
+              Save products you love and find them here
             </p>
-            {isSignedIn && (
-              <Link href="/collections/new" className="btn-save">
-                Create Collection
-              </Link>
-            )}
+            <Link href="/sign-in" className="btn-save">Sign in</Link>
+          </div>
+
+        ) : products.length === 0 ? (
+
+          <div className="py-32 text-center">
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1,   opacity: 1 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+            >
+              <p className="text-5xl mb-4">♡</p>
+            </motion.div>
+            <p className="font-medium mb-2" style={{ color: 'hsl(var(--foreground))' }}>
+              Nothing saved yet
+            </p>
+            <p className="text-sm mb-6" style={{ color: 'hsl(var(--muted))', fontWeight: 300 }}>
+              Tap the heart on any product to save it here
+            </p>
+            <Link href="/explore" className="btn-save">Start exploring</Link>
           </div>
 
         ) : (
 
-          /* Collections grid */
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3
-                          xl:grid-cols-4 gap-5">
-            {collections.map((col, i) => (
-              <motion.div
-                key={col._id}
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{
-                  delay:    i * 0.04,
-                  duration: 0.4,
-                  ease:     [0.22, 1, 0.36, 1],
-                }}
-              >
-                <Link href={`/collections/${col._id}`}>
-                  <motion.div
-                    whileHover={{ y: -3 }}
-                    transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-                    className="group border overflow-hidden
-                               transition-[box-shadow,border-color]
-                               duration-[var(--duration-standard)]
-                               shadow-[var(--shadow-card)]
-                               hover:shadow-[var(--shadow-card-hover)]"
-                    style={{
-                      borderRadius: 'var(--radius-xl)',
-                      background:   'hsl(var(--surface))',
-                      borderColor:  'hsl(var(--border))',
-                    }}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
+            <AnimatePresence mode="popLayout">
+              {products.map((product, i) => (
+                <motion.div
+                  key={product._id}
+                  layout
+                  initial={{ opacity: 0, y: 16, scale: 0.96 }}
+                  animate={{ opacity: 1, y: 0,  scale: 1    }}
+                  exit={{
+                    opacity: 0,
+                    scale: 0.9,
+                    y: -8,
+                    transition: { duration: 0.22, ease: 'easeIn' },
+                  }}
+                  transition={{
+                    delay:    i * 0.04,
+                    duration: 0.4,
+                    ease:     [0.22, 1, 0.36, 1],
+                  }}
+                  className="relative group/saved"
+                >
+                  <ProductCard product={product} />
+
+                  {/* ══════════════════════════════════════
+                      Pinterest-style unsave — red filled
+                      heart, top-right, shown on hover
+                  ══════════════════════════════════════ */}
+                  <div
+                    className="absolute top-2.5 right-2.5 z-50
+                               opacity-0 group-hover/saved:opacity-100
+                               transition-opacity duration-150 pointer-events-none
+                               group-hover/saved:pointer-events-auto"
                   >
-                    {/* Cover image */}
-                    <div
-                      className="aspect-[4/3] relative overflow-hidden"
-                      style={{ background: 'hsl(var(--accent-muted))' }}
+                    <motion.button
+                      whileHover={{ scale: 1.1  }}
+                      whileTap={{   scale: 0.88 }}
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        handleRemove(product._id)
+                      }}
+                      disabled={removing.has(product._id)}
+                      aria-label="Remove from saved"
+                      className="flex items-center justify-center
+                                 rounded-full disabled:cursor-not-allowed
+                                 transition-colors duration-150"
+                      style={{
+                        width:      '2.25rem',
+                        height:     '2.25rem',
+                        background: removing.has(product._id)
+                          ? 'rgba(0,0,0,0.45)'
+                          : 'hsl(var(--accent))',
+                        boxShadow: '0 2px 12px rgba(0,0,0,0.28)',
+                      }}
                     >
-                      {col.coverImage ? (
-                        <Image
-                          src={col.coverImage}
-                          alt={col.title}
-                          fill
-                          className="object-cover transition-transform
-                                     duration-[var(--duration-standard)]
-                                     group-hover:scale-105"
-                          sizes="(max-width: 640px) 100vw,
-                                 (max-width: 1024px) 50vw, 25vw"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center
-                                        justify-center">
-                          <Bookmark
-                            size={28}
-                            style={{ color: 'hsl(var(--accent))' }}
+                      <AnimatePresence mode="wait">
+                        {removing.has(product._id) ? (
+
+                          /* Spinner while removing */
+                          <motion.div
+                            key="spinner"
+                            initial={{ opacity: 0, scale: 0.6 }}
+                            animate={{ opacity: 1, scale: 1   }}
+                            exit={{   opacity: 0, scale: 0.6  }}
+                            className="w-3.5 h-3.5 rounded-full border-2
+                                       border-white/30 border-t-white"
+                            style={{
+                              animation: 'spin 0.7s linear infinite',
+                            }}
                           />
-                        </div>
-                      )}
 
-                      {/* Pinterest gradient overlay */}
-                      <div
-                        className="absolute inset-0 opacity-0
-                                   group-hover:opacity-100
-                                   transition-opacity
-                                   duration-[var(--duration-standard)]"
-                        style={{
-                          background:
-                            'linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.35) 100%)',
-                        }}
-                      />
-                    </div>
+                        ) : (
 
-                    {/* Info */}
-                    <div className="p-4">
-                      <h3
-                        className="font-medium truncate mb-1"
-                        style={{ color: 'hsl(var(--foreground))' }}
-                      >
-                        {col.title}
-                      </h3>
-                      {col.description && (
-                        <p
-                          className="text-xs line-clamp-2 mb-3"
-                          style={{
-                            color:      'hsl(var(--muted))',
-                            fontWeight: 300,
-                          }}
-                        >
-                          {col.description}
-                        </p>
-                      )}
-
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Avatar
-                            src={col.user?.avatar}
-                            name={col.user?.displayName}
-                            size="xs"
-                          />
-                          <span
-                            className="text-xs truncate max-w-[100px]"
-                            style={{ color: 'hsl(var(--muted))' }}
+                          /* Filled white heart — Pinterest exact */
+                          <motion.svg
+                            key="heart"
+                            initial={{ scale: 0.6, opacity: 0 }}
+                            animate={{ scale: 1,   opacity: 1 }}
+                            exit={{    scale: 0.6, opacity: 0 }}
+                            transition={{
+                              type:      'spring',
+                              stiffness: 400,
+                              damping:   20,
+                            }}
+                            width="15"
+                            height="15"
+                            viewBox="0 0 24 24"
+                            fill="white"
                           >
-                            {col.user?.displayName}
-                          </span>
-                        </div>
-                        <div
-                          className="flex items-center gap-2 text-xs"
-                          style={{ color: 'hsl(var(--muted-foreground))' }}
-                        >
-                          <span>{col.products?.length || 0} items</span>
-                          <span>·</span>
-                          <span>{col.saves} saves</span>
-                        </div>
-                      </div>
+                            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5
+                                     2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09
+                                     C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42
+                                     22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                          </motion.svg>
+                        )}
+                      </AnimatePresence>
+                    </motion.button>
+
+                    {/* Tooltip */}
+                    <div
+                      className="absolute top-full mt-1.5 left-1/2 -translate-x-1/2
+                                 whitespace-nowrap text-[10px] font-medium
+                                 px-2 py-1 rounded-[var(--radius-sm)]
+                                 pointer-events-none
+                                 opacity-0 group-hover/saved:opacity-100
+                                 transition-opacity delay-300 duration-150"
+                      style={{
+                        background: 'hsl(var(--foreground))',
+                        color:      'hsl(var(--background))',
+                      }}
+                    >
+                      Unsave
                     </div>
-                  </motion.div>
-                </Link>
-              </motion.div>
-            ))}
+                  </div>
+
+                </motion.div>
+              ))}
+            </AnimatePresence>
           </div>
         )}
       </div>
+
+      {/* Spin keyframe */}
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+      `}</style>
     </div>
   )
 }

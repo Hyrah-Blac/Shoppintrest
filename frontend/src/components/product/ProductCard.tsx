@@ -3,9 +3,8 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Heart, ShoppingBag, Eye } from 'lucide-react'
+import { Heart, ShoppingBag } from 'lucide-react'
 import { useAuth } from '@clerk/nextjs'
 import { cn, formatPrice, calculateDiscount } from '@/lib/utils'
 import { useUserStore } from '@/store/useUserStore'
@@ -19,7 +18,6 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product, priority = false, className }: ProductCardProps) {
-  const router            = useRouter()
   const { isSignedIn }    = useAuth()
   const isSaved           = useUserStore((s) => s.isSaved(product._id))
   const toggleSaveProduct = useUserStore((s) => s.toggleSaveProduct)
@@ -207,21 +205,18 @@ export function ProductCard({ product, priority = false, className }: ProductCar
             </div>
           )}
 
-          {/* ── Actions — desktop hover only, driven by JS state
-               NOT the CSS .pin-actions class (which is always in DOM).
-               Using isHovered state means they truly don't exist on mobile. ── */}
+          {/* ── Actions — desktop hover only ── */}
           <AnimatePresence>
             {isHovered && (
               <>
-                {/* Save + View — top right */}
+                {/* Save — top right */}
                 <motion.div
                   initial={{ opacity: 0, y: -6 }}
                   animate={{ opacity: 1, y: 0  }}
                   exit={{   opacity: 0, y: -6  }}
                   transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
-                  className="absolute top-2.5 right-2.5 z-30 flex-col gap-1.5 hidden md:flex"
+                  className="absolute top-2.5 right-2.5 z-30 hidden md:flex"
                 >
-                  {/* Save */}
                   <button
                     onClick={handleSave}
                     disabled={isSaving}
@@ -235,22 +230,6 @@ export function ProductCard({ product, priority = false, className }: ProductCar
                     )}
                   >
                     <Heart size={14} className={cn(isSaved && 'fill-current')} />
-                  </button>
-
-                  {/* View */}
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      router.push(`/product/${product._id}`)
-                    }}
-                    aria-label="View product"
-                    className="w-9 h-9 flex items-center justify-center rounded-full
-                               bg-black/40 hover:bg-black/60 backdrop-blur-sm text-white
-                               transition-colors duration-[var(--duration-hover)]"
-                  >
-                    <Eye size={14} />
                   </button>
                 </motion.div>
 
