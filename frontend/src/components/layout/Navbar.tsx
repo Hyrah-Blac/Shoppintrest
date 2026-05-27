@@ -10,7 +10,7 @@ import {
   Search, ShoppingBag, Heart, Bell,
   Menu, X, Compass, BookMarked,
   MessageCircle, ChevronRight, LogOut,
-  User, LayoutDashboard, ChevronDown,
+  User, LayoutDashboard, ArrowRight,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useCartStore } from '@/store/useCartStore'
@@ -35,10 +35,10 @@ export function Navbar() {
   const user                    = useUserStore((s) => s.user)
   const isAdmin                 = user?.role === 'admin'
 
-  const [isScrolled,    setIsScrolled]    = useState(false)
-  const [isMobileOpen,  setIsMobileOpen]  = useState(false)
-  const [isSearchOpen,  setIsSearchOpen]  = useState(false)
-  const [isUserOpen,    setIsUserOpen]    = useState(false)
+  const [isScrolled,   setIsScrolled]   = useState(false)
+  const [isMobileOpen, setIsMobileOpen] = useState(false)
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const [isUserOpen,   setIsUserOpen]   = useState(false)
 
   const itemCount   = useCartStore((s) => s.itemCount)
   const toggleCart  = useCartStore((s) => s.toggleCart)
@@ -60,9 +60,8 @@ export function Navbar() {
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node))
         setIsUserOpen(false)
-      }
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
@@ -140,12 +139,8 @@ export function Navbar() {
 
             {isSignedIn ? (
               <>
-                {/* Notifications — always visible */}
-                <Link
-                  href="/notifications"
-                  className="btn-icon relative"
-                  aria-label="Notifications"
-                >
+                {/* Notifications */}
+                <Link href="/notifications" className="btn-icon relative" aria-label="Notifications">
                   <Bell size={17} />
                   {unreadCount > 0 && (
                     <span className="badge badge-red badge-notification">
@@ -172,7 +167,7 @@ export function Navbar() {
                   <MessageCircle size={17} className={cn(pathname === '/messages' && 'fill-current')} />
                 </Link>
 
-                {/* Cart — always visible */}
+                {/* Cart */}
                 <button onClick={toggleCart} aria-label="Cart" className="btn-icon relative">
                   <ShoppingBag size={17} />
                   <AnimatePresence>
@@ -191,25 +186,26 @@ export function Navbar() {
                   </AnimatePresence>
                 </button>
 
-                {/* Avatar — mobile: direct link to profile, desktop: dropdown */}
+                {/* Avatar — mobile: profile link */}
                 <Link
                   href={`/profile/${user?.username}`}
                   aria-label="Your profile"
                   className="md:hidden flex items-center p-1 rounded-full ml-0.5
-                             transition-all duration-[var(--duration-hover)]
-                             hover:ring-2 hover:ring-[hsl(var(--border))]"
+                             hover:ring-2 hover:ring-[hsl(var(--border))]
+                             transition-all duration-[var(--duration-hover)]"
                 >
                   <div
                     className="w-7 h-7 rounded-full flex items-center justify-center
                                text-white text-xs font-semibold shrink-0 overflow-hidden"
                     style={{ background: 'hsl(var(--accent))' }}
                   >
-                    {user?.avatar ? (
-                      <Image src={user.avatar} alt={user.displayName || 'Avatar'} width={28} height={28} className="object-cover w-full h-full" />
-                    ) : initials}
+                    {user?.avatar
+                      ? <Image src={user.avatar} alt={user.displayName || 'Avatar'} width={28} height={28} className="object-cover w-full h-full" />
+                      : initials}
                   </div>
                 </Link>
 
+                {/* Avatar — desktop: dropdown */}
                 <div
                   ref={dropdownRef}
                   className="relative ml-1 pl-2 border-l border-[hsl(var(--border))] hidden md:block"
@@ -229,9 +225,9 @@ export function Navbar() {
                                  text-white text-xs font-semibold shrink-0 overflow-hidden"
                       style={{ background: 'hsl(var(--accent))' }}
                     >
-                      {user?.avatar ? (
-                        <Image src={user.avatar} alt={user.displayName || 'Avatar'} width={28} height={28} className="object-cover w-full h-full" />
-                      ) : initials}
+                      {user?.avatar
+                        ? <Image src={user.avatar} alt={user.displayName || 'Avatar'} width={28} height={28} className="object-cover w-full h-full" />
+                        : initials}
                     </div>
                   </button>
 
@@ -252,24 +248,24 @@ export function Navbar() {
                         }}
                       >
                         {/* Header */}
-                        <div
-                          className="px-3.5 py-3 flex items-center gap-3"
-                          style={{ borderBottom: '0.5px solid hsl(var(--border))' }}
-                        >
+                        <div className="px-3.5 py-3 flex items-center gap-3"
+                             style={{ borderBottom: '0.5px solid hsl(var(--border))' }}>
                           <div
                             className="w-[42px] h-[42px] rounded-full flex items-center justify-center
                                        text-white text-sm font-semibold shrink-0 overflow-hidden"
                             style={{ background: 'hsl(var(--accent))' }}
                           >
-                            {user?.avatar ? (
-                              <Image src={user.avatar} alt={user.displayName || 'Avatar'} width={42} height={42} className="object-cover w-full h-full" />
-                            ) : initials}
+                            {user?.avatar
+                              ? <Image src={user.avatar} alt={user.displayName || 'Avatar'} width={42} height={42} className="object-cover w-full h-full" />
+                              : initials}
                           </div>
                           <div className="min-w-0">
-                            <p className="text-[14px] font-medium truncate leading-snug" style={{ color: 'hsl(var(--foreground))' }}>
+                            <p className="text-[14px] font-medium truncate leading-snug"
+                               style={{ color: 'hsl(var(--foreground))' }}>
                               {user?.displayName || 'Your account'}
                             </p>
-                            <p className="text-[12px] truncate mt-0.5" style={{ color: 'hsl(var(--muted))' }}>
+                            <p className="text-[12px] truncate mt-0.5"
+                               style={{ color: 'hsl(var(--muted))' }}>
                               @{user?.username}
                             </p>
                           </div>
@@ -277,45 +273,51 @@ export function Navbar() {
 
                         {/* Body */}
                         <div className="p-1.5">
-                          <p className="px-2 pt-1.5 pb-1 text-[10px] font-medium uppercase tracking-[0.07em]" style={{ color: 'hsl(var(--muted))' }}>
-                            Account
-                          </p>
+                          <p className="px-2 pt-1.5 pb-1 text-[10px] font-medium uppercase tracking-[0.07em]"
+                             style={{ color: 'hsl(var(--muted))' }}>Account</p>
 
                           <Link
                             href={`/profile/${user?.username}`}
-                            className="flex items-center gap-2.5 px-2.5 py-[9px] rounded-[10px] transition-all duration-[var(--duration-hover)]"
+                            className="flex items-center gap-2.5 px-2.5 py-[9px] rounded-[10px]
+                                       transition-all duration-[var(--duration-hover)]"
                             style={{ color: 'hsl(var(--foreground))' }}
                             onMouseEnter={e => (e.currentTarget.style.background = 'hsl(var(--background-secondary))')}
                             onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                           >
-                            <span className="w-[30px] h-[30px] rounded-[8px] flex items-center justify-center shrink-0" style={{ background: 'hsl(var(--background-secondary))' }}>
+                            <span className="w-[30px] h-[30px] rounded-[8px] flex items-center justify-center shrink-0"
+                                  style={{ background: 'hsl(var(--background-secondary))' }}>
                               <User size={14} style={{ color: 'hsl(var(--muted))' }} />
                             </span>
                             <span className="flex-1 min-w-0">
-                              <span className="block text-[13.5px] font-[450] leading-none" style={{ color: 'hsl(var(--foreground))' }}>Your profile</span>
-                              <span className="block text-[11.5px] mt-0.5 truncate" style={{ color: 'hsl(var(--muted))' }}>shoppin.com/@{user?.username}</span>
+                              <span className="block text-[13.5px] font-[450] leading-none"
+                                    style={{ color: 'hsl(var(--foreground))' }}>Your profile</span>
+                              <span className="block text-[11.5px] mt-0.5 truncate"
+                                    style={{ color: 'hsl(var(--muted))' }}>shoppin.com/@{user?.username}</span>
                             </span>
                             <ChevronRight size={13} style={{ color: 'hsl(var(--muted))', opacity: 0.45 }} />
                           </Link>
 
                           {isAdmin && (
                             <>
-                              <p className="px-2 pt-2.5 pb-1 text-[10px] font-medium uppercase tracking-[0.07em]" style={{ color: 'hsl(var(--muted))' }}>
-                                Admin
-                              </p>
+                              <p className="px-2 pt-2.5 pb-1 text-[10px] font-medium uppercase tracking-[0.07em]"
+                                 style={{ color: 'hsl(var(--muted))' }}>Admin</p>
                               <Link
                                 href="/admin"
-                                className="flex items-center gap-2.5 px-2.5 py-[9px] rounded-[10px] transition-all duration-[var(--duration-hover)]"
+                                className="flex items-center gap-2.5 px-2.5 py-[9px] rounded-[10px]
+                                           transition-all duration-[var(--duration-hover)]"
                                 style={{ color: 'hsl(var(--accent))' }}
                                 onMouseEnter={e => (e.currentTarget.style.background = 'hsl(var(--accent) / 0.07)')}
                                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                               >
-                                <span className="w-[30px] h-[30px] rounded-[8px] flex items-center justify-center shrink-0" style={{ background: 'hsl(var(--accent) / 0.09)' }}>
+                                <span className="w-[30px] h-[30px] rounded-[8px] flex items-center justify-center shrink-0"
+                                      style={{ background: 'hsl(var(--accent) / 0.09)' }}>
                                   <LayoutDashboard size={14} style={{ color: 'hsl(var(--accent))' }} />
                                 </span>
                                 <span className="flex-1 min-w-0">
-                                  <span className="block text-[13.5px] font-[450] leading-none" style={{ color: 'hsl(var(--accent))' }}>Dashboard</span>
-                                  <span className="block text-[11.5px] mt-0.5" style={{ color: 'hsl(var(--accent) / 0.65)' }}>Manage products & users</span>
+                                  <span className="block text-[13.5px] font-[450] leading-none"
+                                        style={{ color: 'hsl(var(--accent))' }}>Dashboard</span>
+                                  <span className="block text-[11.5px] mt-0.5"
+                                        style={{ color: 'hsl(var(--accent) / 0.65)' }}>Manage products & users</span>
                                 </span>
                                 <ChevronRight size={13} style={{ color: 'hsl(var(--accent))', opacity: 0.45 }} />
                               </Link>
@@ -327,12 +329,14 @@ export function Navbar() {
                         <div className="p-1.5" style={{ borderTop: '0.5px solid hsl(var(--border))' }}>
                           <button
                             onClick={() => { setIsUserOpen(false); signOut() }}
-                            className="w-full flex items-center gap-2.5 px-2.5 py-[9px] rounded-[10px] text-[13.5px] transition-all duration-[var(--duration-hover)]"
+                            className="w-full flex items-center gap-2.5 px-2.5 py-[9px]
+                                       rounded-[10px] text-[13.5px] transition-all duration-[var(--duration-hover)]"
                             style={{ color: 'hsl(var(--muted))' }}
                             onMouseEnter={e => { e.currentTarget.style.background = 'hsl(var(--accent) / 0.07)'; e.currentTarget.style.color = 'hsl(var(--accent))' }}
                             onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'hsl(var(--muted))' }}
                           >
-                            <span className="w-[30px] h-[30px] rounded-[8px] flex items-center justify-center shrink-0" style={{ background: 'hsl(var(--accent) / 0.08)' }}>
+                            <span className="w-[30px] h-[30px] rounded-[8px] flex items-center justify-center shrink-0"
+                                  style={{ background: 'hsl(var(--accent) / 0.08)' }}>
                               <LogOut size={13} style={{ color: 'hsl(var(--accent))' }} />
                             </span>
                             Sign out
@@ -345,6 +349,7 @@ export function Navbar() {
               </>
             ) : (
               <>
+                {/* Cart — guests can still have items */}
                 <button onClick={toggleCart} aria-label="Cart" className="btn-icon relative">
                   <ShoppingBag size={17} />
                   <AnimatePresence>
@@ -363,8 +368,14 @@ export function Navbar() {
                   </AnimatePresence>
                 </button>
 
+                {/* Desktop sign in / join */}
                 <div className="hidden md:flex items-center gap-2 ml-2 pl-3 border-l border-[hsl(var(--border))]">
-                  <Link href="/sign-in" className="text-sm font-medium text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] transition-colors duration-[var(--duration-hover)] px-3 py-2">
+                  <Link
+                    href="/sign-in"
+                    className="text-sm font-medium px-3 py-2
+                               text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]
+                               transition-colors duration-[var(--duration-hover)]"
+                  >
                     Sign in
                   </Link>
                   <Link href="/sign-up" className="btn-save text-sm">Join free</Link>
@@ -372,7 +383,7 @@ export function Navbar() {
               </>
             )}
 
-            {/* Hamburger — mobile only, opens nav links drawer */}
+            {/* Hamburger */}
             <button
               onClick={() => setIsMobileOpen(!isMobileOpen)}
               aria-label="Menu"
@@ -395,7 +406,7 @@ export function Navbar() {
         </div>
 
         {/* ══════════════════════════════════════════
-            MOBILE DRAWER — nav links + search + theme
+            MOBILE DRAWER
         ══════════════════════════════════════════ */}
         <AnimatePresence>
           {isMobileOpen && (
@@ -410,7 +421,7 @@ export function Navbar() {
                 onClick={() => setIsMobileOpen(false)}
               />
 
-              {/* Drawer panel */}
+              {/* Drawer */}
               <motion.div
                 initial={{ opacity: 0, y: -8, scale: 0.98 }}
                 animate={{ opacity: 1, y: 0,  scale: 1    }}
@@ -519,7 +530,45 @@ export function Navbar() {
                   </div>
                 </motion.div>
 
-                {/* Sign out row — mobile only, shown at bottom of drawer */}
+                {/* ── Auth — mobile only ──
+                     Shown when user is NOT signed in.
+                     Two full-width buttons stacked: Sign in (ghost) + Join free (red) ── */}
+                {!isSignedIn && (
+                  <>
+                    <div className="h-px mx-3" style={{ background: 'hsl(var(--border))' }} />
+                    <motion.div
+                      className="p-3 flex flex-col gap-2"
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: allMobileLinks.length * 0.04 + 0.08 }}
+                    >
+                      {/* Sign in — ghost style */}
+                      <Link
+                        href="/sign-in"
+                        className="w-full flex items-center justify-center gap-2
+                                   py-3 rounded-[var(--radius-pill)] text-sm font-medium
+                                   border border-[hsl(var(--border))]
+                                   text-[hsl(var(--foreground))]
+                                   hover:border-[hsl(var(--foreground))]
+                                   hover:bg-[hsl(var(--foreground)/0.04)]
+                                   transition-all duration-[var(--duration-hover)]"
+                      >
+                        Sign in
+                      </Link>
+
+                      {/* Join free — accent red */}
+                      <Link
+                        href="/sign-up"
+                        className="btn-save w-full justify-center gap-2 py-3 text-sm"
+                      >
+                        Join free
+                        <ArrowRight size={14} />
+                      </Link>
+                    </motion.div>
+                  </>
+                )}
+
+                {/* Sign out — signed-in mobile */}
                 {isSignedIn && (
                   <>
                     <div className="h-px mx-3" style={{ background: 'hsl(var(--border))' }} />
@@ -531,13 +580,15 @@ export function Navbar() {
                     >
                       <button
                         onClick={() => signOut()}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-[var(--radius-sm)]
-                                   text-sm transition-all duration-[var(--duration-hover)]"
+                        className="w-full flex items-center gap-3 px-3 py-2.5
+                                   rounded-[var(--radius-sm)] text-sm
+                                   transition-all duration-[var(--duration-hover)]"
                         style={{ color: 'hsl(var(--muted))' }}
                         onMouseEnter={e => { e.currentTarget.style.background = 'hsl(var(--accent) / 0.07)'; e.currentTarget.style.color = 'hsl(var(--accent))' }}
                         onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'hsl(var(--muted))' }}
                       >
-                        <span className="w-7 h-7 rounded-[var(--radius-sm)] flex items-center justify-center shrink-0" style={{ background: 'hsl(var(--accent) / 0.08)' }}>
+                        <span className="w-7 h-7 rounded-[var(--radius-sm)] flex items-center justify-center shrink-0"
+                              style={{ background: 'hsl(var(--accent) / 0.08)' }}>
                           <LogOut size={13} style={{ color: 'hsl(var(--accent))' }} />
                         </span>
                         <span className="font-medium">Sign out</span>
@@ -545,6 +596,7 @@ export function Navbar() {
                     </motion.div>
                   </>
                 )}
+
               </motion.div>
             </>
           )}
@@ -559,7 +611,11 @@ export function Navbar() {
   )
 }
 
-function NavIconBtn({ onClick, label, children }: { onClick?: () => void; label: string; children: React.ReactNode }) {
+function NavIconBtn({ onClick, label, children }: {
+  onClick?: () => void
+  label: string
+  children: React.ReactNode
+}) {
   return (
     <button onClick={onClick} aria-label={label} className="btn-icon">
       {children}
