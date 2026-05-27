@@ -17,6 +17,8 @@ interface ProductCardProps {
   className?: string
 }
 
+const ease = [0.16, 1, 0.3, 1] as const
+
 export function ProductCard({ product, priority = false, className }: ProductCardProps) {
   const { isSignedIn }    = useAuth()
   const isSaved           = useUserStore((s) => s.isSaved(product._id))
@@ -31,6 +33,7 @@ export function ProductCard({ product, priority = false, className }: ProductCar
   const discount    = calculateDiscount(product.price, product.comparePrice)
   const hasMany     = product.images?.length > 1
   const defaultSize = product.variants?.[0]?.size
+  const isSoldOut   = product.totalInventory === 0
 
   const handleSave = async (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation()
@@ -58,30 +61,28 @@ export function ProductCard({ product, priority = false, className }: ProductCar
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+      initial={{ opacity: 0, y: 14, filter: 'blur(3px)' }}
+      animate={{ opacity: 1, y: 0,  filter: 'blur(0px)' }}
+      transition={{ duration: 0.45, ease }}
       className={cn('group relative will-change-transform', className)}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => { setIsHovered(false); setCurrentImageIndex(0) }}
     >
       <Link href={`/product/${product._id}`}>
 
-        {/* ── Image Container ── */}
-        <div
-          className={cn(
-            'card-pin relative aspect-[3/4]',
-            'transition-[box-shadow,transform] duration-[var(--duration-standard)]',
-          )}
-        >
-          {/* Images */}
+        {/* ══════════════════════════════════════════════════════════════
+            IMAGE CONTAINER — card-pin: shadow depth, no hard borders
+        ══════════════════════════════════════════════════════════════ */}
+        <div className={cn('card-pin relative aspect-[3/4]')}>
+
+          {/* Image layers */}
           <AnimatePresence mode="wait">
             <motion.div
               key={currentImageIndex}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{   opacity: 0 }}
-              transition={{ duration: 0.2 }}
+              transition={{ duration: 0.22, ease: 'easeInOut' }}
               className="absolute inset-0"
             >
               {product.images?.[currentImageIndex]?.url ? (
@@ -90,16 +91,23 @@ export function ProductCard({ product, priority = false, className }: ProductCar
                   alt={product.images[currentImageIndex].alt || product.title}
                   fill
                   className={cn(
-                    'object-cover transition-transform duration-700 ease-out blur-up loaded',
-                    isHovered && 'scale-[1.06]'
+                    'object-cover blur-up loaded',
+                    'transition-transform duration-[700ms] ease-out',
+                    isHovered && 'scale-[1.055]'
                   )}
                   sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
                   priority={priority}
                 />
               ) : (
                 <div
-                  className="w-full h-full flex items-center justify-center text-xs tracking-wide"
-                  style={{ color: 'hsl(var(--muted))' }}
+                  className="w-full h-full flex items-center justify-center"
+                  style={{
+                    background: 'hsl(var(--surface-inset))',
+                    fontSize:   'var(--text-xs)',
+                    color:      'hsl(var(--muted-foreground))',
+                    fontWeight: 300,
+                    letterSpacing: '0.04em',
+                  }}
                 >
                   No image
                 </div>
@@ -107,12 +115,12 @@ export function ProductCard({ product, priority = false, className }: ProductCar
             </motion.div>
           </AnimatePresence>
 
-          {/* Pinterest-style gradient overlay */}
+          {/* Cinematic gradient overlay */}
           <div className="pin-overlay" />
 
-          {/* Hover zones for multi-image swap — desktop only */}
+          {/* Multi-image hover zones — desktop only */}
           {hasMany && isHovered && (
-            <div className="hidden md:flex absolute top-0 left-0 right-0 h-full z-10">
+            <div className="hidden md:flex absolute inset-0 z-10">
               {product.images.map((_: any, i: number) => (
                 <div
                   key={i}
@@ -123,79 +131,83 @@ export function ProductCard({ product, priority = false, className }: ProductCar
             </div>
           )}
 
-          {/* Image progress dots — desktop only */}
+          {/* Image progress — refined pill indicators */}
           {hasMany && isHovered && (
-            <div className="hidden md:flex absolute bottom-3 left-1/2 -translate-x-1/2 gap-1 z-20">
+            <motion.div
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2, ease }}
+              className="hidden md:flex absolute bottom-3 left-1/2 -translate-x-1/2 gap-1 z-20"
+            >
               {product.images.slice(0, 5).map((_: any, i: number) => (
                 <motion.div
                   key={i}
-                  className="h-[3px] rounded-full bg-white transition-all duration-200"
-                  animate={{
-                    width:   i === currentImageIndex ? 16 : 6,
-                    opacity: i === currentImageIndex ? 1  : 0.5,
+                  className="rounded-full"
+                  style={{
+                    height:     '2px',
+                    background: 'white',
                   }}
+                  animate={{
+                    width:   i === currentImageIndex ? '1rem' : '0.3125rem',
+                    opacity: i === currentImageIndex ? 1 : 0.45,
+                  }}
+                  transition={{ duration: 0.2, ease: 'easeOut' }}
                 />
               ))}
-            </div>
+            </motion.div>
           )}
 
-          {/* ── Badges (top-left) ── */}
-          <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-20">
+          {/* ── Badges — top left ───────────────────────────────────── */}
+          <div className="absolute top-2.5 left-2.5 flex flex-col gap-1.5 z-20">
             {product.isFeatured && (
               <span className="badge badge-red">Featured</span>
             )}
             {discount && !product.isFeatured && (
               <motion.span
-                initial={{ opacity: 0, scale: 0.8, y: -4 }}
-                animate={{ opacity: 1, scale: 1,   y: 0  }}
-                transition={{ duration: 0.3, ease: [0.34, 1.56, 0.64, 1] }}
-                className="inline-flex items-center font-bold"
-                style={{
-                  fontSize:      '0.68rem',
-                  padding:       '0.22rem 0.55rem',
-                  borderRadius:  'var(--radius-pill)',
-                  background:    'hsl(var(--accent))',
-                  color:         'white',
-                  boxShadow:     'var(--shadow-red)',
-                  letterSpacing: '0.01em',
-                }}
+                initial={{ opacity: 0, scale: 0.82, y: -4 }}
+                animate={{ opacity: 1, scale: 1,    y: 0  }}
+                transition={{ duration: 0.32, ease }}
+                className="badge badge-red"
               >
                 −{discount}%
               </motion.span>
             )}
           </div>
 
-          {/* ── Sold Out diagonal ribbon ── */}
-          {product.totalInventory === 0 && (
+          {/* ── Sold Out overlay — atmospheric, not aggressive ──────── */}
+          {isSoldOut && (
             <div
               className="absolute inset-0 z-20 overflow-hidden pointer-events-none"
               style={{ borderRadius: 'var(--radius-xl)' }}
             >
+              {/* Dim veil */}
               <div
                 className="absolute inset-0"
-                style={{ background: 'rgba(0,0,0,0.22)' }}
+                style={{ background: 'rgba(0,0,0,0.28)' }}
               />
+              {/* Glass ribbon */}
               <div
                 className="absolute flex items-center justify-center"
                 style={{
-                  top:                  '16%',
-                  right:                '-30%',
-                  width:                '95%',
-                  padding:              '0.38rem 0',
-                  background:           'rgba(12,12,12,0.80)',
-                  backdropFilter:       'blur(8px)',
-                  WebkitBackdropFilter: 'blur(8px)',
+                  top:                  '18%',
+                  right:                '-28%',
+                  width:                '92%',
+                  padding:              '0.4375rem 0',
+                  background:           'rgba(8,8,10,0.72)',
+                  backdropFilter:       'blur(12px) saturate(1.4)',
+                  WebkitBackdropFilter: 'blur(12px) saturate(1.4)',
                   transform:            'rotate(35deg)',
-                  borderTop:            '0.5px solid rgba(255,255,255,0.12)',
-                  borderBottom:         '0.5px solid rgba(255,255,255,0.12)',
+                  borderTop:            '0.5px solid rgba(255,255,255,0.10)',
+                  borderBottom:         '0.5px solid rgba(255,255,255,0.10)',
                 }}
               >
                 <span
                   style={{
-                    color:         'white',
-                    fontSize:      '0.58rem',
-                    fontWeight:    700,
-                    letterSpacing: '0.2em',
+                    color:         'rgba(255,255,255,0.88)',
+                    fontSize:      '0.5625rem',
+                    fontWeight:    500,
+                    letterSpacing: '0.22em',
                     textTransform: 'uppercase',
                   }}
                 >
@@ -205,49 +217,80 @@ export function ProductCard({ product, priority = false, className }: ProductCar
             </div>
           )}
 
-          {/* ── Actions — desktop hover only ── */}
+          {/* ── Hover actions — desktop ──────────────────────────────── */}
           <AnimatePresence>
             {isHovered && (
               <>
-                {/* Save — top right */}
+                {/* Save — top right glass button */}
                 <motion.div
-                  initial={{ opacity: 0, y: -6 }}
-                  animate={{ opacity: 1, y: 0  }}
-                  exit={{   opacity: 0, y: -6  }}
-                  transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                  initial={{ opacity: 0, y: -8,  scale: 0.92 }}
+                  animate={{ opacity: 1, y: 0,   scale: 1    }}
+                  exit={{   opacity: 0, y: -6,  scale: 0.94  }}
+                  transition={{ duration: 0.2, ease }}
                   className="absolute top-2.5 right-2.5 z-30 hidden md:flex"
                 >
                   <button
                     onClick={handleSave}
                     disabled={isSaving}
-                    aria-label="Save product"
-                    className={cn(
-                      'w-9 h-9 flex items-center justify-center rounded-full',
-                      'backdrop-blur-sm transition-colors duration-[var(--duration-hover)]',
-                      isSaved
-                        ? 'bg-white text-[hsl(var(--accent))]'
-                        : 'bg-black/40 hover:bg-black/60 text-white',
-                    )}
+                    aria-label={isSaved ? 'Remove from saved' : 'Save product'}
+                    style={{
+                      width:                '2.125rem',
+                      height:               '2.125rem',
+                      borderRadius:         '50%',
+                      display:              'flex',
+                      alignItems:           'center',
+                      justifyContent:       'center',
+                      backdropFilter:       'blur(12px) saturate(1.6)',
+                      WebkitBackdropFilter: 'blur(12px) saturate(1.6)',
+                      background:           isSaved
+                        ? 'rgba(255,255,255,0.96)'
+                        : 'rgba(0,0,0,0.36)',
+                      color: isSaved
+                        ? 'hsl(var(--accent))'
+                        : 'rgba(255,255,255,0.92)',
+                      border:     'none',
+                      cursor:     'pointer',
+                      transition: `background var(--duration-hover) var(--ease-smooth),
+                                   transform  var(--duration-fast)  var(--ease-cinematic)`,
+                      boxShadow: isSaved
+                        ? 'var(--shadow-red), 0 0 0 1px rgba(255,255,255,0.4)'
+                        : '0 2px 8px rgba(0,0,0,0.3)',
+                    }}
+                    onMouseEnter={e => {
+                      (e.currentTarget as HTMLElement).style.transform = 'scale(1.08)'
+                      if (!isSaved)
+                        (e.currentTarget as HTMLElement).style.background = 'rgba(0,0,0,0.55)'
+                    }}
+                    onMouseLeave={e => {
+                      (e.currentTarget as HTMLElement).style.transform = 'scale(1)'
+                      if (!isSaved)
+                        (e.currentTarget as HTMLElement).style.background = 'rgba(0,0,0,0.36)'
+                    }}
                   >
-                    <Heart size={14} className={cn(isSaved && 'fill-current')} />
+                    <Heart
+                      size={13}
+                      strokeWidth={isSaved ? 0 : 1.75}
+                      style={{ fill: isSaved ? 'currentColor' : 'none' }}
+                    />
                   </button>
                 </motion.div>
 
-                {/* Quick Add — bottom, desktop only */}
-                {product.totalInventory > 0 && (
+                {/* Quick Add — bottom glass bar, desktop only */}
+                {!isSoldOut && (
                   <motion.div
-                    initial={{ opacity: 0, y: 8  }}
+                    initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0  }}
                     exit={{   opacity: 0, y: 8   }}
-                    transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
-                    className="absolute bottom-0 left-0 right-0 z-30 p-3 hidden md:flex"
+                    transition={{ duration: 0.2, ease, delay: 0.03 }}
+                    className="absolute bottom-0 left-0 right-0 z-30 p-2.5 hidden md:flex"
                   >
                     <button
                       onClick={handleQuickAdd}
                       disabled={isAdding}
-                      className="btn-save w-full h-9 text-xs justify-center gap-2"
+                      className="btn-save w-full justify-center gap-2"
+                      style={{ height: '2.25rem', fontSize: 'var(--text-xs)' }}
                     >
-                      <ShoppingBag size={13} />
+                      <ShoppingBag size={12} strokeWidth={2} />
                       {isAdding ? 'Adding…' : 'Quick Add'}
                     </button>
                   </motion.div>
@@ -255,43 +298,57 @@ export function ProductCard({ product, priority = false, className }: ProductCar
               </>
             )}
           </AnimatePresence>
-
         </div>
 
-        {/* ── Product Info ── */}
-        <div className="mt-3.5 space-y-1 px-0.5">
-
+        {/* ══════════════════════════════════════════════════════════════
+            PRODUCT INFO — editorial hierarchy, no boxing
+        ══════════════════════════════════════════════════════════════ */}
+        <div
+          style={{
+            marginTop: '0.875rem',
+            paddingInline: '0.125rem',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.25rem',
+          }}
+        >
+          {/* Brand eyebrow */}
           {product.brand && (
             <p className="eyebrow">{product.brand}</p>
           )}
 
+          {/* Title */}
           <p
-            className="text-sm font-medium line-clamp-2 leading-snug"
-            style={{ color: 'hsl(var(--foreground))' }}
+            className="line-clamp-2"
+            style={{
+              fontSize:      'var(--text-sm)',
+              fontWeight:    400,
+              lineHeight:    1.45,
+              color:         'hsl(var(--foreground))',
+              letterSpacing: '-0.01em',
+            }}
           >
             {product.title}
           </p>
 
-          {/* Price */}
-          <div className="flex items-center gap-2 pt-1">
+          {/* Price row */}
+          <div
+            style={{
+              display:    'flex',
+              alignItems: 'baseline',
+              gap:        '0.5rem',
+              marginTop:  '0.25rem',
+            }}
+          >
             {discount ? (
               <>
                 <span
-                  className="price"
-                  style={{ color: 'hsl(var(--accent))', fontWeight: 700 }}
+                  className="price price-sale"
+                  style={{ fontWeight: 600 }}
                 >
                   {formatPrice(product.price, 'KES')}
                 </span>
-                <span
-                  style={{
-                    fontSize:            '0.78rem',
-                    fontWeight:          400,
-                    color:               'hsl(var(--muted))',
-                    textDecoration:      'line-through',
-                    textDecorationColor: 'hsl(var(--muted) / 0.6)',
-                    letterSpacing:       '-0.01em',
-                  }}
-                >
+                <span className="price-original">
                   {formatPrice(product.comparePrice, 'KES')}
                 </span>
               </>
@@ -302,22 +359,46 @@ export function ProductCard({ product, priority = false, className }: ProductCar
             )}
           </div>
 
-          {/* Rating — stars only, no text */}
+          {/* Rating — restrained dots, not stars */}
           {product.rating > 0 && (
-            <div className="flex gap-px pt-0.5">
-              {Array.from({ length: 5 }).map((_, i) => (
+            <div
+              style={{
+                display:    'flex',
+                alignItems: 'center',
+                gap:        '0.25rem',
+                marginTop:  '0.125rem',
+              }}
+            >
+              {Array.from({ length: 5 }).map((_, i) => {
+                const filled = i < Math.round(product.rating)
+                return (
+                  <div
+                    key={i}
+                    style={{
+                      width:        filled ? '0.3125rem' : '0.25rem',
+                      height:       filled ? '0.3125rem' : '0.25rem',
+                      borderRadius: '50%',
+                      background:   filled
+                        ? 'hsl(var(--accent))'
+                        : 'hsl(var(--border))',
+                      flexShrink: 0,
+                      transition: 'background var(--duration-fast) ease',
+                    }}
+                  />
+                )
+              })}
+              {product.reviewCount > 0 && (
                 <span
-                  key={i}
-                  className="text-[11px] leading-none"
                   style={{
-                    color: i < Math.round(product.rating)
-                      ? 'hsl(var(--accent))'
-                      : 'hsl(var(--border))',
+                    fontSize:   'var(--text-2xs)',
+                    color:      'hsl(var(--muted-foreground))',
+                    fontWeight: 300,
+                    marginLeft: '0.125rem',
                   }}
                 >
-                  ★
+                  ({product.reviewCount})
                 </span>
-              ))}
+              )}
             </div>
           )}
         </div>
