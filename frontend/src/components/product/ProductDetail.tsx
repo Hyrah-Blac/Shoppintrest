@@ -15,7 +15,8 @@ import {
   Package,
   RotateCcw,
   Zap,
-  TrendingUp,
+  X,
+  Ruler,
 } from 'lucide-react'
 import { useAuth } from '@clerk/nextjs'
 import { toast } from 'sonner'
@@ -44,6 +45,7 @@ export function ProductDetail({ id }: Props) {
   const [zoomPos,              setZoomPos]              = useState({ x: 50, y: 50 })
   const [collections,          setCollections]          = useState<any[]>([])
   const [showCollectionPicker, setShowCollectionPicker] = useState(false)
+  const [showSizeGuide,        setShowSizeGuide]        = useState(false)
 
   useEffect(() => {
     setIsLoading(true)
@@ -505,54 +507,21 @@ export function ProductDetail({ id }: Props) {
             </div>
           </div>
 
-          {/* Rating */}
+          {/* Rating — stars only */}
           {product.rating > 0 && (
-            <div className="flex items-center gap-2.5">
-              <div className="flex gap-0.5">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Star
-                    key={i}
-                    size={13}
-                    style={{
-                      color: i < Math.round(product.rating)
-                        ? 'hsl(var(--accent))'
-                        : 'hsl(var(--border))',
-                      fill: 'currentColor',
-                    }}
-                  />
-                ))}
-              </div>
-              <span
-                className="text-xs"
-                style={{ color: 'hsl(var(--muted))' }}
-              >
-                {product.rating.toFixed(1)}
-              </span>
-              <span
-                className="text-xs"
-                style={{ color: 'hsl(var(--border))' }}
-              >
-                ·
-              </span>
-              <span
-                className="text-xs underline underline-offset-2 cursor-pointer
-                           hover:text-[hsl(var(--foreground))] transition-colors"
-                style={{ color: 'hsl(var(--muted))' }}
-              >
-                {product.reviewCount} reviews
-              </span>
-              {product.saves > 0 && (
-                <>
-                  <span style={{ color: 'hsl(var(--border))' }}>·</span>
-                  <span
-                    className="flex items-center gap-1 text-xs"
-                    style={{ color: 'hsl(var(--muted))' }}
-                  >
-                    <TrendingUp size={11} />
-                    {product.saves} saves
-                  </span>
-                </>
-              )}
+            <div className="flex gap-0.5">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Star
+                  key={i}
+                  size={13}
+                  style={{
+                    color: i < Math.round(product.rating)
+                      ? 'hsl(var(--accent))'
+                      : 'hsl(var(--border))',
+                    fill: 'currentColor',
+                  }}
+                />
+              ))}
             </div>
           )}
 
@@ -627,11 +596,13 @@ export function ProductDetail({ id }: Props) {
                 Select Size
               </span>
               <button
-                className="text-xs underline underline-offset-2
+                onClick={() => setShowSizeGuide(true)}
+                className="flex items-center gap-1 text-xs underline underline-offset-2
                            hover:text-[hsl(var(--foreground))]
                            transition-colors duration-[var(--duration-hover)]"
                 style={{ color: 'hsl(var(--muted))' }}
               >
+                <Ruler size={11} />
                 Size Guide
               </button>
             </div>
@@ -844,6 +815,240 @@ export function ProductDetail({ id }: Props) {
           )}
         </div>
       </div>
+
+      {/* ── Size Guide Modal ── */}
+      <AnimatePresence>
+        {showSizeGuide && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{   opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-50"
+              style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}
+              onClick={() => setShowSizeGuide(false)}
+            />
+
+            {/* Modal panel */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 16 }}
+              animate={{ opacity: 1, scale: 1,    y: 0  }}
+              exit={{   opacity: 0, scale: 0.95, y: 16  }}
+              transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4"
+              style={{ pointerEvents: 'none' }}
+            >
+              <div
+                className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto scrollbar-hide"
+                style={{
+                  background:   'hsl(var(--surface-elevated))',
+                  borderRadius: 'var(--radius-2xl)',
+                  border:       '1px solid hsl(var(--border))',
+                  boxShadow:    'var(--shadow-float)',
+                  pointerEvents: 'auto',
+                }}
+              >
+                {/* Header */}
+                <div
+                  className="sticky top-0 flex items-center justify-between px-6 py-5"
+                  style={{
+                    background:   'hsl(var(--surface-elevated))',
+                    borderBottom: '1px solid hsl(var(--border))',
+                    borderRadius: 'var(--radius-2xl) var(--radius-2xl) 0 0',
+                  }}
+                >
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <div
+                        className="w-6 h-6 rounded-[var(--radius-sm)] flex items-center justify-center"
+                        style={{ background: 'hsl(var(--accent-muted))' }}
+                      >
+                        <Ruler size={12} style={{ color: 'hsl(var(--accent))' }} />
+                      </div>
+                      <span className="eyebrow">Sizing</span>
+                    </div>
+                    <h3
+                      className="font-display font-bold tracking-tight"
+                      style={{ fontSize: '1.25rem' }}
+                    >
+                      Size Guide
+                    </h3>
+                  </div>
+                  <button
+                    onClick={() => setShowSizeGuide(false)}
+                    className="w-9 h-9 flex items-center justify-center rounded-full
+                               transition-colors duration-[var(--duration-hover)]
+                               hover:bg-[hsl(var(--background-secondary))]"
+                    style={{ color: 'hsl(var(--muted))' }}
+                    aria-label="Close size guide"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+
+                {/* Body */}
+                <div className="p-6 space-y-8">
+
+                  {/* How to measure */}
+                  <div
+                    className="flex gap-3 p-4 rounded-[var(--radius-lg)]"
+                    style={{
+                      background:  'hsl(var(--accent-muted))',
+                      border:      '1px solid hsl(var(--accent) / 0.15)',
+                    }}
+                  >
+                    <div
+                      className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5"
+                      style={{ background: 'hsl(var(--accent))', color: 'white' }}
+                    >
+                      <Ruler size={14} />
+                    </div>
+                    <div>
+                      <p
+                        className="text-sm font-semibold mb-1"
+                        style={{ color: 'hsl(var(--foreground))' }}
+                      >
+                        How to measure
+                      </p>
+                      <p
+                        className="text-xs leading-relaxed"
+                        style={{ color: 'hsl(var(--muted))', fontWeight: 300 }}
+                      >
+                        Measure your <strong style={{ fontWeight: 600 }}>chest</strong> around the fullest part,
+                        your <strong style={{ fontWeight: 600 }}>waist</strong> at the narrowest point, and
+                        your <strong style={{ fontWeight: 600 }}>hips</strong> at the widest point.
+                        Keep the tape measure snug but not tight.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Women's sizes */}
+                  <div>
+                    <p
+                      className="text-xs font-semibold uppercase tracking-widest mb-3"
+                      style={{ color: 'hsl(var(--muted))' }}
+                    >
+                      Women&apos;s
+                    </p>
+                    <div className="overflow-x-auto scrollbar-hide rounded-[var(--radius-lg)]"
+                         style={{ border: '1px solid hsl(var(--border))' }}>
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr style={{ background: 'hsl(var(--background-secondary))' }}>
+                            {['Size', 'Chest (cm)', 'Waist (cm)', 'Hips (cm)', 'US / EU'].map((h) => (
+                              <th
+                                key={h}
+                                className="px-4 py-3 text-left font-semibold whitespace-nowrap"
+                                style={{ color: 'hsl(var(--foreground))' }}
+                              >
+                                {h}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {[
+                            { size: 'XS',  chest: '79–82',  waist: '61–64',  hips: '87–90',  ref: 'US 0–2 / EU 32–34'  },
+                            { size: 'S',   chest: '83–86',  waist: '65–68',  hips: '91–94',  ref: 'US 4–6 / EU 36–38'  },
+                            { size: 'M',   chest: '87–91',  waist: '69–73',  hips: '95–99',  ref: 'US 8–10 / EU 40–42' },
+                            { size: 'L',   chest: '92–97',  waist: '74–79',  hips: '100–105',ref: 'US 12–14 / EU 44–46'},
+                            { size: 'XL',  chest: '98–104', waist: '80–86',  hips: '106–112',ref: 'US 16–18 / EU 48–50'},
+                            { size: 'XXL', chest: '105–112',waist: '87–94',  hips: '113–120',ref: 'US 20–22 / EU 52–54'},
+                          ].map((row, i) => (
+                            <tr
+                              key={row.size}
+                              style={{
+                                background: i % 2 === 0
+                                  ? 'hsl(var(--surface-elevated))'
+                                  : 'hsl(var(--background-secondary) / 0.5)',
+                                borderTop: '1px solid hsl(var(--border-subtle))',
+                              }}
+                            >
+                              <td className="px-4 py-3 font-bold" style={{ color: 'hsl(var(--accent))' }}>
+                                {row.size}
+                              </td>
+                              <td className="px-4 py-3" style={{ color: 'hsl(var(--foreground))' }}>{row.chest}</td>
+                              <td className="px-4 py-3" style={{ color: 'hsl(var(--foreground))' }}>{row.waist}</td>
+                              <td className="px-4 py-3" style={{ color: 'hsl(var(--foreground))' }}>{row.hips}</td>
+                              <td className="px-4 py-3" style={{ color: 'hsl(var(--muted))' }}>{row.ref}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Men's sizes */}
+                  <div>
+                    <p
+                      className="text-xs font-semibold uppercase tracking-widest mb-3"
+                      style={{ color: 'hsl(var(--muted))' }}
+                    >
+                      Men&apos;s
+                    </p>
+                    <div className="overflow-x-auto scrollbar-hide rounded-[var(--radius-lg)]"
+                         style={{ border: '1px solid hsl(var(--border))' }}>
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr style={{ background: 'hsl(var(--background-secondary))' }}>
+                            {['Size', 'Chest (cm)', 'Waist (cm)', 'Hips (cm)', 'US / EU'].map((h) => (
+                              <th
+                                key={h}
+                                className="px-4 py-3 text-left font-semibold whitespace-nowrap"
+                                style={{ color: 'hsl(var(--foreground))' }}
+                              >
+                                {h}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {[
+                            { size: 'XS',  chest: '84–87',  waist: '71–74',  hips: '87–90',  ref: 'US XS / EU 44'  },
+                            { size: 'S',   chest: '88–92',  waist: '75–79',  hips: '91–95',  ref: 'US S / EU 46–48' },
+                            { size: 'M',   chest: '93–98',  waist: '80–85',  hips: '96–101', ref: 'US M / EU 48–50' },
+                            { size: 'L',   chest: '99–105', waist: '86–92',  hips: '102–108',ref: 'US L / EU 50–52' },
+                            { size: 'XL',  chest: '106–113',waist: '93–100', hips: '109–116',ref: 'US XL / EU 54–56'},
+                            { size: 'XXL', chest: '114–122',waist: '101–109',hips: '117–125',ref: 'US XXL / EU 58'  },
+                          ].map((row, i) => (
+                            <tr
+                              key={row.size}
+                              style={{
+                                background: i % 2 === 0
+                                  ? 'hsl(var(--surface-elevated))'
+                                  : 'hsl(var(--background-secondary) / 0.5)',
+                                borderTop: '1px solid hsl(var(--border-subtle))',
+                              }}
+                            >
+                              <td className="px-4 py-3 font-bold" style={{ color: 'hsl(var(--accent))' }}>
+                                {row.size}
+                              </td>
+                              <td className="px-4 py-3" style={{ color: 'hsl(var(--foreground))' }}>{row.chest}</td>
+                              <td className="px-4 py-3" style={{ color: 'hsl(var(--foreground))' }}>{row.waist}</td>
+                              <td className="px-4 py-3" style={{ color: 'hsl(var(--foreground))' }}>{row.hips}</td>
+                              <td className="px-4 py-3" style={{ color: 'hsl(var(--muted))' }}>{row.ref}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Fit note */}
+                  <p
+                    className="text-xs text-center pb-2"
+                    style={{ color: 'hsl(var(--muted))', fontWeight: 300 }}
+                  >
+                    Between sizes? We recommend sizing up for a more comfortable fit.
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* ── Reviews ── */}
       <div className="mt-20">

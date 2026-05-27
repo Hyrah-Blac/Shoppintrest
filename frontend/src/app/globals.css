@@ -769,3 +769,69 @@
   border-color: hsl(var(--destructive) / 0.70);
   box-shadow: 0 0 0 3px hsl(var(--destructive) / 0.10);
 }
+/* ─── EDITORIAL BANNER — true theme inversion ────────────────────────────
+     Light mode: panel is near-black  → text is white
+     Dark mode:  panel is near-white  → text is near-black
+     This creates a dramatic inverted island that always contrasts
+     against the surrounding page regardless of theme.
+  ─────────────────────────────────────────────────────────────────────── */
+
+  .editorial-banner {
+    /* Light mode default — deep dark */
+    background: linear-gradient(145deg, #0d0d0f 0%, #131316 60%, #1a0a0c 100%);
+  }
+
+  .editorial-headline {
+    color: rgba(255, 255, 255, 0.97);
+    text-shadow: 0 2px 24px rgba(0, 0, 0, 0.4);
+  }
+
+  .editorial-subtext {
+    color: rgba(255, 255, 255, 0.58);
+  }
+
+  .editorial-ghost {
+    border: 1.5px solid rgba(255, 255, 255, 0.18);
+    color: rgba(255, 255, 255, 0.72);
+    background: rgba(255, 255, 255, 0.04);
+  }
+  .editorial-ghost:hover {
+    border-color: rgba(255, 255, 255, 0.42);
+    color: rgba(255, 255, 255, 1);
+    background: rgba(255, 255, 255, 0.09);
+  }
+
+  .editorial-footer {
+    border-color: rgba(255, 255, 255, 0.07);
+    color: rgba(255, 255, 255, 0.26);
+  }
+
+  /* Dark mode — invert to near-white panel */
+  .dark .editorial-banner {
+    background: linear-gradient(145deg, #f5f2ee 0%, #f9f7f5 60%, #fdf0f0 100%);
+  }
+
+  .dark .editorial-headline {
+    color: rgba(15, 12, 12, 0.95);
+    text-shadow: 0 2px 24px rgba(255, 255, 255, 0.1);
+  }
+
+  .dark .editorial-subtext {
+    color: rgba(30, 20, 20, 0.55);
+  }
+
+  .dark .editorial-ghost {
+    border: 1.5px solid rgba(15, 12, 12, 0.18);
+    color: rgba(15, 12, 12, 0.70);
+    background: rgba(15, 12, 12, 0.04);
+  }
+  .dark .editorial-ghost:hover {
+    border-color: rgba(15, 12, 12, 0.40);
+    color: rgba(15, 12, 12, 1);
+    background: rgba(15, 12, 12, 0.08);
+  }
+
+  .dark .editorial-footer {
+    border-color: rgba(15, 12, 12, 0.08);
+    color: rgba(15, 12, 12, 0.28);
+  }
