@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '@clerk/nextjs'
 import {
   Search, ShoppingBag, Heart, Bell,
-  Menu, X, Compass, BookMarked,
+  Compass, BookMarked,
   MessageCircle, ChevronRight, LogOut,
   User, LayoutDashboard, ChevronDown,
 } from 'lucide-react'
@@ -140,10 +140,10 @@ export function Navbar() {
 
             {isSignedIn ? (
               <>
-                {/* Notifications — desktop only */}
+                {/* Notifications — always visible */}
                 <Link
                   href="/notifications"
-                  className="btn-icon relative hidden md:inline-flex"
+                  className="btn-icon relative"
                   aria-label="Notifications"
                 >
                   <Bell size={17} />
@@ -191,7 +191,34 @@ export function Navbar() {
                   </AnimatePresence>
                 </button>
 
-                {/* ── Avatar Dropdown — desktop only ── */}
+                {/* ── Avatar — mobile: direct profile link, desktop: dropdown ── */}
+
+                {/* Mobile avatar → profile page */}
+                <Link
+                  href={`/profile/${user?.username}`}
+                  aria-label="Your profile"
+                  className="md:hidden flex items-center p-1 rounded-full
+                             transition-all duration-[var(--duration-hover)]
+                             hover:ring-2 hover:ring-[hsl(var(--border))]"
+                >
+                  <div
+                    className="w-7 h-7 rounded-full flex items-center justify-center
+                               text-white text-xs font-semibold shrink-0 overflow-hidden"
+                    style={{ background: 'hsl(var(--accent))' }}
+                  >
+                    {user?.avatar ? (
+                      <Image
+                        src={user.avatar}
+                        alt={user.displayName || 'Avatar'}
+                        width={28}
+                        height={28}
+                        className="object-cover w-full h-full"
+                      />
+                    ) : initials}
+                  </div>
+                </Link>
+
+                {/* Desktop avatar → dropdown */}
                 <div
                   ref={dropdownRef}
                   className="relative ml-1 pl-2 border-l border-[hsl(var(--border))] hidden md:block"
@@ -445,25 +472,7 @@ export function Navbar() {
               </>
             )}
 
-            {/* Mobile hamburger */}
-            <button
-              onClick={() => setIsMobileOpen(!isMobileOpen)}
-              aria-label="Menu"
-              className="btn-icon md:hidden ml-0.5"
-            >
-              <AnimatePresence mode="wait" initial={false}>
-                <motion.span
-                  key={isMobileOpen ? 'close' : 'open'}
-                  initial={{ rotate: -90, opacity: 0 }}
-                  animate={{ rotate: 0,   opacity: 1 }}
-                  exit={{   rotate:  90,  opacity: 0 }}
-                  transition={{ duration: 0.15 }}
-                  className="flex"
-                >
-                  {isMobileOpen ? <X size={18} /> : <Menu size={18} />}
-                </motion.span>
-              </AnimatePresence>
-            </button>
+
           </div>
         </div>
 
@@ -613,113 +622,6 @@ export function Navbar() {
                   </div>
                 </motion.div>
 
-                {/* ── Divider ── */}
-                <div className="h-px mx-3" style={{ background: 'hsl(var(--border))' }} />
-
-                {/* ── Account footer ── */}
-                <motion.div
-                  className="p-3"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: allMobileLinks.length * 0.04 + 0.1 }}
-                >
-                  {isSignedIn ? (
-                    <div className="flex items-center gap-3">
-                      {/* Avatar */}
-                      <Link href={`/profile/${user?.username}`}>
-                        <div
-                          className="w-9 h-9 rounded-full flex items-center
-                                     justify-center text-white text-sm font-bold shrink-0 overflow-hidden"
-                          style={{ background: 'hsl(var(--accent))' }}
-                        >
-                          {user?.avatar ? (
-                            <Image
-                              src={user.avatar}
-                              alt={user.displayName || 'Avatar'}
-                              width={36}
-                              height={36}
-                              className="object-cover w-full h-full"
-                            />
-                          ) : initials}
-                        </div>
-                      </Link>
-
-                      {/* Name + handle */}
-                      <div className="flex-1 min-w-0">
-                        <p
-                          className="text-sm font-semibold truncate"
-                          style={{ color: 'hsl(var(--foreground))' }}
-                        >
-                          {user?.displayName || 'Your account'}
-                        </p>
-                        <p
-                          className="text-xs truncate"
-                          style={{ color: 'hsl(var(--muted))' }}
-                        >
-                          @{user?.username}
-                        </p>
-                      </div>
-
-                      {/* Sign out pill */}
-                      <motion.button
-                        whileTap={{ scale: 0.94 }}
-                        onClick={() => signOut()}
-                        aria-label="Sign out"
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-[var(--radius-pill)]
-                                   text-xs font-semibold shrink-0
-                                   transition-all duration-[var(--duration-hover)]"
-                        style={{
-                          background: 'hsl(var(--accent) / 0.08)',
-                          color:      'hsl(var(--accent))',
-                          border:     '1px solid hsl(var(--accent) / 0.2)',
-                        }}
-                        onMouseEnter={e => {
-                          const el = e.currentTarget
-                          el.style.background = 'hsl(var(--accent))'
-                          el.style.color      = 'white'
-                        }}
-                        onMouseLeave={e => {
-                          const el = e.currentTarget
-                          el.style.background = 'hsl(var(--accent) / 0.08)'
-                          el.style.color      = 'hsl(var(--accent))'
-                        }}
-                      >
-                        <LogOut size={11} />
-                        Sign out
-                      </motion.button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-3">
-                      <span
-                        className="w-9 h-9 rounded-[var(--radius-sm)] flex items-center
-                                   justify-center shrink-0"
-                        style={{
-                          background: 'hsl(var(--background-secondary))',
-                          color:      'hsl(var(--muted))',
-                        }}
-                      >
-                        <User size={15} />
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <p
-                          className="text-sm font-medium"
-                          style={{ color: 'hsl(var(--foreground))' }}
-                        >
-                          Join Shoppin
-                        </p>
-                        <p
-                          className="text-xs"
-                          style={{ color: 'hsl(var(--muted))' }}
-                        >
-                          Save & discover what you love
-                        </p>
-                      </div>
-                      <Link href="/sign-up" className="btn-save text-xs px-3 py-1.5 shrink-0">
-                        Join free
-                      </Link>
-                    </div>
-                  )}
-                </motion.div>
               </motion.div>
             </>
           )}
