@@ -1,10 +1,12 @@
 import { Request, Response, NextFunction } from 'express'
+import { escape } from 'lodash'
 import Review from '../models/Review'
 import Product from '../models/Product'
 import Order from '../models/Order'
 import asyncHandler from '../utils/asyncHandler'
 import AppError from '../utils/AppError'
 import { sendSuccess, sendPaginated } from '../utils/apiResponse'
+import { createNotification } from './notification.controller'
 
 // ─── GET REVIEWS FOR PRODUCT ─────────────────────────────────────────────────
 export const getProductReviews = asyncHandler(async (req: Request, res: Response) => {
@@ -32,6 +34,7 @@ export const createReview = asyncHandler(
     const { rating, title, body, images } = req.body
 
     const product = await Product.findById(productId)
+      .populate('seller', 'username displayName avatar')
     if (!product) return next(new AppError('Product not found', 404))
 
     const existingReview = await Review.findOne({
@@ -68,6 +71,19 @@ export const createReview = asyncHandler(
       rating: parseFloat(avgRating.toFixed(1)),
       reviewCount: allReviews.length,
     })
+
+    // Notify the product seller (if not reviewing your own product)
+    if (product.seller && product.seller._id.toString() !== req.user._id.toString()) {
+      await createNotification({
+        recipientId:  product.seller._id.toString(),
+        senderId:     req.user._id.toString(),
+        senderName:   req.user.displayName,
+        senderAvatar: req.user.avatar ?? '',
+        type:         'review',
+        message:      `${escape(req.user.displayName)} left a ${rating}★ review on "${product.title}"`,
+        link:         `/product/${productId}`,
+      })
+    }
 
     const populated = await review.populate('user', 'username displayName avatar')
     sendSuccess(res, populated, 'Review submitted', 201)

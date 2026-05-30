@@ -15,6 +15,7 @@ import {
 import { cn } from '@/lib/utils'
 import { useCartStore } from '@/store/useCartStore'
 import { useNotificationStore } from '@/store/useNotificationStore'
+import { useMessageStore } from '@/store/useMessageStore'
 import { useUserStore } from '@/store/useUserStore'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import { SearchModal } from '@/components/search/SearchModal'
@@ -40,10 +41,11 @@ export function Navbar() {
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [isUserOpen,   setIsUserOpen]   = useState(false)
 
-  const itemCount   = useCartStore((s) => s.itemCount)
-  const toggleCart  = useCartStore((s) => s.toggleCart)
-  const unreadCount = useNotificationStore((s) => s.unreadCount)
-  const dropdownRef = useRef<HTMLDivElement>(null)
+  const itemCount    = useCartStore((s) => s.itemCount)
+  const toggleCart   = useCartStore((s) => s.toggleCart)
+  const unreadCount  = useNotificationStore((s) => s.unreadCount)
+  const totalUnread  = useMessageStore((s) => s.totalUnread)
+  const dropdownRef  = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const onScroll = () => setIsScrolled(window.scrollY > 24)
@@ -95,7 +97,7 @@ export function Navbar() {
           {/* ── Logo ── */}
           <Link href="/" className="shrink-0 flex items-center">
             <div className="relative w-16 h-7">
-              <Image src="/logo.png" alt="Shoppin" fill className="object-contain" priority />
+              <Image src="/logo.png" alt="Shoppin" fill sizes="64px" className="object-contain" priority />
             </div>
           </Link>
 
@@ -142,11 +144,20 @@ export function Navbar() {
                 {/* Notifications */}
                 <Link href="/notifications" className="btn-icon relative" aria-label="Notifications">
                   <Bell size={17} />
-                  {unreadCount > 0 && (
-                    <span className="badge badge-red badge-notification">
-                      {unreadCount > 9 ? '9+' : unreadCount}
-                    </span>
-                  )}
+                  <AnimatePresence>
+                    {unreadCount > 0 && (
+                      <motion.span
+                        key={unreadCount}
+                        initial={{ scale: 0, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{   scale: 0, opacity: 0 }}
+                        transition={{ type: 'spring', stiffness: 500, damping: 28 }}
+                        className="badge badge-red badge-notification"
+                      >
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
                 </Link>
 
                 {/* Saved — desktop only */}
@@ -165,6 +176,20 @@ export function Navbar() {
                   className={cn('btn-icon relative hidden md:inline-flex', pathname === '/messages' && 'text-[hsl(var(--accent))]')}
                 >
                   <MessageCircle size={17} className={cn(pathname === '/messages' && 'fill-current')} />
+                  <AnimatePresence>
+                    {totalUnread > 0 && (
+                      <motion.span
+                        key={totalUnread}
+                        initial={{ scale: 0, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{   scale: 0, opacity: 0 }}
+                        transition={{ type: 'spring', stiffness: 500, damping: 28 }}
+                        className="badge badge-red badge-notification"
+                      >
+                        {totalUnread > 9 ? '9+' : totalUnread}
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
                 </Link>
 
                 {/* Cart */}
@@ -411,7 +436,6 @@ export function Navbar() {
         <AnimatePresence>
           {isMobileOpen && (
             <>
-              {/* Backdrop */}
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -421,7 +445,6 @@ export function Navbar() {
                 onClick={() => setIsMobileOpen(false)}
               />
 
-              {/* Drawer */}
               <motion.div
                 initial={{ opacity: 0, y: -8, scale: 0.98 }}
                 animate={{ opacity: 1, y: 0,  scale: 1    }}
@@ -434,11 +457,11 @@ export function Navbar() {
                   boxShadow:  'var(--shadow-float)',
                 }}
               >
-                {/* Nav links */}
                 <div className="p-2">
                   {allMobileLinks.map((link, i) => {
                     const Icon   = link.icon
                     const active = pathname === link.href
+                    const badge  = link.href === '/messages' ? totalUnread : 0
                     return (
                       <motion.div
                         key={link.href}
@@ -466,6 +489,11 @@ export function Navbar() {
                             <Icon size={14} className={cn((link.href === '/saved' || link.href === '/messages') && active && 'fill-current')} />
                           </span>
                           <span className="flex-1 text-sm font-medium">{link.label}</span>
+                          {badge > 0 && (
+                            <span className="badge badge-red" style={{ fontSize: '10px', padding: '2px 6px' }}>
+                              {badge > 9 ? '9+' : badge}
+                            </span>
+                          )}
                           <ChevronRight size={13} className={cn('transition-all duration-[var(--duration-hover)]', active ? 'opacity-60' : 'opacity-0 group-hover:opacity-30')} />
                         </Link>
                       </motion.div>
@@ -502,10 +530,8 @@ export function Navbar() {
                   )}
                 </div>
 
-                {/* Divider */}
                 <div className="h-px mx-3" style={{ background: 'hsl(var(--border))' }} />
 
-                {/* Search + Theme */}
                 <motion.div
                   className="p-2 flex items-center gap-2"
                   initial={{ opacity: 0 }}
@@ -530,9 +556,6 @@ export function Navbar() {
                   </div>
                 </motion.div>
 
-                {/* ── Auth — mobile only ──
-                     Shown when user is NOT signed in.
-                     Two full-width buttons stacked: Sign in (ghost) + Join free (red) ── */}
                 {!isSignedIn && (
                   <>
                     <div className="h-px mx-3" style={{ background: 'hsl(var(--border))' }} />
@@ -542,7 +565,6 @@ export function Navbar() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: allMobileLinks.length * 0.04 + 0.08 }}
                     >
-                      {/* Sign in — ghost style */}
                       <Link
                         href="/sign-in"
                         className="w-full flex items-center justify-center gap-2
@@ -555,12 +577,7 @@ export function Navbar() {
                       >
                         Sign in
                       </Link>
-
-                      {/* Join free — accent red */}
-                      <Link
-                        href="/sign-up"
-                        className="btn-save w-full justify-center gap-2 py-3 text-sm"
-                      >
+                      <Link href="/sign-up" className="btn-save w-full justify-center gap-2 py-3 text-sm">
                         Join free
                         <ArrowRight size={14} />
                       </Link>
@@ -568,7 +585,6 @@ export function Navbar() {
                   </>
                 )}
 
-                {/* Sign out — signed-in mobile */}
                 {isSignedIn && (
                   <>
                     <div className="h-px mx-3" style={{ background: 'hsl(var(--border))' }} />
@@ -596,14 +612,12 @@ export function Navbar() {
                     </motion.div>
                   </>
                 )}
-
               </motion.div>
             </>
           )}
         </AnimatePresence>
       </motion.header>
 
-      {/* Spacer */}
       <div className="h-[52px]" />
 
       <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />

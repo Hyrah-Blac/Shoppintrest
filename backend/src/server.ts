@@ -1,13 +1,11 @@
-
 console.log("SERVER BOOTED");
 import 'dotenv/config'
 import http from 'http'
 import app from './app'
 import connectDB from './config/database'
-import { initSocket } from './socket'
 import logger from './utils/logger'
 
-// ─── ENV VAR VALIDATION — fail fast before anything starts ───────────────────
+// ─── ENV VAR VALIDATION ───────────────────────────────────────────────────────
 const requiredEnvVars = [
   'CLERK_SECRET_KEY',
   'CLERK_WEBHOOK_SECRET',
@@ -28,8 +26,6 @@ const startServer = async () => {
   await connectDB()
 
   const httpServer = http.createServer(app)
-
-  initSocket(httpServer)
 
   httpServer.listen(PORT, () => {
     logger.info(`Server running on port ${PORT}`)

@@ -1,3 +1,5 @@
+// PATH: src/lib/api.ts  (REPLACE the existing file)
+
 import axios from 'axios'
 
 const api = axios.create({
@@ -79,16 +81,16 @@ export const apiClient = {
 
   // Users
   users: {
-  getMe: () => api.get('/api/users/me'),
-  updateMe: (data: any) => api.patch('/api/users/me', data),
-  getByUsername: (username: string) => api.get(`/api/users/${username}`),
-  follow: (userId: string) => api.post(`/api/users/${userId}/follow`),
-  getSaved: (params?: any) => api.get('/api/users/me/saved', { params }),  // ← fix this
-  saveProduct: (productId: string) => api.post(`/api/users/me/save/${productId}`),
-  search: (q: string) => api.get('/api/users/search', { params: { q } }),
-  getFollowers: (username: string) => api.get(`/api/users/${username}/followers`),
-  getFollowing: (username: string) => api.get(`/api/users/${username}/following`),
-},
+    getMe: () => api.get('/api/users/me'),
+    updateMe: (data: any) => api.patch('/api/users/me', data),
+    getByUsername: (username: string) => api.get(`/api/users/${username}`),
+    follow: (userId: string) => api.post(`/api/users/${userId}/follow`),
+    getSaved: (params?: any) => api.get('/api/users/me/saved', { params }),
+    saveProduct: (productId: string) => api.post(`/api/users/me/save/${productId}`),
+    search: (q: string) => api.get('/api/users/search', { params: { q } }),
+    getFollowers: (username: string) => api.get(`/api/users/${username}/followers`),
+    getFollowing: (username: string) => api.get(`/api/users/${username}/following`),
+  },
 
   // Cart
   cart: {
@@ -144,18 +146,13 @@ export const apiClient = {
       api.patch(`/api/reviews/${id}/helpful`),
   },
 
-  // Messages
-  messages: {
-    getConversations: () =>
-      api.get('/api/messages/conversations'),
-    getOrCreate: (userId: string) =>
-      api.get(`/api/messages/conversations/user/${userId}`),
-    getMessages: (conversationId: string, params?: any) =>
-      api.get(`/api/messages/${conversationId}`, { params }),
-    send: (conversationId: string, data: any) =>
-      api.post(`/api/messages/${conversationId}`, data),
-    react: (messageId: string, emoji: string) =>
-      api.post(`/api/messages/${messageId}/react`, { emoji }),
+  // Messages — removed (now handled by Stream Chat SDK directly)
+  // All messaging is done via channel.sendMessage(), channel.watch() etc.
+
+  // Chat — fetches a Stream Chat auth token from the backend
+  // Used internally by StreamProvider — not called from pages directly
+  chat: {
+    getToken: () => api.post<{ data: { token: string } }>('/api/chat/token'),
   },
 
   // Notifications

@@ -1,3 +1,5 @@
+// PATH: src/app.ts
+
 console.log("APP INITIALIZED");
 
 import express from 'express'
@@ -18,12 +20,14 @@ import orderRoutes        from './routes/order.routes'
 import cartRoutes         from './routes/cart.routes'
 import collectionRoutes   from './routes/collection.routes'
 import reviewRoutes       from './routes/review.routes'
-import messageRoutes      from './routes/message.routes'
 import notificationRoutes from './routes/notification.routes'
 import uploadRoutes       from './routes/upload.routes'
 import stripeRoutes       from './routes/stripe.routes'
 import adminRoutes        from './routes/admin.routes'
 import webhookRoutes      from './routes/webhookRoutes'
+import chatRoutes         from './routes/chat.routes'         // ← ADDED
+
+// REMOVED: import messageRoutes from './routes/message.routes'
 
 const app = express()
 
@@ -64,7 +68,7 @@ app.options('*', cors())
 // ─── 3. BODY PARSERS ─────────────────────────────────────────────────────────
 // Webhook routes need raw body — must be before json parser
 app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }))
-app.use('/api/webhooks',       express.raw({ type: 'application/json' })) // ← broadened
+app.use('/api/webhooks',       express.raw({ type: 'application/json' }))
 
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
@@ -114,10 +118,12 @@ app.use('/api/orders',        orderRoutes)
 app.use('/api/cart',          cartRoutes)
 app.use('/api/collections',   collectionRoutes)
 app.use('/api/reviews',       reviewRoutes)
-app.use('/api/messages',      messageRoutes)
 app.use('/api/notifications', notificationRoutes)
 app.use('/api/upload',        uploadRoutes)
 app.use('/api/admin',         adminRoutes)
+app.use('/api/chat',          chatRoutes)                    // ← ADDED
+
+// REMOVED: app.use('/api/messages', messageRoutes)
 
 // ─── 13. 404 HANDLER ─────────────────────────────────────────────────────────
 app.use('*', (req, res) => {

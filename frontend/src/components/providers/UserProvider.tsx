@@ -49,8 +49,15 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             // Already exists — that's fine
           }
 
+          // Upsert Novu subscriber so realtime delivery works for this user
+          try {
+            await api.post('/api/notifications/sync-subscriber')
+          } catch {
+            // Non-fatal — notifications will still work on next login
+          }
+
           await fetchUser()
-          await fetchCart()   // ← pulls server cart; works on every device
+          await fetchCart()
         } catch (err) {
           console.error('UserProvider sync failed:', err)
         }
@@ -59,7 +66,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       syncAndFetch()
     } else if (isLoaded && !isSignedIn) {
       clearUser()
-      resetCart()   // ← wipe in-memory cart when user signs out
+      resetCart()
     }
   }, [isSignedIn, isLoaded, clerkUser])
 

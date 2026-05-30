@@ -1,3 +1,5 @@
+// PATH: src/routes/webhookRoutes.ts
+
 import express, { Request, Response, NextFunction } from 'express'
 import { Webhook } from 'svix'
 import User from '../models/User'
@@ -6,20 +8,23 @@ import Product from '../models/Product'
 import Order from '../models/Order'
 import Review from '../models/Review'
 import Notification from '../models/Notification'
-import { Message } from '../models/Message'
 import Cart from '../models/Cart'
 import AppError from '../utils/AppError'
 import asyncHandler from '../utils/asyncHandler'
+import { createNotification } from '../controllers/notification.controller'
+import { getStreamServer } from '../lib/stream'
+
+// REMOVED: import Message from '../models/Message'
 
 const router = express.Router()
 
+// ─── CLERK WEBHOOK ───────────────────────────────────────────────────────────
 router.post(
   '/clerk',
   asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
     const secret = process.env.CLERK_WEBHOOK_SECRET
     if (!secret) return next(new AppError('Webhook secret not configured', 500))
 
-    // ── Verify svix signature ──────────────────────────────────────────────
     const svixId        = req.headers['svix-id'] as string
     const svixTimestamp = req.headers['svix-timestamp'] as string
     const svixSignature = req.headers['svix-signature'] as string
@@ -40,44 +45,37 @@ router.post(
       return next(new AppError('Invalid webhook signature', 400))
     }
 
-    // ── Ignore events we don't handle ─────────────────────────────────────
     if (!['user.created', 'user.updated', 'user.deleted'].includes(event.type)) {
       return res.status(200).json({ success: true })
     }
 
     const { id, email_addresses, username, image_url, first_name, last_name } = event.data
 
-    // ── user.deleted — cascade delete everything ───────────────────────────
     if (event.type === 'user.deleted') {
       if (!id) return next(new AppError('Missing user id', 400))
 
       const user = await User.findOne({ clerkId: id })
 
       if (user) {
+        const streamClient = getStreamServer()
+
         await Promise.all([
-          // Delete user's collections
           Collection.deleteMany({ user: user._id }),
-
-          // Delete user's reviews and remove them from product rating counts
           Review.deleteMany({ user: user._id }),
-
-          // Delete user's orders
           Order.deleteMany({ user: user._id }),
-
-          // Delete user's cart
           Cart.deleteMany({ user: user._id }),
-
-          // Delete all notifications sent to or by this user
           Notification.deleteMany({
             $or: [{ recipient: user._id }, { sender: user._id }],
           }),
-
-          // Delete all messages sent to or from this user
-          Message.deleteMany({
-            $or: [{ sender: user._id }, { recipient: user._id }],
+          // Delete the user from Stream — removes them from all channels
+          // and cleans up their messages on the Stream side
+          streamClient.deleteUser(user._id.toString(), {
+            mark_messages_deleted: true,
+            hard_delete:           true,
+          }).catch((err) => {
+            // Non-critical: log but don't block the rest of the cleanup
+            console.error('[Webhook] Stream user deletion failed', err)
           }),
-
-          // Remove user from other users' followers/following lists
           User.updateMany(
             { followers: user._id },
             { $pull: { followers: user._id } }
@@ -86,28 +84,22 @@ router.post(
             { following: user._id },
             { $pull: { following: user._id } }
           ),
-
-          // Remove user's saved products references
           User.updateMany(
             { savedProducts: { $in: user.savedProducts } },
             { $pull: { savedProducts: { $in: user.savedProducts } } }
           ),
-
-          // Remove this collection from other users who saved it
           User.updateMany(
             { collections: { $in: user.collections } },
             { $pull: { collections: { $in: user.collections } } }
           ),
         ])
 
-        // Finally delete the user
         await User.findByIdAndDelete(user._id)
       }
 
       return res.status(200).json({ success: true })
     }
 
-    // ── user.created / user.updated ───────────────────────────────────────
     const email = email_addresses?.[0]?.email_address
     if (!id || !email) return next(new AppError('Missing required fields', 400))
 
@@ -122,18 +114,8 @@ router.post(
       await User.findOneAndUpdate(
         { clerkId: id },
         {
-          $set: {
-            email,
-            displayName,
-            avatar: image_url,
-            isActive: true,
-          },
-          $setOnInsert: {
-            clerkId: id,
-            username: generatedUsername,
-            role: 'user',
-            isVerified: false,
-          },
+          $set:         { email, displayName, avatar: image_url, isActive: true },
+          $setOnInsert: { clerkId: id, username: generatedUsername, role: 'user', isVerified: false },
         },
         { upsert: true, new: true, setDefaultsOnInsert: true }
       )
@@ -142,18 +124,8 @@ router.post(
         await User.findOneAndUpdate(
           { clerkId: id },
           {
-            $set: {
-              email,
-              displayName,
-              avatar: image_url,
-              isActive: true,
-            },
-            $setOnInsert: {
-              clerkId: id,
-              username: `${generatedUsername}${Date.now()}`,
-              role: 'user',
-              isVerified: false,
-            },
+            $set:         { email, displayName, avatar: image_url, isActive: true },
+            $setOnInsert: { clerkId: id, username: `${generatedUsername}${Date.now()}`, role: 'user', isVerified: false },
           },
           { upsert: true, new: true }
         )
@@ -165,5 +137,37 @@ router.post(
     return res.status(200).json({ success: true })
   })
 )
+
+// ─── STREAM CHAT WEBHOOK ─────────────────────────────────────────────────────
+// Configure in Stream Dashboard → Developers → Webhooks
+// URL: https://your-backend.com/api/webhooks/stream/message-created
+// Events: message.new
+router.post('/stream/message-created', async (req: Request, res: Response) => {
+  const event = req.body
+
+  if (event.type !== 'message.new') return res.sendStatus(200)
+
+  const senderId    = event.user?.id
+  const members     = event.members ?? []
+  const recipientId = members.find((m: any) => m.user_id !== senderId)?.user_id
+
+  if (!senderId || !recipientId) return res.sendStatus(200)
+
+  try {
+    await createNotification({
+      recipientId,
+      senderId,
+      senderName:   event.user?.name  ?? 'Someone',
+      senderAvatar: event.user?.image ?? '',
+      type:         'message',
+      message:      `${event.user?.name ?? 'Someone'} sent you a message`,
+      link:         '/messages',
+    })
+  } catch (err) {
+    console.error('[Stream webhook] notification failed', err)
+  }
+
+  res.sendStatus(200)
+})
 
 export default router
