@@ -1,6 +1,6 @@
 'use client'
 
-import { useSignIn } from '@clerk/nextjs'
+import { useClerk } from '@clerk/nextjs'
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
@@ -34,7 +34,7 @@ function parseClerkError(err: any): { code: string; message: string; longMessage
   }
 }
 
-// ── friendly error mapper — detects Google/OAuth accounts ─────────────────────
+// ── friendly error mapper ─────────────────────────────────────────────────────
 function friendlyError(code: string, message: string, longMessage: string): string {
   const lower = `${code} ${message} ${longMessage}`.toLowerCase()
 
@@ -52,7 +52,7 @@ function friendlyError(code: string, message: string, longMessage: string): stri
 
 // ── component ─────────────────────────────────────────────────────────────────
 export default function ForgotPasswordPage() {
-  const { signIn, setActive, isLoaded } = useSignIn()
+  const clerk = useClerk()
   const router = useRouter()
 
   const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -87,12 +87,13 @@ export default function ForgotPasswordPage() {
   // ── Step 1: request reset code ────────────────────────────────────────────
   const handleRequest = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!clerk.loaded) return
     setError('')
     setErrorKey('')
     setLoading(true)
 
     try {
-      await signIn.create({
+      await clerk.client!.signIn.create({
         strategy:   'reset_password_email_code',
         identifier: email,
       })
@@ -110,14 +111,14 @@ export default function ForgotPasswordPage() {
 
   // ── Resend code ───────────────────────────────────────────────────────────
   const handleResend = async () => {
-    if (resendLoading || resendCooldown > 0) return
+    if (!clerk.loaded || resendLoading || resendCooldown > 0) return
     setResendLoading(true)
     setResendSuccess(false)
     setError('')
     setErrorKey('')
 
     try {
-      await signIn.create({
+      await clerk.client!.signIn.create({
         strategy:   'reset_password_email_code',
         identifier: email,
       })
@@ -135,6 +136,7 @@ export default function ForgotPasswordPage() {
   // ── Step 2: verify code + set new password ────────────────────────────────
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!clerk.loaded) return
     setError('')
     setErrorKey('')
 
@@ -150,14 +152,14 @@ export default function ForgotPasswordPage() {
     setLoading(true)
 
     try {
-      const result = await signIn.attemptFirstFactor({
+      const result = await clerk.client!.signIn.attemptFirstFactor({
         strategy: 'reset_password_email_code',
         code,
         password,
       })
 
       if (result.status === 'complete') {
-        await setActive({ session: result.createdSessionId })
+        await clerk.setActive({ session: result.createdSessionId })
         router.replace('/')
       } else {
         setError('Verification incomplete. Please try again.')
@@ -174,11 +176,12 @@ export default function ForgotPasswordPage() {
 
   // ── Google sign-in redirect ───────────────────────────────────────────────
   const handleGoogleSignIn = async () => {
+    if (!clerk.loaded) return
     try {
-      await signIn.authenticateWithRedirect({
+      await clerk.client!.signIn.authenticateWithRedirect({
         strategy:            'oauth_google',
-        redirectUrl:         '/sso-callback',
-        redirectUrlComplete: '/',
+        redirectUrl:         `${window.location.origin}/sso-callback`,
+        redirectUrlComplete: `${window.location.origin}/`,
       })
     } catch (err: any) {
       const { message } = parseClerkError(err)
@@ -231,9 +234,7 @@ export default function ForgotPasswordPage() {
     lineHeight:   1.55,
   }
 
-  // Don't render the form at all until Clerk has fully loaded and the
-  // signIn resource is available — prevents silent no-op on first click.
-  if (!isLoaded || !signIn) return null
+  if (!clerk.loaded) return null
 
   return (
     <div
@@ -263,7 +264,7 @@ export default function ForgotPasswordPage() {
                 overflow:     'hidden',
               }}
             >
-              <Image src="/logo.png" alt="Shoppintrest" fill className="object-contain" priority />
+              <Image src="/logo.png" alt="Shoppin" fill className="object-contain" priority />
             </div>
           </div>
 
@@ -356,7 +357,6 @@ export default function ForgotPasswordPage() {
                           }}
                           onClick={handleGoogleSignIn}
                         >
-                          {/* Google colour logo */}
                           <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
                             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
                             <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
@@ -448,17 +448,17 @@ export default function ForgotPasswordPage() {
                     onClick={handleResend}
                     disabled={resendLoading || resendCooldown > 0}
                     style={{
-                      background:  'none',
-                      border:      'none',
-                      cursor:      resendCooldown > 0 ? 'default' : 'pointer',
-                      fontSize:    '0.75rem',
-                      fontWeight:  500,
-                      padding:     0,
-                      whiteSpace:  'nowrap',
-                      flexShrink:  0,
-                      color:       resendCooldown > 0 ? 'hsl(var(--muted-foreground))' : 'hsl(var(--accent))',
-                      transition:  'color 0.2s ease',
-                      fontFamily:  "'DM Sans', sans-serif",
+                      background: 'none',
+                      border:     'none',
+                      cursor:     resendCooldown > 0 ? 'default' : 'pointer',
+                      fontSize:   '0.75rem',
+                      fontWeight: 500,
+                      padding:    0,
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0,
+                      color:      resendCooldown > 0 ? 'hsl(var(--muted-foreground))' : 'hsl(var(--accent))',
+                      transition: 'color 0.2s ease',
+                      fontFamily: "'DM Sans', sans-serif",
                     }}
                   >
                     {resendLoading
@@ -552,19 +552,22 @@ export default function ForgotPasswordPage() {
                       <label htmlFor="code" style={{ ...labelStyle, marginBottom: 0 }}>Reset code</label>
                       <button
                         type="button"
-                        onClick={() => { setError(''); setErrorKey(''); setStage('sent') }}
+                        onClick={handleResend}
+                        disabled={resendLoading || resendCooldown > 0}
                         style={{
                           background: 'none',
                           border:     'none',
-                          cursor:     'pointer',
+                          cursor:     resendCooldown > 0 ? 'default' : 'pointer',
                           fontSize:   '0.75rem',
                           fontWeight: 500,
                           padding:    0,
-                          color:      'hsl(var(--accent))',
+                          whiteSpace: 'nowrap',
+                          color:      resendCooldown > 0 ? 'hsl(var(--muted-foreground))' : 'hsl(var(--accent))',
+                          transition: 'color 0.2s ease',
                           fontFamily: "'DM Sans', sans-serif",
                         }}
                       >
-                        Resend code
+                        {resendLoading ? 'Sending…' : resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend code'}
                       </button>
                     </div>
                     <input
@@ -582,6 +585,21 @@ export default function ForgotPasswordPage() {
                       onBlur={handleBlur}
                     />
                   </div>
+
+                  {/* Resend success toast */}
+                  <AnimatePresence>
+                    {resendSuccess && (
+                      <motion.p
+                        key="resend-ok-reset"
+                        initial={{ opacity: 0, y: -4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0 }}
+                        style={{ fontSize: '0.75rem', color: '#22c55e', marginBottom: '0.75rem', fontWeight: 500 }}
+                      >
+                        ✓ New code sent — check your inbox.
+                      </motion.p>
+                    )}
+                  </AnimatePresence>
 
                   {/* New password */}
                   <div style={{ marginBottom: '1rem' }}>
