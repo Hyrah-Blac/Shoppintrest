@@ -87,13 +87,12 @@ export default function ForgotPasswordPage() {
   // ── Step 1: request reset code ────────────────────────────────────────────
   const handleRequest = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!isLoaded) return
     setError('')
     setErrorKey('')
     setLoading(true)
 
     try {
-      await signIn!.create({
+      await signIn.create({
         strategy:   'reset_password_email_code',
         identifier: email,
       })
@@ -111,14 +110,14 @@ export default function ForgotPasswordPage() {
 
   // ── Resend code ───────────────────────────────────────────────────────────
   const handleResend = async () => {
-    if (!isLoaded || resendLoading || resendCooldown > 0) return
+    if (resendLoading || resendCooldown > 0) return
     setResendLoading(true)
     setResendSuccess(false)
     setError('')
     setErrorKey('')
 
     try {
-      await signIn!.create({
+      await signIn.create({
         strategy:   'reset_password_email_code',
         identifier: email,
       })
@@ -136,7 +135,6 @@ export default function ForgotPasswordPage() {
   // ── Step 2: verify code + set new password ────────────────────────────────
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!isLoaded) return
     setError('')
     setErrorKey('')
 
@@ -152,7 +150,7 @@ export default function ForgotPasswordPage() {
     setLoading(true)
 
     try {
-      const result = await signIn!.attemptFirstFactor({
+      const result = await signIn.attemptFirstFactor({
         strategy: 'reset_password_email_code',
         code,
         password,
@@ -176,9 +174,8 @@ export default function ForgotPasswordPage() {
 
   // ── Google sign-in redirect ───────────────────────────────────────────────
   const handleGoogleSignIn = async () => {
-    if (!isLoaded) return
     try {
-      await signIn!.authenticateWithRedirect({
+      await signIn.authenticateWithRedirect({
         strategy:            'oauth_google',
         redirectUrl:         '/sso-callback',
         redirectUrlComplete: '/',
@@ -233,6 +230,10 @@ export default function ForgotPasswordPage() {
     fontWeight:   400,
     lineHeight:   1.55,
   }
+
+  // Don't render the form at all until Clerk has fully loaded and the
+  // signIn resource is available — prevents silent no-op on first click.
+  if (!isLoaded || !signIn) return null
 
   return (
     <div
