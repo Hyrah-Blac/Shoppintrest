@@ -8,15 +8,11 @@ import AppError from '../utils/AppError'
 import { sendSuccess, sendPaginated } from '../utils/apiResponse'
 import logger from '../utils/logger'
 
-const SHIPPING_FREE_THRESHOLD = 200   // KES equivalent threshold
-const SHIPPING_STANDARD_COST = 300    // KES
-const TAX_RATE = 0.16                 // 16% VAT Kenya
-
 const calculateOrderTotals = (items: { price: number; quantity: number }[]) => {
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0)
-  const shippingCost = subtotal >= SHIPPING_FREE_THRESHOLD ? 0 : SHIPPING_STANDARD_COST
-  const tax = parseFloat((subtotal * TAX_RATE).toFixed(2))
-  const total = parseFloat((subtotal + shippingCost + tax).toFixed(2))
+  const shippingCost = 0  // free shipping
+  const tax = 0           // no VAT
+  const total = parseFloat((subtotal).toFixed(2))
   return { subtotal, shippingCost, tax, total }
 }
 
@@ -116,7 +112,6 @@ export const initiateMpesaPayment = asyncHandler(
           total,
           subtotal,
           shippingCost,
-          tax,
         },
         'STK Push sent to your phone. Enter your M-Pesa PIN to complete payment.',
         201
@@ -164,7 +159,6 @@ export const mpesaCallback = asyncHandler(
 
     // Payment successful
     if (ResultCode === 0) {
-      // Extract metadata items
       const metadata: Record<string, any> = {}
       CallbackMetadata?.Item?.forEach((item: { Name: string; Value: any }) => {
         metadata[item.Name] = item.Value
@@ -230,9 +224,7 @@ export const checkPaymentStatus = asyncHandler(
       try {
         const queryResult = await queryStkStatus(order.mpesaCheckoutRequestId)
 
-        // 0 = success, 1032 = cancelled by user, 1037 = timeout
         if (queryResult.ResultCode === '0') {
-          // Callback may not have fired yet — mark paid optimistically
           sendSuccess(res, {
             status: 'processing',
             isPaid: true,
