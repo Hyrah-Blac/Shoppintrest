@@ -19,9 +19,8 @@ import { Input } from '@/components/ui/Input'
 
 type Step = 'details' | 'payment' | 'polling' | 'success' | 'failed'
 
-const SHIPPING_FREE_THRESHOLD = 200
+const SHIPPING_FREE_THRESHOLD = 5000
 const SHIPPING_COST = 300
-const TAX_RATE = 0.16
 
 export default function CheckoutPage() {
   const router = useRouter()
@@ -46,8 +45,7 @@ export default function CheckoutPage() {
     (s, i: any) => s + (i.product?.price || 0) * i.quantity, 0
   )
   const shippingCost = subtotal >= SHIPPING_FREE_THRESHOLD ? 0 : SHIPPING_COST
-  const tax = subtotal * TAX_RATE
-  const orderTotal = subtotal + shippingCost + tax
+  const orderTotal = subtotal + shippingCost
 
   useEffect(() => {
     if (!isSignedIn) router.push('/sign-in')
@@ -174,8 +172,7 @@ export default function CheckoutPage() {
             </div>
 
             {/* Shipping Address */}
-            <div className="bg-background rounded-2xl border border-border p-6
-                            space-y-4">
+            <div className="bg-background rounded-2xl border border-border p-6 space-y-4">
               <h2 className="font-medium text-foreground flex items-center gap-2">
                 <span className="w-6 h-6 rounded-full bg-foreground text-background
                                  text-xs flex items-center justify-center font-bold">
@@ -189,9 +186,7 @@ export default function CheckoutPage() {
                 placeholder="Jane Doe"
                 value={address.fullName}
                 error={errors.fullName}
-                onChange={(e) =>
-                  setAddress((a) => ({ ...a, fullName: e.target.value }))
-                }
+                onChange={(e) => setAddress((a) => ({ ...a, fullName: e.target.value }))}
               />
 
               <Input
@@ -199,18 +194,14 @@ export default function CheckoutPage() {
                 placeholder="123 Kenyatta Avenue"
                 value={address.line1}
                 error={errors.line1}
-                onChange={(e) =>
-                  setAddress((a) => ({ ...a, line1: e.target.value }))
-                }
+                onChange={(e) => setAddress((a) => ({ ...a, line1: e.target.value }))}
               />
 
               <Input
                 label="Address Line 2 (optional)"
                 placeholder="Apartment, suite, etc."
                 value={address.line2}
-                onChange={(e) =>
-                  setAddress((a) => ({ ...a, line2: e.target.value }))
-                }
+                onChange={(e) => setAddress((a) => ({ ...a, line2: e.target.value }))}
               />
 
               <div className="grid grid-cols-2 gap-4">
@@ -219,18 +210,14 @@ export default function CheckoutPage() {
                   placeholder="Nairobi"
                   value={address.city}
                   error={errors.city}
-                  onChange={(e) =>
-                    setAddress((a) => ({ ...a, city: e.target.value }))
-                  }
+                  onChange={(e) => setAddress((a) => ({ ...a, city: e.target.value }))}
                 />
                 <Input
                   label="County / State"
                   placeholder="Nairobi County"
                   value={address.state}
                   error={errors.state}
-                  onChange={(e) =>
-                    setAddress((a) => ({ ...a, state: e.target.value }))
-                  }
+                  onChange={(e) => setAddress((a) => ({ ...a, state: e.target.value }))}
                 />
               </div>
 
@@ -240,23 +227,18 @@ export default function CheckoutPage() {
                   placeholder="00100"
                   value={address.postalCode}
                   error={errors.postalCode}
-                  onChange={(e) =>
-                    setAddress((a) => ({ ...a, postalCode: e.target.value }))
-                  }
+                  onChange={(e) => setAddress((a) => ({ ...a, postalCode: e.target.value }))}
                 />
                 <Input
                   label="Country"
                   value={address.country}
-                  onChange={(e) =>
-                    setAddress((a) => ({ ...a, country: e.target.value }))
-                  }
+                  onChange={(e) => setAddress((a) => ({ ...a, country: e.target.value }))}
                 />
               </div>
             </div>
 
             {/* M-Pesa Payment */}
-            <div className="bg-background rounded-2xl border border-border p-6
-                            space-y-4">
+            <div className="bg-background rounded-2xl border border-border p-6 space-y-4">
               <h2 className="font-medium text-foreground flex items-center gap-2">
                 <span className="w-6 h-6 rounded-full bg-foreground text-background
                                  text-xs flex items-center justify-center font-bold">
@@ -265,7 +247,6 @@ export default function CheckoutPage() {
                 M-Pesa Payment
               </h2>
 
-              {/* M-Pesa logo area */}
               <div className="flex items-center gap-3 p-4 bg-green-50
                               dark:bg-green-900/20 rounded-xl border
                               border-green-200 dark:border-green-800">
@@ -274,8 +255,7 @@ export default function CheckoutPage() {
                   <Smartphone size={20} className="text-white" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-green-800
-                                dark:text-green-300">
+                  <p className="text-sm font-medium text-green-800 dark:text-green-300">
                     Pay with M-Pesa
                   </p>
                   <p className="text-xs text-green-600 dark:text-green-400">
@@ -298,8 +278,7 @@ export default function CheckoutPage() {
                 inputMode="numeric"
               />
 
-              <div className="text-xs text-muted space-y-1.5 p-3 bg-surface
-                              rounded-xl">
+              <div className="text-xs text-muted space-y-1.5 p-3 bg-surface rounded-xl">
                 <p className="font-medium text-foreground">How it works:</p>
                 <p>1. Click &ldquo;Pay with M-Pesa&rdquo; below</p>
                 <p>2. You&apos;ll receive a prompt on your phone</p>
@@ -336,13 +315,10 @@ export default function CheckoutPage() {
           <div className="lg:col-span-2">
             <div className="bg-background rounded-2xl border border-border p-6
                             lg:sticky lg:top-28 space-y-5">
-              <h2 className="font-medium text-foreground">
-                Order Summary
-              </h2>
+              <h2 className="font-medium text-foreground">Order Summary</h2>
 
               {/* Items */}
-              <div className="space-y-4 max-h-64 overflow-y-auto
-                              scrollbar-hide">
+              <div className="space-y-4 max-h-64 overflow-y-auto scrollbar-hide">
                 {items.map((item: any) => (
                   <div
                     key={`${item.product?._id}-${item.size}`}
@@ -374,17 +350,13 @@ export default function CheckoutPage() {
                         Size {item.size} · {item.product?.brand}
                       </p>
                       <p className="text-sm font-semibold mt-1">
-                        {formatPrice(
-                          (item.product?.price || 0) * item.quantity,
-                          'KES'
-                        )}
+                        {formatPrice((item.product?.price || 0) * item.quantity, 'KES')}
                       </p>
                     </div>
                   </div>
                 ))}
               </div>
 
-              {/* Divider */}
               <div className="border-t border-border" />
 
               {/* Totals */}
@@ -396,29 +368,27 @@ export default function CheckoutPage() {
                 <div className="flex justify-between text-sm">
                   <span className="text-muted">Shipping</span>
                   <span>
-                    {shippingCost === 0
-                      ? 'Free'
-                      : formatPrice(shippingCost, 'KES')}
+                    {shippingCost === 0 ? 'Free' : formatPrice(shippingCost, 'KES')}
                   </span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted">VAT (16%)</span>
-                  <span>{formatPrice(tax, 'KES')}</span>
-                </div>
-                <div className="border-t border-border pt-2.5 flex justify-between
-                                font-semibold">
+                <div className="border-t border-border pt-2.5 flex justify-between font-semibold">
                   <span>Total</span>
                   <span className="text-lg">{formatPrice(orderTotal, 'KES')}</span>
                 </div>
               </div>
 
-              {/* Savings */}
               {shippingCost === 0 && (
                 <div className="text-xs text-green-600 dark:text-green-400
                                 text-center bg-green-50 dark:bg-green-900/20
                                 rounded-xl p-2.5">
                   🎉 You qualify for free shipping!
                 </div>
+              )}
+
+              {shippingCost > 0 && (
+                <p className="text-xs text-muted text-center">
+                  Add {formatPrice(SHIPPING_FREE_THRESHOLD - subtotal, 'KES')} more for free shipping
+                </p>
               )}
             </div>
           </div>
@@ -458,18 +428,12 @@ export default function CheckoutPage() {
                     key={i}
                     className="w-2 h-2 rounded-full bg-green-500"
                     animate={{ opacity: [0.3, 1, 0.3] }}
-                    transition={{
-                      duration: 1.2,
-                      repeat: Infinity,
-                      delay: i * 0.2,
-                    }}
+                    transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.2 }}
                   />
                 ))}
               </div>
 
-              <p className="text-xs text-muted">
-                Do not close this page
-              </p>
+              <p className="text-xs text-muted">Do not close this page</p>
 
               <button
                 onClick={() => setStep('failed')}
@@ -486,12 +450,7 @@ export default function CheckoutPage() {
   )
 }
 
-function SuccessScreen({
-  receipt, orderId,
-}: {
-  receipt: string
-  orderId: string
-}) {
+function SuccessScreen({ receipt, orderId }: { receipt: string; orderId: string }) {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-6">
       <motion.div
@@ -525,9 +484,7 @@ function SuccessScreen({
           {receipt && (
             <div className="bg-surface border border-border rounded-2xl p-4 mb-6">
               <p className="text-xs text-muted mb-1">M-Pesa Receipt</p>
-              <p className="font-mono font-bold text-lg tracking-wider">
-                {receipt}
-              </p>
+              <p className="font-mono font-bold text-lg tracking-wider">{receipt}</p>
             </div>
           )}
 

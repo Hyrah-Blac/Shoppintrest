@@ -9,9 +9,8 @@ import { formatPrice } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import { toast } from 'sonner'
 
-const SHIPPING_FREE_THRESHOLD = 200
+const SHIPPING_FREE_THRESHOLD = 5000
 const SHIPPING_COST = 300
-const TAX_RATE = 0.16
 
 export default function CartPage() {
   const { items, updateItem, removeItem, isLoading } = useCartStore()
@@ -20,12 +19,9 @@ export default function CartPage() {
     (s, i: any) => s + (i.product?.price || 0) * i.quantity, 0
   )
   const shippingCost = subtotal >= SHIPPING_FREE_THRESHOLD ? 0 : SHIPPING_COST
-  const tax = subtotal * TAX_RATE
-  const total = subtotal + shippingCost + tax
+  const total = subtotal + shippingCost
 
-  const handleUpdate = async (
-    productId: string, size: string, quantity: number
-  ) => {
+  const handleUpdate = async (productId: string, size: string, quantity: number) => {
     try { await updateItem(productId, size, quantity) }
     catch { toast.error('Could not update cart') }
   }
@@ -98,46 +94,31 @@ export default function CartPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex justify-between gap-3">
                         <div>
-                          <p className="text-2xs text-muted uppercase
-                                        tracking-wider font-medium">
+                          <p className="text-2xs text-muted uppercase tracking-wider font-medium">
                             {item.product?.brand}
                           </p>
                           <Link href={`/product/${item.product?._id}`}>
-                            <p className="text-sm font-medium text-foreground
-                                           mt-0.5 hover:opacity-70 transition-opacity
-                                           line-clamp-2 leading-snug">
+                            <p className="text-sm font-medium text-foreground mt-0.5
+                                          hover:opacity-70 transition-opacity line-clamp-2 leading-snug">
                               {item.product?.title}
                             </p>
                           </Link>
-                          <p className="text-xs text-muted mt-1">
-                            Size: {item.size}
-                          </p>
+                          <p className="text-xs text-muted mt-1">Size: {item.size}</p>
                         </div>
                         <button
-                          onClick={() =>
-                            handleRemove(item.product?._id, item.size)
-                          }
-                          className="text-muted hover:text-destructive
-                                     transition-colors shrink-0"
+                          onClick={() => handleRemove(item.product?._id, item.size)}
+                          className="text-muted hover:text-destructive transition-colors shrink-0"
                         >
                           <Trash2 size={15} />
                         </button>
                       </div>
 
                       <div className="flex items-center justify-between mt-4">
-                        <div className="flex items-center gap-2 bg-surface
-                                        border border-border rounded-xl p-0.5">
+                        <div className="flex items-center gap-2 bg-surface border border-border rounded-xl p-0.5">
                           <button
-                            onClick={() =>
-                              handleUpdate(
-                                item.product?._id,
-                                item.size,
-                                item.quantity - 1
-                              )
-                            }
-                            className="w-8 h-8 rounded-lg flex items-center
-                                       justify-center text-muted hover:text-foreground
-                                       hover:bg-accent transition-all"
+                            onClick={() => handleUpdate(item.product?._id, item.size, item.quantity - 1)}
+                            className="w-8 h-8 rounded-lg flex items-center justify-center
+                                       text-muted hover:text-foreground hover:bg-accent transition-all"
                           >
                             <Minus size={13} />
                           </button>
@@ -145,25 +126,15 @@ export default function CartPage() {
                             {item.quantity}
                           </span>
                           <button
-                            onClick={() =>
-                              handleUpdate(
-                                item.product?._id,
-                                item.size,
-                                item.quantity + 1
-                              )
-                            }
-                            className="w-8 h-8 rounded-lg flex items-center
-                                       justify-center text-muted hover:text-foreground
-                                       hover:bg-accent transition-all"
+                            onClick={() => handleUpdate(item.product?._id, item.size, item.quantity + 1)}
+                            className="w-8 h-8 rounded-lg flex items-center justify-center
+                                       text-muted hover:text-foreground hover:bg-accent transition-all"
                           >
                             <Plus size={13} />
                           </button>
                         </div>
                         <p className="font-semibold text-foreground">
-                          {formatPrice(
-                            (item.product?.price || 0) * item.quantity,
-                            'KES'
-                          )}
+                          {formatPrice((item.product?.price || 0) * item.quantity, 'KES')}
                         </p>
                       </div>
                     </div>
@@ -175,8 +146,7 @@ export default function CartPage() {
 
           {/* Summary */}
           <div>
-            <div className="bg-background rounded-2xl border border-border p-6
-                            sticky top-28 space-y-5">
+            <div className="bg-background rounded-2xl border border-border p-6 sticky top-28 space-y-5">
               <h2 className="font-medium text-foreground">Order Summary</h2>
 
               <div className="space-y-3">
@@ -187,17 +157,10 @@ export default function CartPage() {
                 <div className="flex justify-between text-sm">
                   <span className="text-muted">Shipping</span>
                   <span>
-                    {shippingCost === 0
-                      ? 'Free'
-                      : formatPrice(shippingCost, 'KES')}
+                    {shippingCost === 0 ? 'Free' : formatPrice(shippingCost, 'KES')}
                   </span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted">VAT (16%)</span>
-                  <span>{formatPrice(tax, 'KES')}</span>
-                </div>
-                <div className="border-t border-border pt-3 flex justify-between
-                                font-semibold">
+                <div className="border-t border-border pt-3 flex justify-between font-semibold">
                   <span>Total</span>
                   <span>{formatPrice(total, 'KES')}</span>
                 </div>
@@ -205,9 +168,7 @@ export default function CartPage() {
 
               {shippingCost > 0 && (
                 <p className="text-xs text-muted text-center">
-                  Add{' '}
-                  {formatPrice(SHIPPING_FREE_THRESHOLD - subtotal, 'KES')}{' '}
-                  more for free shipping
+                  Add {formatPrice(SHIPPING_FREE_THRESHOLD - subtotal, 'KES')} more for free shipping
                 </p>
               )}
 
@@ -224,11 +185,7 @@ export default function CartPage() {
               </Link>
 
               <Link href="/explore">
-                <Button
-                  variant="ghost"
-                  size="md"
-                  className="w-full"
-                >
+                <Button variant="ghost" size="md" className="w-full">
                   Continue Shopping
                 </Button>
               </Link>
