@@ -242,7 +242,7 @@ export function CartDrawer() {
                     <span className="font-medium">{formatPrice(total, 'KES')}</span>
                   </div>
                   <div className="flex justify-between text-xs text-muted">
-                    <span>Shipping calculated at checkout</span>
+                  <span className="text-green-600 dark:text-green-400">Free shipping on all orders</span>
                   </div>
                 </div>
 

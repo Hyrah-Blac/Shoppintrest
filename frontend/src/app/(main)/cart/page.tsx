@@ -9,8 +9,8 @@ import { formatPrice } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import { toast } from 'sonner'
 
-const SHIPPING_FREE_THRESHOLD = 5000
-const SHIPPING_COST = 300
+const SHIPPING_FREE_THRESHOLD =0
+const SHIPPING_COST =0
 
 export default function CartPage() {
   const { items, updateItem, removeItem, isLoading } = useCartStore()

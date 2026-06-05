@@ -19,8 +19,8 @@ import { Input } from '@/components/ui/Input'
 
 type Step = 'details' | 'payment' | 'polling' | 'success' | 'failed'
 
-const SHIPPING_FREE_THRESHOLD = 5000
-const SHIPPING_COST = 300
+const SHIPPING_FREE_THRESHOLD = 0
+const SHIPPING_COST = 0
 
 export default function CheckoutPage() {
   const router = useRouter()
