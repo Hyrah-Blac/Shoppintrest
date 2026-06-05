@@ -10,7 +10,7 @@ import {
   Search, ShoppingBag, Heart, Bell,
   Menu, X, Compass, BookMarked,
   MessageCircle, ChevronRight, LogOut,
-  User, LayoutDashboard, ArrowRight,
+  User, LayoutDashboard, ArrowRight, Package,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useCartStore } from '@/store/useCartStore'
@@ -26,8 +26,9 @@ const navLinks = [
 ]
 
 const mobileOnlyLinks = [
-  { href: '/saved',    label: 'Saved',    icon: Heart         },
-  { href: '/messages', label: 'Messages', icon: MessageCircle },
+  { href: '/saved',    label: 'Saved',     icon: Heart         },
+  { href: '/messages', label: 'Messages',  icon: MessageCircle },
+  { href: '/orders',   label: 'My Orders', icon: Package       },
 ]
 
 export function Navbar() {
@@ -301,6 +302,7 @@ export function Navbar() {
                           <p className="px-2 pt-1.5 pb-1 text-[10px] font-medium uppercase tracking-[0.07em]"
                              style={{ color: 'hsl(var(--muted))' }}>Account</p>
 
+                          {/* Profile */}
                           <Link
                             href={`/profile/${user?.username}`}
                             className="flex items-center gap-2.5 px-2.5 py-[9px] rounded-[10px]
@@ -318,6 +320,28 @@ export function Navbar() {
                                     style={{ color: 'hsl(var(--foreground))' }}>Your profile</span>
                               <span className="block text-[11.5px] mt-0.5 truncate"
                                     style={{ color: 'hsl(var(--muted))' }}>shoppin.com/@{user?.username}</span>
+                            </span>
+                            <ChevronRight size={13} style={{ color: 'hsl(var(--muted))', opacity: 0.45 }} />
+                          </Link>
+
+                          {/* Orders */}
+                          <Link
+                            href="/orders"
+                            className="flex items-center gap-2.5 px-2.5 py-[9px] rounded-[10px]
+                                       transition-all duration-[var(--duration-hover)]"
+                            style={{ color: 'hsl(var(--foreground))' }}
+                            onMouseEnter={e => (e.currentTarget.style.background = 'hsl(var(--background-secondary))')}
+                            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                          >
+                            <span className="w-[30px] h-[30px] rounded-[8px] flex items-center justify-center shrink-0"
+                                  style={{ background: 'hsl(var(--background-secondary))' }}>
+                              <Package size={14} style={{ color: 'hsl(var(--muted))' }} />
+                            </span>
+                            <span className="flex-1 min-w-0">
+                              <span className="block text-[13.5px] font-[450] leading-none"
+                                    style={{ color: 'hsl(var(--foreground))' }}>My Orders</span>
+                              <span className="block text-[11.5px] mt-0.5 truncate"
+                                    style={{ color: 'hsl(var(--muted))' }}>Track your purchases</span>
                             </span>
                             <ChevronRight size={13} style={{ color: 'hsl(var(--muted))', opacity: 0.45 }} />
                           </Link>
