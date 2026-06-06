@@ -13,34 +13,28 @@ const CATEGORIES = [
   'womenswear', 'menswear', 'shoes', 'bags',
   'jewelry', 'accessories', 'beauty', 'home',
 ]
-
 const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'One Size']
 
 const emptyForm = {
-  title: '',
-  brand: '',
-  description: '',
-  price: '',
-  comparePrice: '',
-  category: '',
+  title: '', brand: '', description: '',
+  price: '', comparePrice: '', category: '',
   sizes: [] as { size: string; inventory: number }[],
   images: [] as string[],
   isPublished: false,
 }
 
 export default function AdminProductsPage() {
-  const [products, setProducts] = useState<any[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [products, setProducts]       = useState<any[]>([])
+  const [isLoading, setIsLoading]     = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
-  const [search, setSearch] = useState('')
-  const [page, setPage] = useState(1)
-  const [total, setTotal] = useState(0)
-
-  const [showModal, setShowModal] = useState(false)
+  const [search, setSearch]           = useState('')
+  const [page, setPage]               = useState(1)
+  const [total, setTotal]             = useState(0)
+  const [showModal, setShowModal]     = useState(false)
   const [editProduct, setEditProduct] = useState<any>(null)
-  const [form, setForm] = useState(emptyForm)
-  const [isSaving, setIsSaving] = useState(false)
-  const [imageUrl, setImageUrl] = useState('')
+  const [form, setForm]               = useState(emptyForm)
+  const [isSaving, setIsSaving]       = useState(false)
+  const [imageUrl, setImageUrl]       = useState('')
   const [isUploading, setIsUploading] = useState(false)
 
   const fetchProducts = async () => {
@@ -50,10 +44,7 @@ export default function AdminProductsPage() {
       setProducts(data.data || [])
       setTotal(data.total || 0)
     } catch { /* silent */ }
-    finally {
-      setIsLoading(false)
-      setIsRefreshing(false)
-    }
+    finally { setIsLoading(false); setIsRefreshing(false) }
   }
 
   useEffect(() => { fetchProducts() }, [page])
@@ -65,30 +56,23 @@ export default function AdminProductsPage() {
   }
 
   const openAdd = () => {
-    setEditProduct(null)
-    setForm(emptyForm)
-    setImageUrl('')
-    setShowModal(true)
+    setEditProduct(null); setForm(emptyForm); setImageUrl(''); setShowModal(true)
   }
 
   const openEdit = (product: any) => {
     setEditProduct(product)
     setForm({
-      title: product.title || '',
-      brand: product.brand || '',
-      description: product.description || '',
-      price: product.price?.toString() || '',
+      title:        product.title || '',
+      brand:        product.brand || '',
+      description:  product.description || '',
+      price:        product.price?.toString() || '',
       comparePrice: product.comparePrice?.toString() || '',
-      category: product.category || '',
-      sizes: product.variants?.map((v: any) => ({
-        size: v.size,
-        inventory: v.inventory,
-      })) || [],
-      images: product.images?.map((i: any) => i.url || i) || [],
-      isPublished: product.isPublished || false,
+      category:     product.category || '',
+      sizes:        product.variants?.map((v: any) => ({ size: v.size, inventory: v.inventory })) || [],
+      images:       product.images?.map((i: any) => i.url || i) || [],
+      isPublished:  product.isPublished || false,
     })
-    setImageUrl('')
-    setShowModal(true)
+    setImageUrl(''); setShowModal(true)
   }
 
   const handleAddImageUrl = () => {
@@ -105,18 +89,14 @@ export default function AdminProductsPage() {
       const { data } = await apiClient.upload.image(file, 'products')
       setForm((f) => ({ ...f, images: [...f.images, data.data.url] }))
       toast.success('Image uploaded')
-    } catch {
-      toast.error('Image upload failed')
-    } finally {
-      setIsUploading(false)
-    }
+    } catch { toast.error('Image upload failed') }
+    finally { setIsUploading(false) }
   }
 
-  const handleRemoveImage = (idx: number) => {
+  const handleRemoveImage = (idx: number) =>
     setForm((f) => ({ ...f, images: f.images.filter((_, i) => i !== idx) }))
-  }
 
-  const toggleSize = (size: string) => {
+  const toggleSize = (size: string) =>
     setForm((f) => {
       const exists = f.sizes.find((s) => s.size === size)
       return {
@@ -126,14 +106,12 @@ export default function AdminProductsPage() {
           : [...f.sizes, { size, inventory: 10 }],
       }
     })
-  }
 
-  const updateInventory = (size: string, inventory: number) => {
+  const updateInventory = (size: string, inventory: number) =>
     setForm((f) => ({
       ...f,
       sizes: f.sizes.map((s) => s.size === size ? { ...s, inventory } : s),
     }))
-  }
 
   const handleSave = async () => {
     if (!form.title || !form.price || !form.category || !form.brand || !form.description) {
@@ -143,30 +121,22 @@ export default function AdminProductsPage() {
     setIsSaving(true)
     try {
       const payload = {
-        title: form.title,
-        brand: form.brand,
-        description: form.description,
+        title: form.title, brand: form.brand, description: form.description,
         price: parseFloat(form.price),
         comparePrice: form.comparePrice ? parseFloat(form.comparePrice) : undefined,
-        category: form.category,
-        isPublished: form.isPublished,
+        category: form.category, isPublished: form.isPublished,
         images: form.images.map((url) => ({
           url,
           publicId: url.includes('cloudinary.com')
-            ? url.split('/').pop()?.split('.')[0] || url
-            : url,
+            ? url.split('/').pop()?.split('.')[0] || url : url,
           alt: form.title,
         })),
         variants: form.sizes.map((s) => ({
-          size: s.size,
-          inventory: s.inventory,
-          sku: `${form.brand}-${form.title}-${s.size}`
-            .toLowerCase()
-            .replace(/\s+/g, '-')
-            .replace(/[^a-z0-9-]/g, ''),
+          size: s.size, inventory: s.inventory,
+          sku: `${form.brand}-${form.title}-${s.size}`.toLowerCase()
+               .replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
         })),
       }
-
       if (editProduct) {
         const { data } = await apiClient.products.update(editProduct._id, payload)
         setProducts((prev) => prev.map((p) => (p._id === editProduct._id ? data.data : p)))
@@ -180,9 +150,7 @@ export default function AdminProductsPage() {
       setShowModal(false)
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Could not save product')
-    } finally {
-      setIsSaving(false)
-    }
+    } finally { setIsSaving(false) }
   }
 
   const handleDelete = async (id: string) => {
@@ -209,63 +177,116 @@ export default function AdminProductsPage() {
     p.brand?.toLowerCase().includes(search.toLowerCase())
   )
 
+  const inputClass = `
+    w-full h-10 px-3 rounded-[10px] text-sm placeholder:text-[hsl(var(--muted))]
+    focus:outline-none transition-all duration-[var(--duration-hover)]
+  `
+  const inputStyle = {
+    border:     '0.5px solid hsl(var(--border))',
+    background: 'hsl(var(--background))',
+    color:      'hsl(var(--foreground))',
+  }
+
   return (
     <div className="p-6 lg:p-8 space-y-6">
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight">Products</h1>
-          <p className="text-sm text-muted mt-0.5">
+          <p
+            className="text-[10px] font-medium uppercase tracking-[0.12em] mb-1"
+            style={{ color: 'hsl(var(--accent))' }}
+          >
+            Catalogue
+          </p>
+          <h1 className="font-display text-2xl font-semibold tracking-tight"
+              style={{ color: 'hsl(var(--foreground))' }}>
+            Products
+          </h1>
+          <p className="text-sm mt-0.5" style={{ color: 'hsl(var(--muted))' }}>
             {total.toLocaleString()} total products
-            {isRefreshing && <span className="ml-2 text-xs opacity-50">Refreshing...</span>}
+            {isRefreshing && (
+              <span className="ml-2 text-[11px] opacity-50">Refreshing…</span>
+            )}
           </p>
         </div>
-        <Button variant="primary" size="md" leftIcon={<Plus size={15} />} onClick={openAdd}>
+        <Button variant="primary" size="md" leftIcon={<Plus size={14} />} onClick={openAdd}>
           Add Product
         </Button>
       </div>
 
       {/* Search */}
-      <div className="relative max-w-sm">
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+      <div className="relative max-w-xs">
+        <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2"
+                style={{ color: 'hsl(var(--muted))' }} />
         <input
           type="text"
-          placeholder="Search products..."
+          placeholder="Search products…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full h-10 pl-9 pr-4 rounded-xl border border-input bg-background
-                     text-sm placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-ring"
+          className="w-full h-10 pl-9 pr-4 rounded-[var(--radius-pill)] text-sm
+                     placeholder:text-[hsl(var(--muted))] focus:outline-none
+                     transition-all duration-[var(--duration-hover)]"
+          style={{
+            border:     '0.5px solid hsl(var(--border))',
+            background: 'hsl(var(--background))',
+            color:      'hsl(var(--foreground))',
+          }}
+          onFocus={e => {
+            e.currentTarget.style.borderColor = 'hsl(var(--accent) / 0.45)'
+            e.currentTarget.style.boxShadow   = '0 0 0 3px hsl(var(--accent) / 0.09)'
+          }}
+          onBlur={e => {
+            e.currentTarget.style.borderColor = 'hsl(var(--border))'
+            e.currentTarget.style.boxShadow   = 'none'
+          }}
         />
       </div>
 
       {/* Table */}
-      <div className="bg-background rounded-2xl border border-border overflow-hidden">
+      <div
+        className="rounded-2xl overflow-hidden"
+        style={{
+          background: 'hsl(var(--background))',
+          border:     '0.5px solid hsl(var(--border))',
+          boxShadow:  'var(--shadow-xs)',
+        }}
+      >
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="border-b border-border">
-              <tr className="text-left text-xs text-muted">
-                <th className="px-5 py-4 font-medium">Product</th>
-                <th className="px-5 py-4 font-medium">Category</th>
-                <th className="px-5 py-4 font-medium">Price</th>
-                <th className="px-5 py-4 font-medium">Stock</th>
-                <th className="px-5 py-4 font-medium">Status</th>
-                <th className="px-5 py-4 font-medium text-right">Actions</th>
+            <thead>
+              <tr
+                className="text-left text-[11px]"
+                style={{
+                  borderBottom: '0.5px solid hsl(var(--border))',
+                  color: 'hsl(var(--muted))',
+                }}
+              >
+                {['Product', 'Category', 'Price', 'Stock', 'Status', 'Actions'].map((h, i) => (
+                  <th
+                    key={h}
+                    className={cn('px-5 py-4 font-medium', i === 5 && 'text-right')}
+                  >
+                    {h}
+                  </th>
+                ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-border">
+            <tbody>
               {isLoading ? (
                 Array.from({ length: 8 }).map((_, i) => (
-                  <tr key={i}>
+                  <tr key={i} style={{ borderBottom: '0.5px solid hsl(var(--border-subtle))' }}>
                     {Array.from({ length: 6 }).map((_, j) => (
                       <td key={j} className="px-5 py-4">
-                        <Skeleton className="h-4 rounded" />
+                        <Skeleton className="h-4 rounded-lg" />
                       </td>
                     ))}
                   </tr>
                 ))
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-5 py-16 text-center text-muted text-sm">
+                  <td colSpan={6} className="px-5 py-20 text-center text-sm"
+                      style={{ color: 'hsl(var(--muted))' }}>
                     No products found
                   </td>
                 </tr>
@@ -273,11 +294,17 @@ export default function AdminProductsPage() {
                 filtered.map((product) => (
                   <tr
                     key={product._id}
-                    className="hover:bg-surface transition-colors"
+                    className="transition-colors duration-[var(--duration-hover)]"
+                    style={{ borderBottom: '0.5px solid hsl(var(--border-subtle))' }}
+                    onMouseEnter={e => ((e.currentTarget as HTMLElement).style.background = 'hsl(var(--surface))')}
+                    onMouseLeave={e => ((e.currentTarget as HTMLElement).style.background = 'transparent')}
                   >
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-surface overflow-hidden shrink-0">
+                        <div
+                          className="w-10 h-10 rounded-xl overflow-hidden shrink-0"
+                          style={{ background: 'hsl(var(--surface))' }}
+                        >
                           {product.images?.[0]?.url && (
                             <img
                               src={product.images[0].url}
@@ -287,60 +314,86 @@ export default function AdminProductsPage() {
                           )}
                         </div>
                         <div className="min-w-0">
-                          <p className="font-medium text-foreground truncate max-w-[200px]">
+                          <p className="text-[13px] font-medium truncate max-w-[200px]"
+                             style={{ color: 'hsl(var(--foreground))' }}>
                             {product.title}
                           </p>
-                          <p className="text-xs text-muted">{product.brand}</p>
+                          <p className="text-[11px]" style={{ color: 'hsl(var(--muted))' }}>
+                            {product.brand}
+                          </p>
                         </div>
                       </div>
                     </td>
                     <td className="px-5 py-4">
                       <Badge variant="secondary" size="sm">{product.category}</Badge>
                     </td>
-                    <td className="px-5 py-4 font-medium">
+                    <td className="px-5 py-4 text-[13px] font-medium"
+                        style={{ color: 'hsl(var(--foreground))' }}>
                       {formatPrice(product.price, 'KES')}
                     </td>
                     <td className="px-5 py-4">
-                      <span className={cn(
-                        'text-sm font-medium',
-                        product.totalInventory === 0
-                          ? 'text-destructive'
-                          : product.totalInventory <= 5
-                          ? 'text-amber-600'
-                          : 'text-foreground'
-                      )}>
+                      <span
+                        className="text-[13px] font-medium"
+                        style={{
+                          color: product.totalInventory === 0
+                            ? 'hsl(var(--destructive))'
+                            : product.totalInventory <= 5
+                            ? 'hsl(36 88% 50%)'
+                            : 'hsl(var(--foreground))',
+                        }}
+                      >
                         {product.totalInventory}
                       </span>
                     </td>
                     <td className="px-5 py-4">
-                      <Badge variant={product.isPublished ? 'success' : 'secondary'} size="sm">
+                      <Badge
+                        variant={product.isPublished ? 'success' : 'secondary'}
+                        size="sm"
+                      >
                         {product.isPublished ? 'Published' : 'Draft'}
                       </Badge>
                     </td>
                     <td className="px-5 py-4">
                       <div className="flex items-center justify-end gap-1">
-                        <button
-                          type="button"
-                          onClick={() => handleTogglePublish(product)}
-                          className="p-2 rounded-lg text-muted hover:text-foreground hover:bg-accent transition-colors"
-                          title={product.isPublished ? 'Unpublish' : 'Publish'}
-                        >
-                          {product.isPublished ? <EyeOff size={14} /> : <Eye size={14} />}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => openEdit(product)}
-                          className="p-2 rounded-lg text-muted hover:text-foreground hover:bg-accent transition-colors"
-                        >
-                          <Edit2 size={14} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(product._id)}
-                          className="p-2 rounded-lg text-muted hover:text-destructive hover:bg-destructive/10 transition-colors"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                        {[
+                          {
+                            onClick: () => handleTogglePublish(product),
+                            icon: product.isPublished ? <EyeOff size={13} /> : <Eye size={13} />,
+                            danger: false,
+                          },
+                          {
+                            onClick: () => openEdit(product),
+                            icon: <Edit2 size={13} />,
+                            danger: false,
+                          },
+                          {
+                            onClick: () => handleDelete(product._id),
+                            icon: <Trash2 size={13} />,
+                            danger: true,
+                          },
+                        ].map((btn, i) => (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={btn.onClick}
+                            className="p-2 rounded-[8px] transition-all duration-[var(--duration-hover)]"
+                            style={{ color: 'hsl(var(--muted))' }}
+                            onMouseEnter={e => {
+                              e.currentTarget.style.color = btn.danger
+                                ? 'hsl(var(--destructive))'
+                                : 'hsl(var(--foreground))'
+                              e.currentTarget.style.background = btn.danger
+                                ? 'hsl(var(--destructive) / 0.08)'
+                                : 'hsl(var(--surface))'
+                            }}
+                            onMouseLeave={e => {
+                              e.currentTarget.style.color = 'hsl(var(--muted))'
+                              e.currentTarget.style.background = 'transparent'
+                            }}
+                          >
+                            {btn.icon}
+                          </button>
+                        ))}
                       </div>
                     </td>
                   </tr>
@@ -351,30 +404,50 @@ export default function AdminProductsPage() {
         </div>
       </div>
 
-      {/* Modal — plain CSS, no framer-motion */}
+      {/* Modal */}
       {showModal && (
         <>
-          {/* Backdrop */}
           <div
-            className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
+            className="fixed inset-0 z-40 backdrop-blur-sm"
+            style={{ background: 'rgba(0,0,0,0.6)' }}
             onClick={handleCloseModal}
           />
-
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="bg-background rounded-2xl border border-border
-                            w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
-
+            <div
+              className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl"
+              style={{
+                background: 'hsl(var(--background))',
+                border:     '0.5px solid hsl(var(--border))',
+                boxShadow:  'var(--shadow-float)',
+              }}
+            >
               {/* Modal Header */}
-              <div className="flex items-center justify-between p-6 border-b border-border sticky top-0 bg-background z-10">
-                <h2 className="font-display text-lg font-semibold">
+              <div
+                className="flex items-center justify-between p-6 sticky top-0 z-10"
+                style={{
+                  background:   'hsl(var(--background))',
+                  borderBottom: '0.5px solid hsl(var(--border))',
+                }}
+              >
+                <h2 className="font-display text-lg font-semibold"
+                    style={{ color: 'hsl(var(--foreground))' }}>
                   {editProduct ? 'Edit Product' : 'Add Product'}
                 </h2>
                 <button
                   type="button"
                   onClick={handleCloseModal}
-                  className="p-2 rounded-xl text-muted hover:text-foreground hover:bg-accent transition-colors"
+                  className="p-2 rounded-[10px] transition-all duration-[var(--duration-hover)]"
+                  style={{ color: 'hsl(var(--muted))' }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.background = 'hsl(var(--surface))'
+                    e.currentTarget.style.color = 'hsl(var(--foreground))'
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.background = 'transparent'
+                    e.currentTarget.style.color = 'hsl(var(--muted))'
+                  }}
                 >
-                  <X size={16} />
+                  <X size={15} />
                 </button>
               </div>
 
@@ -382,42 +455,42 @@ export default function AdminProductsPage() {
               <div className="p-6 space-y-5">
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted">
-                    Title <span className="text-destructive">*</span>
+                  <label className="text-[11px] font-medium" style={{ color: 'hsl(var(--muted))' }}>
+                    Title <span style={{ color: 'hsl(var(--destructive))' }}>*</span>
                   </label>
                   <input
                     type="text"
                     value={form.title}
                     onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
                     placeholder="e.g. Silk Evening Gown"
-                    className="w-full h-10 px-3 rounded-xl border border-input bg-background
-                               text-sm placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-ring"
+                    className={inputClass}
+                    style={inputStyle}
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted">
-                      Brand <span className="text-destructive">*</span>
+                    <label className="text-[11px] font-medium" style={{ color: 'hsl(var(--muted))' }}>
+                      Brand <span style={{ color: 'hsl(var(--destructive))' }}>*</span>
                     </label>
                     <input
                       type="text"
                       value={form.brand}
                       onChange={(e) => setForm((f) => ({ ...f, brand: e.target.value }))}
                       placeholder="e.g. Gucci"
-                      className="w-full h-10 px-3 rounded-xl border border-input bg-background
-                                 text-sm placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-ring"
+                      className={inputClass}
+                      style={inputStyle}
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted">
-                      Category <span className="text-destructive">*</span>
+                    <label className="text-[11px] font-medium" style={{ color: 'hsl(var(--muted))' }}>
+                      Category <span style={{ color: 'hsl(var(--destructive))' }}>*</span>
                     </label>
                     <select
                       value={form.category}
                       onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-                      className="w-full h-10 px-3 rounded-xl border border-input bg-background
-                                 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                      className={inputClass}
+                      style={inputStyle}
                     >
                       <option value="">Select category</option>
                       {CATEGORIES.map((c) => (
@@ -429,47 +502,54 @@ export default function AdminProductsPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted">
-                      Price (KES) <span className="text-destructive">*</span>
+                    <label className="text-[11px] font-medium" style={{ color: 'hsl(var(--muted))' }}>
+                      Price (KES) <span style={{ color: 'hsl(var(--destructive))' }}>*</span>
                     </label>
                     <input
                       type="number"
                       value={form.price}
                       onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
                       placeholder="e.g. 5000"
-                      className="w-full h-10 px-3 rounded-xl border border-input bg-background
-                                 text-sm placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-ring"
+                      className={inputClass}
+                      style={inputStyle}
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted">Compare Price (KES)</label>
+                    <label className="text-[11px] font-medium" style={{ color: 'hsl(var(--muted))' }}>
+                      Compare Price (KES)
+                    </label>
                     <input
                       type="number"
                       value={form.comparePrice}
                       onChange={(e) => setForm((f) => ({ ...f, comparePrice: e.target.value }))}
                       placeholder="e.g. 7000 (optional)"
-                      className="w-full h-10 px-3 rounded-xl border border-input bg-background
-                                 text-sm placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-ring"
+                      className={inputClass}
+                      style={inputStyle}
                     />
                   </div>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted">
-                    Description <span className="text-destructive">*</span>
+                  <label className="text-[11px] font-medium" style={{ color: 'hsl(var(--muted))' }}>
+                    Description <span style={{ color: 'hsl(var(--destructive))' }}>*</span>
                   </label>
                   <textarea
                     value={form.description}
                     onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                    placeholder="Product description..."
+                    placeholder="Product description…"
                     rows={3}
-                    className="w-full px-3 py-2.5 rounded-xl border border-input bg-background
-                               text-sm placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                    className="w-full px-3 py-2.5 rounded-[10px] text-sm resize-none
+                               placeholder:text-[hsl(var(--muted))] focus:outline-none
+                               transition-all duration-[var(--duration-hover)]"
+                    style={inputStyle}
                   />
                 </div>
 
+                {/* Sizes */}
                 <div className="space-y-2">
-                  <label className="text-xs font-medium text-muted">Sizes & Inventory</label>
+                  <label className="text-[11px] font-medium" style={{ color: 'hsl(var(--muted))' }}>
+                    Sizes & Inventory
+                  </label>
                   <div className="flex flex-wrap gap-2">
                     {SIZES.map((size) => {
                       const selected = form.sizes.find((s) => s.size === size)
@@ -478,12 +558,13 @@ export default function AdminProductsPage() {
                           type="button"
                           key={size}
                           onClick={() => toggleSize(size)}
-                          className={cn(
-                            'px-3 py-1.5 rounded-lg text-xs font-medium border transition-all',
+                          className="px-3 py-1.5 rounded-[8px] text-[11px] font-medium
+                                     transition-all duration-[var(--duration-hover)]"
+                          style={
                             selected
-                              ? 'bg-foreground text-background border-foreground'
-                              : 'bg-background text-muted border-border hover:border-foreground/40'
-                          )}
+                              ? { background: 'hsl(var(--foreground))', color: 'hsl(var(--background))', border: 'none' }
+                              : { background: 'transparent', color: 'hsl(var(--muted))', border: '0.5px solid hsl(var(--border))' }
+                          }
                         >
                           {size}
                         </button>
@@ -494,25 +575,42 @@ export default function AdminProductsPage() {
                   {form.sizes.length > 0 && (
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
                       {form.sizes.map((s) => (
-                        <div key={s.size} className="flex items-center gap-2 p-2 rounded-xl border border-border bg-surface">
-                          <span className="text-xs font-medium w-12">{s.size}</span>
+                        <div
+                          key={s.size}
+                          className="flex items-center gap-2 p-2 rounded-xl"
+                          style={{
+                            border:     '0.5px solid hsl(var(--border))',
+                            background: 'hsl(var(--surface))',
+                          }}
+                        >
+                          <span className="text-[11px] font-medium w-12"
+                                style={{ color: 'hsl(var(--foreground))' }}>
+                            {s.size}
+                          </span>
                           <input
                             type="number"
                             min={0}
                             value={s.inventory}
                             onChange={(e) => updateInventory(s.size, parseInt(e.target.value) || 0)}
-                            className="flex-1 h-7 px-2 rounded-lg border border-input
-                                       bg-background text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                            className="flex-1 h-7 px-2 rounded-lg text-xs focus:outline-none"
+                            style={{
+                              border:     '0.5px solid hsl(var(--border))',
+                              background: 'hsl(var(--background))',
+                              color:      'hsl(var(--foreground))',
+                            }}
                           />
-                          <span className="text-xs text-muted">pcs</span>
+                          <span className="text-[10px]" style={{ color: 'hsl(var(--muted))' }}>pcs</span>
                         </div>
                       ))}
                     </div>
                   )}
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted">Images</label>
+                {/* Images */}
+                <div className="space-y-2">
+                  <label className="text-[11px] font-medium" style={{ color: 'hsl(var(--muted))' }}>
+                    Images
+                  </label>
 
                   {form.images.length > 0 && (
                     <div className="flex flex-wrap gap-2 mb-2">
@@ -521,14 +619,16 @@ export default function AdminProductsPage() {
                           <img
                             src={url}
                             alt=""
-                            className="w-full h-full object-cover rounded-xl border border-border"
+                            className="w-full h-full object-cover rounded-xl"
+                            style={{ border: '0.5px solid hsl(var(--border))' }}
                           />
                           <button
                             type="button"
                             onClick={() => handleRemoveImage(idx)}
-                            className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-destructive
-                                       text-white rounded-full flex items-center justify-center
-                                       opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full
+                                       flex items-center justify-center opacity-0
+                                       group-hover:opacity-100 transition-opacity"
+                            style={{ background: 'hsl(var(--destructive))', color: 'white' }}
                           >
                             <X size={10} />
                           </button>
@@ -537,14 +637,27 @@ export default function AdminProductsPage() {
                     </div>
                   )}
 
-                  <label className={cn(
-                    'flex items-center gap-2 w-fit cursor-pointer px-3 py-2',
-                    'rounded-xl border border-dashed border-border text-xs',
-                    'text-muted hover:border-foreground/40 hover:text-foreground transition-colors',
-                    isUploading && 'opacity-60 cursor-not-allowed pointer-events-none'
-                  )}>
-                    <Upload size={13} />
-                    {isUploading ? 'Uploading...' : 'Upload image'}
+                  <label
+                    className={cn(
+                      'flex items-center gap-2 w-fit cursor-pointer px-3 py-2',
+                      'rounded-xl text-[11px] transition-colors duration-[var(--duration-hover)]',
+                      isUploading && 'opacity-60 cursor-not-allowed pointer-events-none'
+                    )}
+                    style={{
+                      border: '0.5px dashed hsl(var(--border))',
+                      color:  'hsl(var(--muted))',
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.borderColor = 'hsl(var(--foreground) / 0.3)'
+                      e.currentTarget.style.color = 'hsl(var(--foreground))'
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.borderColor = 'hsl(var(--border))'
+                      e.currentTarget.style.color = 'hsl(var(--muted))'
+                    }}
+                  >
+                    <Upload size={12} />
+                    {isUploading ? 'Uploading…' : 'Upload image'}
                     <input
                       type="file"
                       accept="image/*"
@@ -554,54 +667,63 @@ export default function AdminProductsPage() {
                     />
                   </label>
 
-                  <div className="flex gap-2 mt-2">
+                  <div className="flex gap-2 mt-1">
                     <input
                       type="text"
                       value={imageUrl}
                       onChange={(e) => setImageUrl(e.target.value)}
-                      placeholder="Or paste image URL..."
-                      className="flex-1 h-9 px-3 rounded-xl border border-input bg-background
-                                 text-xs placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-ring"
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault()
-                          handleAddImageUrl()
-                        }
-                      }}
+                      placeholder="Or paste image URL…"
+                      className="flex-1 h-9 px-3 rounded-[10px] text-xs
+                                 placeholder:text-[hsl(var(--muted))] focus:outline-none"
+                      style={inputStyle}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddImageUrl() } }}
                     />
                     <button
                       type="button"
                       onClick={handleAddImageUrl}
-                      className="px-3 h-9 rounded-xl bg-surface border border-border
-                                 text-xs font-medium hover:border-foreground/40 transition-colors"
+                      className="px-3 h-9 rounded-[10px] text-xs font-medium
+                                 transition-all duration-[var(--duration-hover)]"
+                      style={{
+                        background: 'hsl(var(--surface))',
+                        border:     '0.5px solid hsl(var(--border))',
+                        color:      'hsl(var(--foreground))',
+                      }}
                     >
                       Add
                     </button>
                   </div>
                 </div>
 
+                {/* Publish toggle */}
                 <div className="flex items-center gap-3">
                   <button
                     type="button"
                     onClick={() => setForm((f) => ({ ...f, isPublished: !f.isPublished }))}
-                    className={cn(
-                      'relative w-10 h-6 rounded-full transition-colors duration-200',
-                      form.isPublished ? 'bg-foreground' : 'bg-border'
-                    )}
+                    className="relative w-10 h-[22px] rounded-full transition-colors duration-200"
+                    style={{ background: form.isPublished ? 'hsl(var(--foreground))' : 'hsl(var(--border))' }}
                   >
-                    <span className={cn(
-                      'absolute top-1 w-4 h-4 rounded-full bg-background transition-all duration-200',
-                      form.isPublished ? 'left-5' : 'left-1'
-                    )} />
+                    <span
+                      className="absolute top-[3px] w-4 h-4 rounded-full transition-all duration-200"
+                      style={{
+                        background: 'hsl(var(--background))',
+                        left: form.isPublished ? '22px' : '3px',
+                      }}
+                    />
                   </button>
-                  <span className="text-sm text-muted">
+                  <span className="text-sm" style={{ color: 'hsl(var(--muted))' }}>
                     {form.isPublished ? 'Published' : 'Draft'}
                   </span>
                 </div>
               </div>
 
               {/* Modal Footer */}
-              <div className="flex items-center justify-end gap-3 p-6 border-t border-border sticky bottom-0 bg-background">
+              <div
+                className="flex items-center justify-end gap-3 p-6 sticky bottom-0"
+                style={{
+                  background:  'hsl(var(--background))',
+                  borderTop:   '0.5px solid hsl(var(--border))',
+                }}
+              >
                 <Button type="button" variant="outline" size="md" onClick={handleCloseModal}>
                   Cancel
                 </Button>

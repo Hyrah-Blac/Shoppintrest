@@ -8,7 +8,10 @@ export default function AdminLayout({
 }) {
   return (
     <AdminGuard>
-      <div className="min-h-screen flex bg-surface">
+      <div
+        className="min-h-screen flex"
+        style={{ background: 'hsl(var(--surface))' }}
+      >
         <AdminSidebar />
         <main className="flex-1 min-w-0 overflow-auto">
           {children}

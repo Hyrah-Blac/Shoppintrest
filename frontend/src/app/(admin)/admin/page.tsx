@@ -17,16 +17,16 @@ import { Badge } from '@/components/ui/Badge'
 import { Skeleton } from '@/components/ui/Skeleton'
 
 const statusVariant: Record<string, any> = {
-  pending: 'warning',
+  pending:          'warning',
   awaiting_payment: 'warning',
-  processing: 'secondary',
-  shipped: 'secondary',
-  delivered: 'success',
-  cancelled: 'destructive',
+  processing:       'secondary',
+  shipped:          'secondary',
+  delivered:        'success',
+  cancelled:        'destructive',
 }
 
 export default function AdminDashboard() {
-  const [stats, setStats] = useState<any>(null)
+  const [stats, setStats]       = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -37,11 +37,9 @@ export default function AdminDashboard() {
   }, [])
 
   const chartData = stats?.monthlyRevenue?.map((m: any) => ({
-    name: new Date(m._id.year, m._id.month - 1).toLocaleString('default', {
-      month: 'short',
-    }),
+    name: new Date(m._id.year, m._id.month - 1).toLocaleString('default', { month: 'short' }),
     revenue: m.revenue,
-    orders: m.orders,
+    orders:  m.orders,
   })) || []
 
   const statCards = [
@@ -50,56 +48,64 @@ export default function AdminDashboard() {
       value: stats ? formatPrice(stats.stats.totalRevenue, 'KES') : '—',
       icon: DollarSign,
       color: 'text-emerald-600 dark:text-emerald-400',
-      bg: 'bg-emerald-50 dark:bg-emerald-900/20',
+      bg:    'bg-emerald-50 dark:bg-emerald-900/20',
       trend: '+12%',
-      up: true,
+      up:    true,
     },
     {
       label: 'Total Users',
       value: stats?.stats.totalUsers?.toLocaleString() || '—',
       icon: Users,
       color: 'text-blue-600 dark:text-blue-400',
-      bg: 'bg-blue-50 dark:bg-blue-900/20',
+      bg:    'bg-blue-50 dark:bg-blue-900/20',
       trend: '+8%',
-      up: true,
+      up:    true,
     },
     {
       label: 'Total Orders',
       value: stats?.stats.totalOrders?.toLocaleString() || '—',
       icon: ShoppingCart,
       color: 'text-violet-600 dark:text-violet-400',
-      bg: 'bg-violet-50 dark:bg-violet-900/20',
+      bg:    'bg-violet-50 dark:bg-violet-900/20',
       trend: '+5%',
-      up: true,
+      up:    true,
     },
     {
       label: 'Products Listed',
       value: stats?.stats.totalProducts?.toLocaleString() || '—',
       icon: Package,
       color: 'text-amber-600 dark:text-amber-400',
-      bg: 'bg-amber-50 dark:bg-amber-900/20',
+      bg:    'bg-amber-50 dark:bg-amber-900/20',
       trend: '+2%',
-      up: true,
+      up:    true,
     },
     {
       label: 'Conversion Rate',
       value: stats ? `${stats.stats.conversionRate}%` : '—',
       icon: TrendingUp,
       color: 'text-rose-600 dark:text-rose-400',
-      bg: 'bg-rose-50 dark:bg-rose-900/20',
+      bg:    'bg-rose-50 dark:bg-rose-900/20',
       trend: '-1.2%',
-      up: false,
+      up:    false,
     },
   ]
 
   return (
     <div className="p-6 lg:p-8 space-y-8">
+
       {/* Header */}
       <div>
-        <h1 className="font-display text-2xl font-semibold tracking-tight">
+        <p
+          className="text-[10px] font-medium uppercase tracking-[0.12em] mb-1"
+          style={{ color: 'hsl(var(--accent))' }}
+        >
+          Overview
+        </p>
+        <h1 className="font-display text-2xl font-semibold tracking-tight"
+            style={{ color: 'hsl(var(--foreground))' }}>
           Dashboard
         </h1>
-        <p className="text-sm text-muted mt-1">
+        <p className="text-sm mt-1" style={{ color: 'hsl(var(--muted))' }}>
           Welcome back. Here&apos;s what&apos;s happening today.
         </p>
       </div>
@@ -111,30 +117,37 @@ export default function AdminDashboard() {
             key={card.label}
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.07 }}
-            className="bg-background rounded-2xl border border-border p-5 space-y-4"
+            transition={{ delay: i * 0.07, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+            className="rounded-2xl p-5 space-y-4"
+            style={{
+              background:  'hsl(var(--background))',
+              border:      '0.5px solid hsl(var(--border))',
+              boxShadow:   'var(--shadow-xs)',
+            }}
           >
             <div className="flex items-center justify-between">
-              <p className="text-xs font-medium text-muted">{card.label}</p>
+              <p className="text-[11px] font-medium" style={{ color: 'hsl(var(--muted))' }}>
+                {card.label}
+              </p>
               <div className={cn('w-8 h-8 rounded-xl flex items-center justify-center', card.bg)}>
-                <card.icon size={15} className={card.color} />
+                <card.icon size={14} className={card.color} />
               </div>
             </div>
             {isLoading ? (
               <Skeleton className="h-8 w-24 rounded-lg" />
             ) : (
               <div>
-                <p className="font-display text-2xl font-semibold tracking-tight">
+                <p className="font-display text-2xl font-semibold tracking-tight"
+                   style={{ color: 'hsl(var(--foreground))' }}>
                   {card.value}
                 </p>
                 <div className="flex items-center gap-1 mt-1">
-                  {card.up ? (
-                    <ArrowUpRight size={12} className="text-emerald-500" />
-                  ) : (
-                    <ArrowDownRight size={12} className="text-rose-500" />
-                  )}
+                  {card.up
+                    ? <ArrowUpRight size={11} className="text-emerald-500" />
+                    : <ArrowDownRight size={11} className="text-rose-500" />
+                  }
                   <span className={cn(
-                    'text-2xs font-medium',
+                    'text-[10px] font-medium',
                     card.up ? 'text-emerald-600' : 'text-rose-600'
                   )}>
                     {card.trend} vs last month
@@ -148,18 +161,31 @@ export default function AdminDashboard() {
 
       {/* Chart + Top Products */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+
         {/* Revenue Chart */}
-        <div className="xl:col-span-2 bg-background rounded-2xl border border-border p-6">
+        <div
+          className="xl:col-span-2 rounded-2xl p-6"
+          style={{
+            background: 'hsl(var(--background))',
+            border:     '0.5px solid hsl(var(--border))',
+            boxShadow:  'var(--shadow-xs)',
+          }}
+        >
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className="font-medium text-foreground">Revenue Overview</h2>
-              <p className="text-xs text-muted mt-0.5">Last 6 months</p>
+              <h2 className="text-[14px] font-medium" style={{ color: 'hsl(var(--foreground))' }}>
+                Revenue Overview
+              </h2>
+              <p className="text-[11px] mt-0.5" style={{ color: 'hsl(var(--muted))' }}>
+                Last 6 months
+              </p>
             </div>
           </div>
           {isLoading ? (
             <Skeleton className="h-64 rounded-xl" />
           ) : chartData.length === 0 ? (
-            <div className="h-64 flex items-center justify-center text-muted text-sm">
+            <div className="h-64 flex items-center justify-center text-sm"
+                 style={{ color: 'hsl(var(--muted))' }}>
               No revenue data yet
             </div>
           ) : (
@@ -184,24 +210,22 @@ export default function AdminDashboard() {
                 />
                 <Tooltip
                   contentStyle={{
-                    background: 'hsl(var(--background))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '0.75rem',
-                    fontSize: '12px',
-                    color: 'hsl(var(--foreground))',
+                    background:   'hsl(var(--surface))',
+                    border:       '0.5px solid hsl(var(--border))',
+                    borderRadius: '12px',
+                    fontSize:     '12px',
+                    color:        'hsl(var(--foreground))',
+                    boxShadow:    'var(--shadow-md)',
                   }}
-                  formatter={(value: any) => [
-                    formatPrice(value, 'KES'),
-                    'Revenue',
-                  ]}
+                  formatter={(value: any) => [formatPrice(value, 'KES'), 'Revenue']}
                 />
                 <Line
                   type="monotone"
                   dataKey="revenue"
-                  stroke="hsl(var(--foreground))"
+                  stroke="hsl(var(--accent))"
                   strokeWidth={2}
                   dot={false}
-                  activeDot={{ r: 4 }}
+                  activeDot={{ r: 4, fill: 'hsl(var(--accent))' }}
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -209,8 +233,18 @@ export default function AdminDashboard() {
         </div>
 
         {/* Top Products */}
-        <div className="bg-background rounded-2xl border border-border p-6">
-          <h2 className="font-medium text-foreground mb-4">Top Products</h2>
+        <div
+          className="rounded-2xl p-6"
+          style={{
+            background: 'hsl(var(--background))',
+            border:     '0.5px solid hsl(var(--border))',
+            boxShadow:  'var(--shadow-xs)',
+          }}
+        >
+          <h2 className="text-[14px] font-medium mb-5"
+              style={{ color: 'hsl(var(--foreground))' }}>
+            Top Products
+          </h2>
           {isLoading ? (
             <div className="space-y-4">
               {Array.from({ length: 5 }).map((_, i) => (
@@ -227,10 +261,14 @@ export default function AdminDashboard() {
             <div className="space-y-4">
               {stats?.topProducts?.map((product: any, i: number) => (
                 <div key={product._id} className="flex items-center gap-3">
-                  <span className="text-xs font-bold text-muted w-4">
+                  <span className="text-[10px] font-bold w-4"
+                        style={{ color: 'hsl(var(--muted))' }}>
                     {i + 1}
                   </span>
-                  <div className="w-10 h-10 rounded-xl bg-surface shrink-0 overflow-hidden">
+                  <div
+                    className="w-10 h-10 rounded-xl shrink-0 overflow-hidden"
+                    style={{ background: 'hsl(var(--surface))' }}
+                  >
                     {product.images?.[0]?.url && (
                       <img
                         src={product.images[0].url}
@@ -240,14 +278,17 @@ export default function AdminDashboard() {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">
+                    <p className="text-[13px] font-medium truncate"
+                       style={{ color: 'hsl(var(--foreground))' }}>
                       {product.title}
                     </p>
-                    <p className="text-xs text-muted">
+                    <p className="text-[11px] mt-0.5"
+                       style={{ color: 'hsl(var(--muted))' }}>
                       {product.saves} saves · ★{product.rating}
                     </p>
                   </div>
-                  <p className="text-sm font-semibold shrink-0">
+                  <p className="text-[13px] font-semibold shrink-0"
+                     style={{ color: 'hsl(var(--foreground))' }}>
                     {formatPrice(product.price, 'KES')}
                   </p>
                 </div>
@@ -258,19 +299,32 @@ export default function AdminDashboard() {
       </div>
 
       {/* Recent Orders */}
-      <div className="bg-background rounded-2xl border border-border p-6">
+      <div
+        className="rounded-2xl p-6"
+        style={{
+          background: 'hsl(var(--background))',
+          border:     '0.5px solid hsl(var(--border))',
+          boxShadow:  'var(--shadow-xs)',
+        }}
+      >
         <div className="flex items-center justify-between mb-5">
-          <h2 className="font-medium text-foreground">Recent Orders</h2>
+          <h2 className="text-[14px] font-medium"
+              style={{ color: 'hsl(var(--foreground))' }}>
+            Recent Orders
+          </h2>
           <Link
             href="/admin/orders"
-            className="text-xs text-muted hover:text-foreground transition-colors"
+            className="text-[11px] transition-colors duration-[var(--duration-hover)]"
+            style={{ color: 'hsl(var(--muted))' }}
+            onMouseEnter={e => (e.currentTarget.style.color = 'hsl(var(--foreground))')}
+            onMouseLeave={e => (e.currentTarget.style.color = 'hsl(var(--muted))')}
           >
-            View all
+            View all →
           </Link>
         </div>
 
         {isLoading ? (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {Array.from({ length: 5 }).map((_, i) => (
               <Skeleton key={i} className="h-14 rounded-xl" />
             ))}
@@ -279,38 +333,54 @@ export default function AdminDashboard() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-xs text-muted border-b border-border">
-                  <th className="pb-3 font-medium">Order</th>
-                  <th className="pb-3 font-medium">Customer</th>
-                  <th className="pb-3 font-medium">Status</th>
-                  <th className="pb-3 font-medium">Date</th>
-                  <th className="pb-3 font-medium text-right">Total</th>
+                <tr
+                  className="text-left text-[11px]"
+                  style={{ borderBottom: '0.5px solid hsl(var(--border))' }}
+                >
+                  {['Order', 'Customer', 'Status', 'Date', 'Total'].map((h, i) => (
+                    <th
+                      key={h}
+                      className={cn('pb-3 font-medium', i === 4 && 'text-right')}
+                      style={{ color: 'hsl(var(--muted))' }}
+                    >
+                      {h}
+                    </th>
+                  ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody>
                 {stats?.recentOrders?.map((order: any) => (
-                  <tr key={order._id} className="hover:bg-surface transition-colors">
-                    <td className="py-3.5 font-mono text-xs text-muted">
+                  <tr
+                    key={order._id}
+                    className="transition-colors duration-[var(--duration-hover)]"
+                    style={{ borderBottom: '0.5px solid hsl(var(--border-subtle))' }}
+                    onMouseEnter={e => ((e.currentTarget as HTMLElement).style.background = 'hsl(var(--surface))')}
+                    onMouseLeave={e => ((e.currentTarget as HTMLElement).style.background = 'transparent')}
+                  >
+                    <td className="py-3.5 font-mono text-[11px]"
+                        style={{ color: 'hsl(var(--muted))' }}>
                       #{order._id.slice(-8).toUpperCase()}
                     </td>
                     <td className="py-3.5">
-                      <p className="font-medium text-foreground">
+                      <p className="text-[13px] font-medium"
+                         style={{ color: 'hsl(var(--foreground))' }}>
                         {order.user?.displayName}
                       </p>
-                      <p className="text-xs text-muted">{order.user?.email}</p>
+                      <p className="text-[11px]" style={{ color: 'hsl(var(--muted))' }}>
+                        {order.user?.email}
+                      </p>
                     </td>
                     <td className="py-3.5">
-                      <Badge
-                        variant={statusVariant[order.status] || 'secondary'}
-                        size="sm"
-                      >
+                      <Badge variant={statusVariant[order.status] || 'secondary'} size="sm">
                         {order.status.replace('_', ' ')}
                       </Badge>
                     </td>
-                    <td className="py-3.5 text-muted text-xs">
+                    <td className="py-3.5 text-[11px]"
+                        style={{ color: 'hsl(var(--muted))' }}>
                       {formatDate(order.createdAt)}
                     </td>
-                    <td className="py-3.5 text-right font-semibold">
+                    <td className="py-3.5 text-right text-[13px] font-semibold"
+                        style={{ color: 'hsl(var(--foreground))' }}>
                       {formatPrice(order.total, 'KES')}
                     </td>
                   </tr>
