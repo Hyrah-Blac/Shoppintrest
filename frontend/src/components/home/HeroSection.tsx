@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * HeroSection — v3 · Shoppin
+ * HeroSection — v4 · Shoppin
  *
  * v1 → v2 (structural):  video support, blur-up images, Quick View modal,
  *                         cursor safety, slide preloader, touch swipe, focus trap
@@ -10,6 +10,11 @@
  * v2 → v3 (code polish): removed dead `fmt` helper, fixed stale-closure in
  *                         useSwipe via callback refs, added pause-on-hover,
  *                         aria-busy on skeleton, aria-live on headline
+ * v3 → v4 (mobile):       safe-area bottom padding, headline clamp floor 2.5rem,
+ *                         progress rail full-width on mobile, "See it" visible on
+ *                         mobile, product name less aggressive truncation, modal
+ *                         image capped at 40dvh, modal maxHeight 88dvh, scroll cue
+ *                         safe-area aware, pause-on-hover touch guard
  *
  * globals.css additions required:
  *   @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&display=swap');
@@ -315,11 +320,11 @@ function QuickViewModal({
       >
         <div
           className="flex flex-col md:flex-row"
-          style={{ minHeight: '380px', maxHeight: '80dvh', overflow: 'hidden' }}
+          style={{ minHeight: '320px', maxHeight: '88dvh', overflow: 'hidden' }}
         >
           {/* Image panel */}
           {firstImgSrc && (
-            <div className="relative w-full md:w-64 shrink-0" style={{ minHeight: '260px' }}>
+            <div className="relative w-full md:w-64 shrink-0" style={{ minHeight: '180px', maxHeight: '40dvh' }}>
               <Image
                 src={firstImgSrc}
                 alt={product.title}
@@ -610,8 +615,7 @@ function ScrollCue() {
     <AnimatePresence initial={false}>
       {visible && (
         <motion.div
-          className="absolute bottom-10 left-1/2 z-20 flex flex-col items-center gap-[5px]"
-          style={{ translateX: '-50%' }}
+          className="absolute left-1/2 z-20 flex flex-col items-center gap-[5px]" style={{ bottom: 'max(2.5rem, calc(env(safe-area-inset-bottom, 0px) + 1.5rem))', translateX: '-50%' }}
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 4 }}
@@ -771,11 +775,8 @@ export function HeroSection() {
         className="relative w-full overflow-hidden"
         style={{ height: '100dvh', minHeight: '600px' }}
         aria-label="Featured collection"
-        onMouseEnter={() => { if (timerRef.current) clearInterval(timerRef.current) }}
-        onMouseLeave={() => {
-          if (products.length < 2) return
-          timerRef.current = setInterval(advance, SLIDE_INTERVAL)
-        }}
+        onMouseEnter={() => { if (!window.matchMedia('(hover: hover)').matches) return; if (timerRef.current) clearInterval(timerRef.current) }}
+        onMouseLeave={() => { if (!window.matchMedia('(hover: hover)').matches) return; if (products.length < 2) return; timerRef.current = setInterval(advance, SLIDE_INTERVAL) }}
       >
         {/* ── Background ── */}
         <motion.div
@@ -864,18 +865,18 @@ export function HeroSection() {
 
         {/* ── Bottom content block ── */}
         <motion.div
-          className="absolute bottom-0 inset-x-0 z-10 px-8 pb-14 md:px-12 md:pb-16"
+          className="absolute bottom-0 inset-x-0 z-10 px-5 pb-[max(3.5rem,env(safe-area-inset-bottom,3.5rem))] md:px-12 md:pb-16"
           style={{ y: reduceMotion ? 0 : copyY }}
         >
           {/* Progress rail */}
           {products.length > 1 && (
-            <div className="mb-10" style={{ maxWidth: '260px' }}>
+            <div className="mb-8 md:mb-10" style={{ maxWidth: '100%', width: 'min(260px, 100%)'}}>
               <ProgressRail total={products.length} active={active} onSelect={goTo} />
             </div>
           )}
 
           {/* Headline + CTA row */}
-          <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+          <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
 
             {/* Left: editorial copy */}
             <div style={{ maxWidth: '680px' }}>
@@ -901,7 +902,7 @@ export function HeroSection() {
                       lineHeight: 0.9,
                       letterSpacing: '-0.01em',
                       color: '#fff',
-                      fontSize: 'clamp(3rem, 7.5vw, 7rem)',
+                      fontSize: 'clamp(2.5rem, 7.5vw, 7rem)',
                       margin: 0,
                     }}
                   >
@@ -977,7 +978,7 @@ export function HeroSection() {
                       letterSpacing: '0.06em',
                       color: 'rgba(255,255,255,0.65)',
                       transition: 'opacity 0.25s',
-                      maxWidth: 'min(320px, 50vw)',
+                      maxWidth: 'min(320px, 55vw)',
                       display: 'block',
                     }}
                   >
@@ -994,7 +995,7 @@ export function HeroSection() {
                 <button
                   type="button"
                   onClick={() => setQuickViewProduct(current)}
-                  className="hidden md:block"
+                  className="block"
                   aria-label={`See ${current.title}`}
                   style={{
                     ...DISPLAY,
