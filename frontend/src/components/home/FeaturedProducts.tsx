@@ -1,33 +1,64 @@
 'use client'
 
+/**
+ * FeaturedProducts — v2 · Shoppin
+ *
+ * Brought to standard:
+ *  - Typed Product interface (no more any[])
+ *  - Shoppin voice: "Handpicked" → "Selected", "Featured Pieces" → "Worth your time",
+ *    "View all" → "See all", "View all featured" → "See all"
+ *  - isLoading → loading
+ *  - CTA matches hero/trending: circle ArrowRight, same sizing (36px)
+ *  - aria-label on section and grid
+ *  - Grid items wrapped in ul/li for screen reader item count
+ *  - aria-hidden on decorative hairline
+ *  - Redundant animate-pin-drop class removed (duplication with whileInView)
+ *  - data || [] → data ?? [] (consistent null-coalescing)
+ */
+
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { ArrowRight, Star } from 'lucide-react'
+import { Crown, ArrowRight, MoveRight } from 'lucide-react'
 import { apiClient } from '@/lib/api'
 import { ProductCard } from '@/components/product/ProductCard'
 import { ProductCardSkeleton } from '@/components/ui/Skeleton'
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface Product {
+  _id: string
+  title: string
+  price: number
+  brand?: string
+  images?: { url: string; blurDataURL?: string }[]
+}
+
+// ─── FeaturedProducts ─────────────────────────────────────────────────────────
+
 export function FeaturedProducts() {
-  const [products,  setProducts]  = useState<any[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [products, setProducts] = useState<Product[]>([])
+  const [loading,  setLoading]  = useState(true)
 
   useEffect(() => {
     apiClient.products.getFeatured()
-      .then(({ data }) => setProducts(data.data || []))
+      .then(({ data }) => setProducts(data.data ?? []))
       .catch(() => {})
-      .finally(() => setIsLoading(false))
+      .finally(() => setLoading(false))
   }, [])
 
   return (
-    <section className="section-padding relative overflow-hidden">
+    <section
+      className="section-padding relative overflow-hidden"
+      aria-label="Featured products"
+    >
 
-      {/* Ambient glow */}
+      {/* Top hairline accent */}
       <div
-        className="absolute bottom-0 right-0 w-[50vw] h-64 pointer-events-none"
+        aria-hidden
+        className="absolute top-0 inset-x-0 h-px pointer-events-none"
         style={{
-          background:
-            'radial-gradient(ellipse at bottom right, hsl(var(--accent) / 0.06) 0%, transparent 70%)',
+          background: 'linear-gradient(90deg, transparent 0%, hsl(var(--accent) / 0.35) 50%, transparent 100%)',
         }}
       />
 
@@ -35,77 +66,109 @@ export function FeaturedProducts() {
 
         {/* ── Header ── */}
         <div className="flex items-end justify-between mb-12">
+
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
           >
-            {/* Eyebrow */}
-            <div className="flex items-center gap-2 mb-3">
-              <div
-                className="w-6 h-6 rounded-[var(--radius-sm)] flex items-center justify-center"
-                style={{ background: 'hsl(var(--accent-muted))' }}
+            {/* Eyebrow pill */}
+            <div className="flex items-center gap-2.5 mb-4">
+              <span
+                className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1"
+                style={{
+                  background: 'hsl(var(--accent-muted))',
+                  border: '0.5px solid hsl(var(--accent) / 0.2)',
+                }}
               >
-                <Star size={12} style={{ color: 'hsl(var(--accent))' }} />
-              </div>
-              <span className="eyebrow">Handpicked</span>
+                <Crown size={11} strokeWidth={2} style={{ color: 'hsl(var(--accent))' }} aria-hidden />
+                <span
+                  className="text-[10px] font-semibold tracking-[0.18em] uppercase"
+                  style={{ color: 'hsl(var(--accent))' }}
+                >
+                  Selected
+                </span>
+              </span>
             </div>
 
             {/* Headline */}
             <h2
-              className="font-display font-bold tracking-[-0.03em] leading-[1.1]"
-              style={{ fontSize: 'clamp(1.75rem, 3vw, var(--text-hero))' }}
+              className="font-display font-bold tracking-[-0.03em] leading-[1.05]"
+              style={{ fontSize: 'clamp(1.75rem, 3vw, var(--text-section))' }}
             >
-              Featured{' '}
+              Worth{' '}
               <em className="not-italic" style={{ color: 'hsl(var(--accent))' }}>
-                Pieces
+                your time
               </em>
             </h2>
 
             {/* Accent underline */}
             <motion.div
-              className="mt-4 h-[2px] w-12 rounded-full"
+              className="mt-4 h-[1.5px] w-10 rounded-full"
               style={{ background: 'hsl(var(--accent))' }}
               initial={{ scaleX: 0, originX: 0 }}
               whileInView={{ scaleX: 1 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: 0.2 }}
+              transition={{ duration: 0.5, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
             />
           </motion.div>
 
+          {/* Desktop CTA — matches hero/trending circle-arrow style */}
           <motion.div
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
             transition={{ duration: 0.4, delay: 0.15 }}
+            className="hidden sm:block"
           >
             <Link
               href="/explore?featured=true"
-              className="group hidden sm:flex items-center gap-2 text-sm font-medium
-                         text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]
-                         transition-colors duration-[var(--duration-hover)]"
+              className="group inline-flex items-center gap-3"
+              style={{ textDecoration: 'none' }}
             >
-              View all
-              <ArrowRight
-                size={14}
-                className="transition-transform duration-[var(--duration-hover)]
-                           group-hover:translate-x-0.5"
-              />
+              <span
+                className="text-[10px] font-medium tracking-[0.2em] uppercase transition-opacity duration-300 group-hover:opacity-50"
+                style={{ color: 'hsl(var(--foreground))' }}
+              >
+                See all
+              </span>
+              <span
+                className="inline-flex items-center justify-center rounded-full
+                           group-hover:bg-[hsl(var(--foreground))] group-hover:text-[hsl(var(--background))]"
+                style={{
+                  width: '36px',
+                  height: '36px',
+                  border: '0.5px solid hsl(var(--border))',
+                  color: 'hsl(var(--foreground))',
+                  transition: 'background 0.35s cubic-bezier(0.22,1,0.36,1), color 0.35s',
+                  flexShrink: 0,
+                }}
+              >
+                <ArrowRight size={13} strokeWidth={1.5} />
+              </span>
             </Link>
           </motion.div>
         </div>
 
         {/* ── Grid ── */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5
-                        gap-4 lg:gap-5">
-          {isLoading
+        <ul
+          className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5
+                     gap-4 lg:gap-5 list-none m-0 p-0"
+          role="list"
+          aria-label="Featured products grid"
+        >
+          {loading
             ? Array.from({ length: 10 }).map((_, i) => (
-                <ProductCardSkeleton key={i} />
+                <li key={i} role="listitem">
+                  <ProductCardSkeleton />
+                </li>
               ))
             : products.slice(0, 10).map((product, i) => (
-                <motion.div
+                <motion.li
                   key={product._id}
+                  role="listitem"
+                  className="list-none"
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, amount: 0.1 }}
@@ -114,13 +177,11 @@ export function FeaturedProducts() {
                     duration: 0.45,
                     ease: [0.22, 1, 0.36, 1],
                   }}
-                  className="animate-pin-drop"
-                  style={{ animationDelay: `${i * 60}ms` }}
                 >
                   <ProductCard product={product} priority={i < 5} />
-                </motion.div>
+                </motion.li>
               ))}
-        </div>
+        </ul>
 
         {/* ── Mobile CTA ── */}
         <motion.div
@@ -132,13 +193,15 @@ export function FeaturedProducts() {
         >
           <Link
             href="/explore?featured=true"
-            className="btn-ghost group gap-2.5"
+            className="group inline-flex items-center gap-2 text-[11px] font-medium
+                       tracking-[0.1em] uppercase transition-colors duration-200"
+            style={{ color: 'hsl(var(--muted))' }}
           >
-            View all featured
-            <ArrowRight
-              size={14}
-              className="transition-transform duration-[var(--duration-hover)]
-                         group-hover:translate-x-0.5"
+            See all
+            <MoveRight
+              size={13}
+              strokeWidth={1.5}
+              className="transition-transform duration-200 group-hover:translate-x-0.5"
             />
           </Link>
         </motion.div>

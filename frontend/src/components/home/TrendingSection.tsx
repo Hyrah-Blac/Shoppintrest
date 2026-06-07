@@ -1,76 +1,149 @@
 'use client'
 
+/**
+ * TrendingSection — v2 · Shoppin
+ *
+ * Brought to HeroSection standard:
+ *  - Typed Product interface (no more any[])
+ *  - Shoppin voice throughout — badge, headline, CTAs, rank labels
+ *  - Rank badge copy: "Top Pick / Moving fast / Worth noting" replaces generic labels
+ *  - Removed dead "This week" sublabel
+ *  - Section + scroll container aria-labels
+ *  - Scroll items wrapped in role="list" / role="listitem" for a11y
+ *  - items-start alignment (was items-end — caused bottom-anchored layout)
+ *  - CTA style matches hero: text + circle arrow
+ *  - isMounted guard removed — not needed here (no useScroll)
+ */
+
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { TrendingUp, ArrowRight } from 'lucide-react'
+import { Flame, ArrowRight, MoveRight } from 'lucide-react'
 import { apiClient } from '@/lib/api'
 import { ProductCard } from '@/components/product/ProductCard'
 import { ProductCardSkeleton } from '@/components/ui/Skeleton'
 
-const RANK_META: Record<number, { label: string; sublabel: string }> = {
-  1: { label: '#1',  sublabel: 'Top Pick'      },
-  2: { label: '#2',  sublabel: 'Hot Right Now'  },
-  3: { label: '#3',  sublabel: 'Rising'         },
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface Product {
+  _id: string
+  title: string
+  price: number
+  brand?: string
+  images?: { url: string; blurDataURL?: string }[]
 }
 
+// ─── RankBadge ────────────────────────────────────────────────────────────────
+
+function RankBadge({ rank }: { rank: number }) {
+  if (rank > 3) {
+    return (
+      <div className="flex items-center gap-2 mt-3 px-0.5">
+        <span
+          className="font-display font-bold leading-none tabular-nums"
+          style={{ fontSize: '1.1rem', letterSpacing: '-0.04em', color: 'hsl(var(--border))' }}
+        >
+          {String(rank).padStart(2, '0')}
+        </span>
+      </div>
+    )
+  }
+
+  const cfg = {
+    1: { color: 'hsl(var(--accent))',      label: 'Top pick'     },
+    2: { color: 'hsl(var(--foreground))',  label: 'Moving fast'  },
+    3: { color: 'hsl(var(--muted))',       label: 'Worth noting' },
+  }[rank as 1 | 2 | 3]
+
+  return (
+    <div className="flex items-center gap-2.5 mt-3 px-0.5">
+      <span
+        className="font-display font-bold leading-none tabular-nums shrink-0"
+        style={{ fontSize: 'clamp(2rem, 3vw, 2.5rem)', letterSpacing: '-0.06em', color: cfg.color }}
+      >
+        {rank}
+      </span>
+      <div className="h-7 w-px shrink-0" style={{ background: 'hsl(var(--border))' }} />
+      <span
+        className="text-[9px] font-semibold uppercase tracking-[0.18em] leading-none"
+        style={{ color: cfg.color }}
+      >
+        {cfg.label}
+      </span>
+    </div>
+  )
+}
+
+// ─── TrendingSection ──────────────────────────────────────────────────────────
+
 export function TrendingSection() {
-  const [products,  setProducts]  = useState<any[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [products, setProducts] = useState<Product[]>([])
+  const [loading,  setLoading]  = useState(true)
 
   useEffect(() => {
     apiClient.products.getTrending()
-      .then(({ data }) => setProducts(data.data || []))
+      .then(({ data }) => setProducts(data.data ?? []))
       .catch(() => {})
-      .finally(() => setIsLoading(false))
+      .finally(() => setLoading(false))
   }, [])
 
   return (
     <section
-      className="section-padding relative overflow-hidden"
+      className="relative overflow-hidden section-padding"
       style={{ background: 'hsl(var(--surface))' }}
+      aria-label="Trending products"
     >
-      {/* Top accent line */}
+      {/* Top hairline accent */}
       <div
-        className="absolute top-0 left-0 right-0 h-px"
+        aria-hidden
+        className="absolute top-0 inset-x-0 h-px pointer-events-none"
         style={{
-          background:
-            'linear-gradient(90deg, transparent, hsl(var(--accent) / 0.4), transparent)',
+          background: 'linear-gradient(90deg, transparent 0%, hsl(var(--accent) / 0.35) 50%, transparent 100%)',
         }}
       />
 
       <div className="container-wide">
 
-        {/* ── Section Header ── */}
+        {/* ── Header ── */}
         <div className="flex items-end justify-between mb-12">
+
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
           >
-            <div className="flex items-center gap-2 mb-3">
-              <div
-                className="w-6 h-6 rounded-[var(--radius-sm)] flex items-center justify-center"
-                style={{ background: 'hsl(var(--accent-muted))' }}
+            {/* Eyebrow badge */}
+            <div className="flex items-center gap-2.5 mb-4">
+              <span
+                className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1"
+                style={{
+                  background: 'hsl(var(--accent-muted))',
+                  border: '0.5px solid hsl(var(--accent) / 0.2)',
+                }}
               >
-                <TrendingUp size={12} style={{ color: 'hsl(var(--accent))' }} />
-              </div>
-              <span className="eyebrow">Right Now</span>
+                <Flame size={11} strokeWidth={2} style={{ color: 'hsl(var(--accent))' }} aria-hidden />
+                <span
+                  className="text-[10px] font-semibold tracking-[0.18em] uppercase"
+                  style={{ color: 'hsl(var(--accent))' }}
+                >
+                  Now
+                </span>
+              </span>
             </div>
 
+            {/* Headline */}
             <h2
-              className="font-display font-bold tracking-[-0.03em] leading-[1.1]"
+              className="font-display font-bold tracking-[-0.03em] leading-[1.05]"
               style={{ fontSize: 'clamp(1.75rem, 3vw, var(--text-section))' }}
             >
-              What&apos;s{' '}
-              <em className="not-italic" style={{ color: 'hsl(var(--accent))' }}>
-                Trending
-              </em>
+              People are{' '}
+              <em className="not-italic" style={{ color: 'hsl(var(--accent))' }}>buying</em>
             </h2>
 
+            {/* Underline reveal */}
             <motion.div
-              className="mt-4 h-[2px] w-12 rounded-full"
+              className="mt-4 h-[1.5px] w-10 rounded-full"
               style={{ background: 'hsl(var(--accent))' }}
               initial={{ scaleX: 0, originX: 0 }}
               whileInView={{ scaleX: 1 }}
@@ -79,137 +152,77 @@ export function TrendingSection() {
             />
           </motion.div>
 
+          {/* Desktop CTA — matches hero circle-arrow style */}
           <motion.div
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
             transition={{ duration: 0.4, delay: 0.15 }}
+            className="hidden sm:block"
           >
             <Link
               href="/explore?sort=popular"
-              className="group hidden sm:flex items-center gap-2 text-sm font-medium
-                         text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]
-                         transition-colors duration-[var(--duration-hover)]"
+              className="group inline-flex items-center gap-3"
+              style={{ textDecoration: 'none' }}
             >
-              See all
-              <ArrowRight
-                size={14}
-                className="transition-transform duration-[var(--duration-hover)]
-                           group-hover:translate-x-0.5"
-              />
+              <span
+                className="text-[10px] font-medium tracking-[0.2em] uppercase transition-opacity duration-300 group-hover:opacity-50"
+                style={{ color: 'hsl(var(--foreground))' }}
+              >
+                See all
+              </span>
+              <span
+                className="inline-flex items-center justify-center rounded-full
+                           group-hover:bg-[hsl(var(--foreground))] group-hover:text-[hsl(var(--background))]"
+                style={{
+                  width: '36px',
+                  height: '36px',
+                  border: '0.5px solid hsl(var(--border))',
+                  color: 'hsl(var(--foreground))',
+                  transition: 'background 0.35s cubic-bezier(0.22,1,0.36,1), color 0.35s',
+                  flexShrink: 0,
+                }}
+              >
+                <ArrowRight size={13} strokeWidth={1.5} />
+              </span>
             </Link>
           </motion.div>
         </div>
 
-        {/* ── Scroll strip ── */}
-        <div className="overflow-x-auto scrollbar-hide -mx-4 px-4">
-          <div className="flex gap-5 pb-4 items-end" style={{ width: 'max-content' }}>
-            {isLoading
+        {/* ── Scroll row ── */}
+        <div
+          className="overflow-x-auto scrollbar-hide -mx-4 px-4"
+          aria-label="Trending products list"
+        >
+          <ul
+            className="flex gap-5 pb-4 items-start list-none m-0 p-0"
+            style={{ width: 'max-content' }}
+            role="list"
+          >
+            {loading
               ? Array.from({ length: 8 }).map((_, i) => (
-                  <div key={i} className="w-48 shrink-0">
+                  <li key={i} className="w-48 shrink-0" role="listitem">
                     <ProductCardSkeleton />
-                  </div>
+                  </li>
                 ))
-              : products.slice(0, 12).map((product, i) => {
-                  const rank = i + 1
-                  const meta = RANK_META[rank]
-
-                  return (
-                    <motion.div
-                      key={product._id}
-                      initial={{ opacity: 0, x: 20 }}
-                      whileInView={{ opacity: 1, x: 0 }}
-                      viewport={{ once: true, amount: 0.2 }}
-                      transition={{
-                        delay:    i * 0.04,
-                        ease:     [0.22, 1, 0.36, 1],
-                        duration: 0.4,
-                      }}
-                      className="w-48 sm:w-56 shrink-0 flex flex-col"
-                    >
-                      {/* Product card — untouched, no wrapper that clips */}
-                      <ProductCard product={product} />
-
-                      {/* ── Rank row — outside card, never clipped ── */}
-                      <motion.div
-                        initial={{ opacity: 0, y: 8 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        transition={{
-                          delay:    0.2 + i * 0.06,
-                          duration: 0.35,
-                          ease:     [0.22, 1, 0.36, 1],
-                        }}
-                        className="flex items-center gap-2.5 mt-3 px-0.5"
-                      >
-                        {meta ? (
-                          <>
-                            {/* Large editorial number */}
-                            <span
-                              className="font-display font-bold leading-none shrink-0"
-                              style={{
-                                fontSize:      'clamp(2rem, 3vw, 2.5rem)',
-                                letterSpacing: '-0.06em',
-                                color: rank === 1
-                                  ? 'hsl(var(--accent))'
-                                  : rank === 2
-                                    ? 'hsl(var(--foreground))'
-                                    : 'hsl(var(--muted))',
-                                textShadow: rank === 1
-                                  ? '0 2px 16px rgba(230,0,35,0.25)'
-                                  : 'none',
-                              }}
-                            >
-                              {rank}
-                            </span>
-
-                            {/* Divider */}
-                            <div
-                              className="h-7 w-px shrink-0"
-                              style={{ background: 'hsl(var(--border))' }}
-                            />
-
-                            {/* Label stack */}
-                            <div className="flex flex-col gap-0.5 min-w-0">
-                              <span
-                                className="text-[9px] font-bold uppercase tracking-[0.16em] leading-none"
-                                style={{
-                                  color: rank === 1
-                                    ? 'hsl(var(--accent))'
-                                    : 'hsl(var(--muted))',
-                                }}
-                              >
-                                {rank === 1 ? 'Top Pick' : rank === 2 ? 'Hot Right Now' : 'Rising'}
-                              </span>
-                              <span
-                                className="text-[9px] uppercase tracking-[0.12em] leading-none"
-                                style={{ color: 'hsl(var(--muted-foreground))', fontWeight: 300 }}
-                              >
-                                This week
-                              </span>
-                            </div>
-                          </>
-                        ) : (
-                          /* Ranks 4–12 — quiet ghost number */
-                          <span
-                            className="font-display font-bold leading-none"
-                            style={{
-                              fontSize:      '1.25rem',
-                              letterSpacing: '-0.04em',
-                              color:         'hsl(var(--border))',
-                            }}
-                          >
-                            {rank}
-                          </span>
-                        )}
-                      </motion.div>
-                    </motion.div>
-                  )
-                })}
-          </div>
+              : products.slice(0, 12).map((product, i) => (
+                  <motion.li
+                    key={product._id}
+                    role="listitem"
+                    initial={{ opacity: 0, x: 20 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true, amount: 0.2 }}
+                    transition={{ delay: i * 0.04, ease: [0.22, 1, 0.36, 1], duration: 0.4 }}
+                    className="w-48 sm:w-56 shrink-0 flex flex-col list-none"
+                  >
+                    <ProductCard product={product} />
+                    <RankBadge rank={i + 1} />
+                  </motion.li>
+                ))}
+          </ul>
         </div>
 
-        {/* ── Mobile "See all" ── */}
+        {/* ── Mobile CTA ── */}
         <motion.div
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
@@ -219,15 +232,15 @@ export function TrendingSection() {
         >
           <Link
             href="/explore?sort=popular"
-            className="group inline-flex items-center gap-2 text-sm font-medium
-                       text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]
-                       transition-colors duration-[var(--duration-hover)]"
+            className="group inline-flex items-center gap-2 text-[11px] font-medium
+                       tracking-[0.1em] uppercase transition-colors duration-200"
+            style={{ color: 'hsl(var(--muted))' }}
           >
-            See all trending
-            <ArrowRight
-              size={14}
-              className="transition-transform duration-[var(--duration-hover)]
-                         group-hover:translate-x-0.5"
+            See all
+            <MoveRight
+              size={13}
+              strokeWidth={1.5}
+              className="transition-transform duration-200 group-hover:translate-x-0.5"
             />
           </Link>
         </motion.div>
