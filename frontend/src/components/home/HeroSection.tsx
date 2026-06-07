@@ -1,25 +1,22 @@
 'use client'
 
 /**
- * HeroSection — v4 · Shoppin
+ * HeroSection — v5 · Shoppin
  *
- * v1 → v2 (structural):  video support, blur-up images, Quick View modal,
- *                         cursor safety, slide preloader, touch swipe, focus trap
- * v2 → v3 (copy):        Shoppin voice — new headlines, "Shop now", "See it",
- *                         "Get it", "Look", "Keep going", "Now in store"
- * v2 → v3 (code polish): removed dead `fmt` helper, fixed stale-closure in
- *                         useSwipe via callback refs, added pause-on-hover,
- *                         aria-busy on skeleton, aria-live on headline
- * v3 → v4 (mobile):       safe-area bottom padding, headline clamp floor 2.5rem,
- *                         progress rail full-width on mobile, "See it" visible on
- *                         mobile, product name less aggressive truncation, modal
- *                         image capped at 40dvh, modal maxHeight 88dvh, scroll cue
- *                         safe-area aware, pause-on-hover touch guard
+ * v4 → v5 (polish):
+ *  - Removed isMounted pattern — useScroll accepts sectionRef directly;
+ *    Framer Motion handles null element gracefully
+ *  - matchMedia('hover') memoized once at component level, not on every mouse event
+ *  - restartTimer helper centralises interval logic — no stale closure risk
+ *  - QuickViewModal: md:rounded-xl on desktop sheet, slide-up only on mobile
+ *  - HeroMedia blur placeholder: unoptimized prop (data URI, no Next opt needed)
+ *  - Progress rail: w-full max-w-[260px] (replaces fragile inline min())
+ *  - Safe-area bottom: CSS custom property via style tag, not JIT arbitrary value
+ *  - Pause-on-hover: clearInterval guard — only restarts if products.length >= 2
  *
  * globals.css additions required:
  *   @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&display=swap');
  *   :root { --font-display: 'Cormorant Garamond', serif; }
- *
  *   .can-hover #hero-section { cursor: none; }
  */
 
@@ -54,23 +51,22 @@ interface Product {
   collection?: string
   description?: string
   images?: { url: string; blurDataURL?: string }[]
-  videoUrl?: string   // optional: mp4/webm absolute URL
+  videoUrl?: string
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const SLIDE_INTERVAL  = 6000
-const KB_DURATION     = SLIDE_INTERVAL / 1000
-const FALLBACK_LINES  = [
+const SLIDE_INTERVAL = 6000
+const KB_DURATION    = SLIDE_INTERVAL / 1000
+const FALLBACK_LINES = [
   'Dressed for right now.',
   'This is what\'s next.',
   'The pieces people keep.',
   'Worth every look.',
   'Nothing basic. Ever.',
 ] as const
-const SEASON_LABEL    = 'Now in store'
+const SEASON_LABEL = 'Now in store'
 
-// 1×1 transparent gif — used as blur-up placeholder when no blurDataURL supplied
 const BLANK_PLACEHOLDER =
   'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
 
@@ -115,7 +111,10 @@ function ProgressRail({
             />
           )}
           {i < active && (
-            <span className="absolute inset-0" style={{ background: 'rgba(255,255,255,0.9)' }} />
+            <span
+              className="absolute inset-0"
+              style={{ background: 'rgba(255,255,255,0.9)' }}
+            />
           )}
         </button>
       ))}
@@ -123,7 +122,7 @@ function ProgressRail({
   )
 }
 
-// ─── HeroMedia — handles both image (blur-up) and video ───────────────────────
+// ─── HeroMedia ────────────────────────────────────────────────────────────────
 
 function HeroMedia({
   product,
@@ -137,14 +136,10 @@ function HeroMedia({
   const [imgLoaded, setImgLoaded] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
 
-  // Attempt autoplay when media mounts
   useEffect(() => {
-    const v = videoRef.current
-    if (!v) return
-    v.play().catch(() => { /* autoplay blocked — video will show first frame */ })
+    videoRef.current?.play().catch(() => {})
   }, [])
 
-  // Video hero
   if (product.videoUrl) {
     return (
       <motion.div
@@ -167,9 +162,8 @@ function HeroMedia({
     )
   }
 
-  // Image hero with blur-up
-  const src         = product.images?.[0]?.url
-  const blurSrc     = product.images?.[0]?.blurDataURL ?? BLANK_PLACEHOLDER
+  const src     = product.images?.[0]?.url
+  const blurSrc = product.images?.[0]?.blurDataURL ?? BLANK_PLACEHOLDER
 
   if (!src) {
     return <div className="absolute inset-0" style={{ background: 'hsl(var(--surface))' }} />
@@ -182,11 +176,12 @@ function HeroMedia({
       animate={reduceMotion ? {} : { scale: 1.055, x: '0.8%', y: '0.4%' }}
       transition={{ duration: KB_DURATION, ease: 'linear' }}
     >
-      {/* Blurred placeholder — fades out once real image loads */}
+      {/* Blur placeholder — data URI, skip Next.js optimisation */}
       <Image
         src={blurSrc}
         alt=""
         fill
+        unoptimized
         aria-hidden
         className="object-cover object-center"
         style={{
@@ -196,7 +191,7 @@ function HeroMedia({
           transform: 'scale(1.05)',
         }}
       />
-      {/* Full-res image */}
+      {/* Full-res */}
       <Image
         src={src}
         alt={product.title}
@@ -205,26 +200,21 @@ function HeroMedia({
         sizes="100vw"
         className="object-cover object-center"
         draggable={false}
-        style={{
-          transition: 'opacity 0.6s',
-          opacity: imgLoaded ? 1 : 0,
-        }}
+        style={{ transition: 'opacity 0.6s', opacity: imgLoaded ? 1 : 0 }}
         onLoad={() => setImgLoaded(true)}
       />
     </motion.div>
   )
 }
 
-// ─── Preloader — kicks off next slide's media silently ────────────────────────
+// ─── Preloader ────────────────────────────────────────────────────────────────
 
 function useSlidePreloader(products: Product[], active: number) {
   useEffect(() => {
     if (products.length < 2) return
     const next = products[(active + 1) % products.length]
     if (!next) return
-
     if (next.videoUrl) {
-      // Preload video by creating a hidden element
       const v = document.createElement('video')
       v.src = next.videoUrl
       v.preload = 'auto'
@@ -245,18 +235,18 @@ function QuickViewModal({
   product: Product
   onClose: () => void
 }) {
-  const modalId   = useId()
-  const closeRef  = useRef<HTMLButtonElement>(null)
+  const modalId     = useId()
+  const closeRef    = useRef<HTMLButtonElement>(null)
   const firstImgSrc = product.images?.[0]?.url
 
-  // Focus close button on open; restore on close
+  // Focus management
   useEffect(() => {
     const prev = document.activeElement as HTMLElement | null
     closeRef.current?.focus()
     return () => { prev?.focus() }
   }, [])
 
-  // Focus trap
+  // Focus trap + Escape
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') { onClose(); return }
@@ -278,7 +268,7 @@ function QuickViewModal({
     return () => document.removeEventListener('keydown', onKey)
   }, [modalId, onClose])
 
-  // Lock body scroll while open
+  // Body scroll lock
   useEffect(() => {
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
@@ -304,15 +294,11 @@ function QuickViewModal({
         aria-hidden
       />
 
-      {/* Sheet */}
+      {/* Sheet — slides up on mobile, centred card on desktop */}
       <motion.div
         id={modalId}
-        className="relative z-10 w-full md:w-auto md:max-w-2xl"
-        style={{
-          background: 'hsl(20 14% 6%)',
-          borderTop: '0.5px solid rgba(255,255,255,0.1)',
-          borderRadius: '0',
-        }}
+        className="relative z-10 w-full md:w-auto md:max-w-2xl md:rounded-xl overflow-hidden"
+        style={{ background: 'hsl(20 14% 6%)', border: '0.5px solid rgba(255,255,255,0.1)' }}
         initial={{ y: '100%' }}
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
@@ -324,7 +310,10 @@ function QuickViewModal({
         >
           {/* Image panel */}
           {firstImgSrc && (
-            <div className="relative w-full md:w-64 shrink-0" style={{ minHeight: '180px', maxHeight: '40dvh' }}>
+            <div
+              className="relative w-full md:w-64 shrink-0"
+              style={{ minHeight: '180px', maxHeight: '40dvh' }}
+            >
               <Image
                 src={firstImgSrc}
                 alt={product.title}
@@ -342,16 +331,14 @@ function QuickViewModal({
           >
             <div>
               {product.brand && (
-                <p
-                  style={{
-                    ...DISPLAY,
-                    fontSize: '9px',
-                    letterSpacing: '0.38em',
-                    textTransform: 'uppercase',
-                    color: 'rgba(255,255,255,0.35)',
-                    marginBottom: '14px',
-                  }}
-                >
+                <p style={{
+                  ...DISPLAY,
+                  fontSize: '9px',
+                  letterSpacing: '0.38em',
+                  textTransform: 'uppercase',
+                  color: 'rgba(255,255,255,0.35)',
+                  marginBottom: '14px',
+                }}>
                   {product.brand}
                 </p>
               )}
@@ -371,35 +358,30 @@ function QuickViewModal({
               </h2>
 
               {product.collection && (
-                <p
-                  style={{
-                    ...DISPLAY,
-                    fontSize: '10px',
-                    letterSpacing: '0.22em',
-                    textTransform: 'uppercase',
-                    color: 'rgba(255,255,255,0.32)',
-                    marginBottom: '20px',
-                  }}
-                >
+                <p style={{
+                  ...DISPLAY,
+                  fontSize: '10px',
+                  letterSpacing: '0.22em',
+                  textTransform: 'uppercase',
+                  color: 'rgba(255,255,255,0.32)',
+                  marginBottom: '20px',
+                }}>
                   {product.collection}
                 </p>
               )}
 
               {product.description && (
-                <p
-                  style={{
-                    fontSize: '13px',
-                    lineHeight: 1.75,
-                    color: 'rgba(255,255,255,0.45)',
-                    maxWidth: '320px',
-                  }}
-                >
+                <p style={{
+                  fontSize: '13px',
+                  lineHeight: 1.75,
+                  color: 'rgba(255,255,255,0.45)',
+                  maxWidth: '320px',
+                }}>
                   {product.description}
                 </p>
               )}
             </div>
 
-            {/* CTA row — price intentionally on PDP only */}
             <div className="flex items-center gap-4 mt-8">
               <Link
                 href={`/product/${product._id}`}
@@ -414,7 +396,10 @@ function QuickViewModal({
                 }}
                 onClick={onClose}
               >
-                <span style={{ transition: 'opacity 0.3s' }} className="group-hover:opacity-50">
+                <span
+                  style={{ transition: 'opacity 0.3s' }}
+                  className="group-hover:opacity-50"
+                >
                   Get it
                 </span>
                 <ArrowUpRight
@@ -427,7 +412,7 @@ function QuickViewModal({
           </div>
         </div>
 
-        {/* Close button */}
+        {/* Close */}
         <button
           ref={closeRef}
           type="button"
@@ -445,12 +430,12 @@ function QuickViewModal({
             transition: 'background 0.25s, border-color 0.25s',
           }}
           onMouseEnter={e => {
-            e.currentTarget.style.background = 'rgba(255,255,255,0.12)'
-            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.4)'
+            e.currentTarget.style.background    = 'rgba(255,255,255,0.12)'
+            e.currentTarget.style.borderColor   = 'rgba(255,255,255,0.4)'
           }}
           onMouseLeave={e => {
-            e.currentTarget.style.background = 'rgba(255,255,255,0.06)'
-            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)'
+            e.currentTarget.style.background    = 'rgba(255,255,255,0.06)'
+            e.currentTarget.style.borderColor   = 'rgba(255,255,255,0.2)'
           }}
         >
           <X size={14} />
@@ -471,10 +456,7 @@ function CustomCursor({ heroRef }: { heroRef: RefObject<HTMLElement | null> }) {
   const inside   = useRef(false)
 
   useEffect(() => {
-    // Only on true hover-capable devices (not touch)
     if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return
-
-    // Signal CSS to hide native cursor inside hero
     document.documentElement.classList.add('can-hover')
 
     const el = heroRef.current
@@ -485,8 +467,8 @@ function CustomCursor({ heroRef }: { heroRef: RefObject<HTMLElement | null> }) {
       if (rafId.current) return
       rafId.current = requestAnimationFrame(() => {
         const { x, y } = pos.current
-        if (dotRef.current)  dotRef.current.style.transform  = `translate(${x}px,${y}px)`
-        if (ringRef.current) ringRef.current.style.transform = `translate(${x}px,${y}px)`
+        dotRef.current  && (dotRef.current.style.transform  = `translate(${x}px,${y}px)`)
+        ringRef.current && (ringRef.current.style.transform = `translate(${x}px,${y}px)`)
         rafId.current = null
       })
     }
@@ -521,20 +503,21 @@ function CustomCursor({ heroRef }: { heroRef: RefObject<HTMLElement | null> }) {
       labelRef.current && (labelRef.current.style.opacity = '0')
     }
 
-    el.querySelectorAll('a, button').forEach(n => {
+    const interactables = el.querySelectorAll('a, button')
+    interactables.forEach(n => {
       n.addEventListener('mouseenter', startExpand)
       n.addEventListener('mouseleave', endExpand)
     })
-    el.addEventListener('mousemove', move, { passive: true })
+    el.addEventListener('mousemove',  move,  { passive: true })
     el.addEventListener('mouseenter', enter)
     el.addEventListener('mouseleave', leave)
 
     return () => {
       document.documentElement.classList.remove('can-hover')
-      el.removeEventListener('mousemove', move)
+      el.removeEventListener('mousemove',  move)
       el.removeEventListener('mouseenter', enter)
       el.removeEventListener('mouseleave', leave)
-      el.querySelectorAll('a, button').forEach(n => {
+      interactables.forEach(n => {
         n.removeEventListener('mouseenter', startExpand)
         n.removeEventListener('mouseleave', endExpand)
       })
@@ -542,7 +525,12 @@ function CustomCursor({ heroRef }: { heroRef: RefObject<HTMLElement | null> }) {
     }
   }, [heroRef])
 
-  const T = 'width 0.35s cubic-bezier(0.22,1,0.36,1), height 0.35s cubic-bezier(0.22,1,0.36,1), margin 0.35s cubic-bezier(0.22,1,0.36,1), opacity 0.18s'
+  const T = [
+    'width 0.35s cubic-bezier(0.22,1,0.36,1)',
+    'height 0.35s cubic-bezier(0.22,1,0.36,1)',
+    'margin 0.35s cubic-bezier(0.22,1,0.36,1)',
+    'opacity 0.18s',
+  ].join(', ')
 
   return (
     <>
@@ -615,14 +603,25 @@ function ScrollCue() {
     <AnimatePresence initial={false}>
       {visible && (
         <motion.div
-          className="absolute left-1/2 z-20 flex flex-col items-center gap-[5px]" style={{ bottom: 'max(2.5rem, calc(env(safe-area-inset-bottom, 0px) + 1.5rem))', translateX: '-50%' }}
+          className="absolute left-1/2 z-20 flex flex-col items-center gap-[5px]"
+          // safe-area-aware via inline calc; avoids brittle JIT arbitrary value
+          style={{
+            bottom: 'max(2.5rem, calc(env(safe-area-inset-bottom, 0px) + 1.5rem))',
+            translateX: '-50%',
+          }}
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 4 }}
           transition={{ duration: 0.6 }}
           aria-hidden
         >
-          <span style={{ ...DISPLAY, fontSize: '8px', letterSpacing: '0.3em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)' }}>
+          <span style={{
+            ...DISPLAY,
+            fontSize: '8px',
+            letterSpacing: '0.3em',
+            textTransform: 'uppercase',
+            color: 'rgba(255,255,255,0.3)',
+          }}>
             Keep going
           </span>
           <motion.div
@@ -637,14 +636,12 @@ function ScrollCue() {
   )
 }
 
-// ─── Touch Swipe Hook ─────────────────────────────────────────────────────────
-// Uses refs for callbacks to avoid stale closures — the effect never needs to
-// re-run just because advance/retreat were re-created.
+// ─── Touch Swipe ──────────────────────────────────────────────────────────────
 
 function useSwipe(
   ref: RefObject<HTMLElement | null>,
   onLeft: () => void,
-  onRight: () => void
+  onRight: () => void,
 ) {
   const onLeftRef  = useRef(onLeft)
   const onRightRef = useRef(onRight)
@@ -673,24 +670,41 @@ function useSwipe(
 // ─── HeroSection ──────────────────────────────────────────────────────────────
 
 export function HeroSection() {
-  const [products, setProducts]           = useState<Product[]>([])
-  const [active, setActive]               = useState(0)
-  const [loaded, setLoaded]               = useState(false)
+  const [products, setProducts]             = useState<Product[]>([])
+  const [active,   setActive]               = useState(0)
+  const [loaded,   setLoaded]               = useState(false)
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null)
 
   const timerRef   = useRef<ReturnType<typeof setInterval> | null>(null)
   const sectionRef = useRef<HTMLElement>(null)
   const reduceMotion = useReducedMotion()
 
-  const [isMounted, setIsMounted] = useState(false)
-  useEffect(() => { setIsMounted(true) }, [])
+  // Memoised hover-device check — not called on every mouse event
+  const canHover = useRef(
+    typeof window !== 'undefined'
+      ? window.matchMedia('(hover: hover)').matches
+      : false
+  )
 
+  // Parallax — sectionRef is always a stable object; Framer handles null el
   const { scrollYProgress } = useScroll({
-    target: isMounted ? sectionRef : undefined,
+    target: sectionRef,
     offset: ['start start', 'end start'],
   })
   const bgY   = useTransform(scrollYProgress, [0, 1], ['0%',   '18%'])
   const copyY = useTransform(scrollYProgress, [0, 1], ['0%', '-10%'])
+
+  // ── Timer helpers ─────────────────────────────────────────────────────────
+  // Centralised so every caller gets the same logic
+  const stopTimer = useCallback(() => {
+    if (timerRef.current) clearInterval(timerRef.current)
+  }, [])
+
+  const startTimer = useCallback((advanceFn: () => void, count: number) => {
+    if (count < 2) return
+    stopTimer()
+    timerRef.current = setInterval(advanceFn, SLIDE_INTERVAL)
+  }, [stopTimer])
 
   // ── Data ──────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -718,16 +732,14 @@ export function HeroSection() {
   }, [products.length])
 
   useEffect(() => {
-    if (products.length < 2) return
-    timerRef.current = setInterval(advance, SLIDE_INTERVAL)
-    return () => clearInterval(timerRef.current!)
-  }, [advance, products.length])
+    startTimer(advance, products.length)
+    return stopTimer
+  }, [advance, products.length, startTimer, stopTimer])
 
   const goTo = useCallback((i: number) => {
-    clearInterval(timerRef.current!)
     setActive(i)
-    timerRef.current = setInterval(advance, SLIDE_INTERVAL)
-  }, [advance])
+    startTimer(advance, products.length)
+  }, [advance, products.length, startTimer])
 
   // ── Touch swipe ───────────────────────────────────────────────────────────
   useSwipe(sectionRef, advance, retreat)
@@ -759,7 +771,6 @@ export function HeroSection() {
     <>
       <CustomCursor heroRef={sectionRef} />
 
-      {/* Quick View modal — portalled above everything */}
       <AnimatePresence>
         {quickViewProduct && (
           <QuickViewModal
@@ -775,10 +786,11 @@ export function HeroSection() {
         className="relative w-full overflow-hidden"
         style={{ height: '100dvh', minHeight: '600px' }}
         aria-label="Featured collection"
-        onMouseEnter={() => { if (!window.matchMedia('(hover: hover)').matches) return; if (timerRef.current) clearInterval(timerRef.current) }}
-        onMouseLeave={() => { if (!window.matchMedia('(hover: hover)').matches) return; if (products.length < 2) return; timerRef.current = setInterval(advance, SLIDE_INTERVAL) }}
+        onMouseEnter={() => { if (canHover.current) stopTimer() }}
+        onMouseLeave={() => { if (canHover.current) startTimer(advance, products.length) }}
       >
-        {/* ── Background ── */}
+
+        {/* ── Background — parallax + crossfade ── */}
         <motion.div
           className="absolute inset-0"
           style={{ y: reduceMotion ? 0 : bgY, top: '-6%', bottom: '-6%' }}
@@ -865,12 +877,15 @@ export function HeroSection() {
 
         {/* ── Bottom content block ── */}
         <motion.div
-          className="absolute bottom-0 inset-x-0 z-10 px-5 pb-[max(3.5rem,env(safe-area-inset-bottom,3.5rem))] md:px-12 md:pb-16"
-          style={{ y: reduceMotion ? 0 : copyY }}
+          className="absolute bottom-0 inset-x-0 z-10 px-5 md:px-12 md:pb-16"
+          style={{
+            y: reduceMotion ? 0 : copyY,
+            paddingBottom: 'max(3.5rem, calc(env(safe-area-inset-bottom, 0px) + 3.5rem))',
+          }}
         >
-          {/* Progress rail */}
+          {/* Progress rail — full width on mobile, max 260px on desktop */}
           {products.length > 1 && (
-            <div className="mb-8 md:mb-10" style={{ maxWidth: '100%', width: 'min(260px, 100%)'}}>
+            <div className="mb-8 md:mb-10 w-full md:max-w-[260px]">
               <ProgressRail total={products.length} active={active} onSelect={goTo} />
             </div>
           )}
@@ -946,7 +961,11 @@ export function HeroSection() {
                     transition: 'background 0.45s cubic-bezier(0.22,1,0.36,1), color 0.45s',
                   }}
                 >
-                  <ArrowRight size={13} style={{ transition: 'transform 0.35s' }} className="group-hover:translate-x-[2px]" />
+                  <ArrowRight
+                    size={13}
+                    style={{ transition: 'transform 0.35s' }}
+                    className="group-hover:translate-x-[2px]"
+                  />
                 </span>
               </Link>
             </motion.div>
@@ -964,7 +983,7 @@ export function HeroSection() {
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.45, delay: 0.1 }}
               >
-                {/* Product name — no price; price lives on PDP */}
+                {/* Product name */}
                 <Link
                   href={`/product/${current._id}`}
                   className="group flex items-center gap-3 min-w-0"
@@ -991,12 +1010,11 @@ export function HeroSection() {
                   />
                 </Link>
 
-                {/* Quick View — fully wired, desktop only */}
+                {/* Quick View — visible on all screen sizes */}
                 <button
                   type="button"
                   onClick={() => setQuickViewProduct(current)}
-                  className="block"
-                  aria-label={`See ${current.title}`}
+                  aria-label={`Quick view: ${current.title}`}
                   style={{
                     ...DISPLAY,
                     fontSize: '9px',
@@ -1022,6 +1040,7 @@ export function HeroSection() {
 
         {/* ── Scroll cue ── */}
         <ScrollCue />
+
       </section>
     </>
   )

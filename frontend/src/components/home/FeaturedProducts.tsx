@@ -1,19 +1,17 @@
 'use client'
 
 /**
- * FeaturedProducts — v2 · Shoppin
+ * FeaturedProducts — v3 · Shoppin
  *
- * Brought to standard:
- *  - Typed Product interface (no more any[])
- *  - Shoppin voice: "Handpicked" → "Selected", "Featured Pieces" → "Worth your time",
- *    "View all" → "See all", "View all featured" → "See all"
- *  - isLoading → loading
- *  - CTA matches hero/trending: circle ArrowRight, same sizing (36px)
- *  - aria-label on section and grid
- *  - Grid items wrapped in ul/li for screen reader item count
- *  - aria-hidden on decorative hairline
- *  - Redundant animate-pin-drop class removed (duplication with whileInView)
- *  - data || [] → data ?? [] (consistent null-coalescing)
+ * v2 → v3:
+ *  - Accent color removed from all decorative uses (pill bg, pill text,
+ *    underline bar, italic word). Monochromatic system matches SSENSE/Mytheresa.
+ *  - Eyebrow pill: accent bg/text → muted border + foreground text
+ *  - Underline bar: accent → foreground/border color
+ *  - Italic headline word: accent → foreground (same weight as rest of headline)
+ *  - Top hairline: accent gradient → subtle border color
+ *  - Fetch cancellation guard added (was missing vs MasonryPreview/TrendingSection)
+ *  - Crown icon: accent color → muted
  */
 
 import { useEffect, useState } from 'react'
@@ -41,10 +39,12 @@ export function FeaturedProducts() {
   const [loading,  setLoading]  = useState(true)
 
   useEffect(() => {
+    let cancelled = false
     apiClient.products.getFeatured()
-      .then(({ data }) => setProducts(data.data ?? []))
+      .then(({ data }) => { if (!cancelled) setProducts(data.data ?? []) })
       .catch(() => {})
-      .finally(() => setLoading(false))
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
   }, [])
 
   return (
@@ -53,13 +53,11 @@ export function FeaturedProducts() {
       aria-label="Featured products"
     >
 
-      {/* Top hairline accent */}
+      {/* Top hairline */}
       <div
         aria-hidden
         className="absolute top-0 inset-x-0 h-px pointer-events-none"
-        style={{
-          background: 'linear-gradient(90deg, transparent 0%, hsl(var(--accent) / 0.35) 50%, transparent 100%)',
-        }}
+        style={{ background: 'hsl(var(--border))' }}
       />
 
       <div className="container-wide relative">
@@ -73,40 +71,42 @@ export function FeaturedProducts() {
             viewport={{ once: true }}
             transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
           >
-            {/* Eyebrow pill */}
+            {/* Eyebrow pill — monochromatic */}
             <div className="flex items-center gap-2.5 mb-4">
               <span
                 className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1"
                 style={{
-                  background: 'hsl(var(--accent-muted))',
-                  border: '0.5px solid hsl(var(--accent) / 0.2)',
+                  border:     '0.5px solid hsl(var(--border))',
+                  background: 'transparent',
                 }}
               >
-                <Crown size={11} strokeWidth={2} style={{ color: 'hsl(var(--accent))' }} aria-hidden />
+                <Crown
+                  size={11}
+                  strokeWidth={2}
+                  style={{ color: 'hsl(var(--muted))' }}
+                  aria-hidden
+                />
                 <span
                   className="text-[10px] font-semibold tracking-[0.18em] uppercase"
-                  style={{ color: 'hsl(var(--accent))' }}
+                  style={{ color: 'hsl(var(--muted))' }}
                 >
                   Selected
                 </span>
               </span>
             </div>
 
-            {/* Headline */}
+            {/* Headline — no accent italic */}
             <h2
               className="font-display font-bold tracking-[-0.03em] leading-[1.05]"
               style={{ fontSize: 'clamp(1.75rem, 3vw, var(--text-section))' }}
             >
-              Worth{' '}
-              <em className="not-italic" style={{ color: 'hsl(var(--accent))' }}>
-                your time
-              </em>
+              Worth your time
             </h2>
 
-            {/* Accent underline */}
+            {/* Underline — border color, not accent */}
             <motion.div
               className="mt-4 h-[1.5px] w-10 rounded-full"
-              style={{ background: 'hsl(var(--accent))' }}
+              style={{ background: 'hsl(var(--border))' }}
               initial={{ scaleX: 0, originX: 0 }}
               whileInView={{ scaleX: 1 }}
               viewport={{ once: true }}
@@ -114,7 +114,7 @@ export function FeaturedProducts() {
             />
           </motion.div>
 
-          {/* Desktop CTA — matches hero/trending circle-arrow style */}
+          {/* Desktop CTA */}
           <motion.div
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
@@ -137,10 +137,10 @@ export function FeaturedProducts() {
                 className="inline-flex items-center justify-center rounded-full
                            group-hover:bg-[hsl(var(--foreground))] group-hover:text-[hsl(var(--background))]"
                 style={{
-                  width: '36px',
-                  height: '36px',
-                  border: '0.5px solid hsl(var(--border))',
-                  color: 'hsl(var(--foreground))',
+                  width:      '36px',
+                  height:     '36px',
+                  border:     '0.5px solid hsl(var(--border))',
+                  color:      'hsl(var(--foreground))',
                   transition: 'background 0.35s cubic-bezier(0.22,1,0.36,1), color 0.35s',
                   flexShrink: 0,
                 }}
@@ -173,7 +173,7 @@ export function FeaturedProducts() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, amount: 0.1 }}
                   transition={{
-                    delay: i * 0.05,
+                    delay: Math.min(i, 4) * 0.05,
                     duration: 0.45,
                     ease: [0.22, 1, 0.36, 1],
                   }}
