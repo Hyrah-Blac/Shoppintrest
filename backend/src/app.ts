@@ -1,7 +1,5 @@
 // PATH: src/app.ts
 
-console.log("APP INITIALIZED");
-
 import express from 'express'
 import helmet from 'helmet'
 import cors from 'cors'
@@ -25,35 +23,33 @@ import uploadRoutes       from './routes/upload.routes'
 import stripeRoutes       from './routes/stripe.routes'
 import adminRoutes        from './routes/admin.routes'
 import webhookRoutes      from './routes/webhookRoutes'
-import chatRoutes         from './routes/chat.routes'         // ← ADDED
-
-// REMOVED: import messageRoutes from './routes/message.routes'
+import chatRoutes         from './routes/chat.routes'
 
 const app = express()
 
 app.set('trust proxy', 1)
 
-// ─── 1. HELMET ───────────────────────────────────────────────────────────────
-app.use(helmet({
-  crossOriginResourcePolicy: { policy: 'cross-origin' },
-  contentSecurityPolicy: false,
-}))
+// FIX 1 — replace console.log with logger so it goes through winston
+logger.info('APP INITIALIZED')
 
-// ─── 2. CORS ─────────────────────────────────────────────────────────────────
-app.use(cors({
+// ─── SHARED CORS CONFIG ───────────────────────────────────────────────────────
+// FIX 2 — extract into a constant so both app.use(cors()) and app.options()
+// use identical origin allowlists. The previous bare cors() on OPTIONS
+// allowed preflight from any origin, bypassing the whitelist entirely.
+const ALLOWED_ORIGINS = [
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'https://shoppin-five.vercel.app',
+  'https://shoppintrest.vercel.app',
+  'https://shoppintrest.com',
+  'https://www.shoppintrest.com',
+  'https://shoppin-git-main-hyrahs-projects.vercel.app',
+  process.env.FRONTEND_URL,
+].filter(Boolean) as string[]
+
+const corsOptions: cors.CorsOptions = {
   origin: (origin, callback) => {
-    const allowed = [
-      'http://localhost:3000',
-      'http://localhost:3001',
-      'https://shoppin-five.vercel.app',
-      'https://shoppintrest.vercel.app',
-      'https://shoppintrest.com',
-      'https://www.shoppintrest.com',
-      'https://shoppin-git-main-hyrahs-projects.vercel.app',
-      process.env.FRONTEND_URL,
-    ].filter(Boolean)
-
-    if (!origin || allowed.includes(origin)) {
+    if (!origin || ALLOWED_ORIGINS.includes(origin)) {
       callback(null, true)
     } else {
       callback(new Error(`CORS blocked: ${origin}`))
@@ -62,8 +58,18 @@ app.use(cors({
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-clerk-auth-token'],
+}
+
+// ─── 1. HELMET ───────────────────────────────────────────────────────────────
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  contentSecurityPolicy: false,
 }))
-app.options('*', cors())
+
+// ─── 2. CORS ─────────────────────────────────────────────────────────────────
+app.use(cors(corsOptions))
+// FIX 2 — use the same corsOptions for preflight so origin check is enforced
+app.options('*', cors(corsOptions))
 
 // ─── 3. BODY PARSERS ─────────────────────────────────────────────────────────
 // Webhook routes need raw body — must be before json parser
@@ -104,7 +110,7 @@ app.get('/health', (_req, res) => {
 })
 app.head('/health', (_req, res) => res.sendStatus(200))
 
-// ─── 10. WEBHOOK ROUTES — before clerkMiddleware ──────────────────────────────
+// ─── 10. WEBHOOK ROUTES — before clerkMiddleware ─────────────────────────────
 app.use('/api/webhooks', webhookRoutes)
 app.use('/api/stripe',   stripeRoutes)
 
@@ -121,9 +127,7 @@ app.use('/api/reviews',       reviewRoutes)
 app.use('/api/notifications', notificationRoutes)
 app.use('/api/upload',        uploadRoutes)
 app.use('/api/admin',         adminRoutes)
-app.use('/api/chat',          chatRoutes)                    // ← ADDED
-
-// REMOVED: app.use('/api/messages', messageRoutes)
+app.use('/api/chat',          chatRoutes)
 
 // ─── 13. 404 HANDLER ─────────────────────────────────────────────────────────
 app.use('*', (req, res) => {

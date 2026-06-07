@@ -9,13 +9,15 @@ import api, { setTokenGetter } from '@/lib/api'
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const { isSignedIn, isLoaded, getToken } = useAuth()
   const { user: clerkUser } = useUser()
-  const fetchUser  = useUserStore((s) => s.fetchUser)
-  const clearUser  = useUserStore((s) => s.clearUser)
-  const fetchCart  = useCartStore((s) => s.fetchCart)
-  const resetCart  = useCartStore((s) => s.reset)
+  const fetchUser = useUserStore((s) => s.fetchUser)
+  const clearUser = useUserStore((s) => s.clearUser)
+  const fetchCart = useCartStore((s) => s.fetchCart)
+  const resetCart = useCartStore((s) => s.reset)
 
-  // Always keep the token getter fresh before any API call fires
-  setTokenGetter(() => getToken({ template: 'backend' }))
+  // FIX 1 — move setTokenGetter into an effect so it doesn't run on every render
+  useEffect(() => {
+    setTokenGetter(() => getToken({ template: 'backend' }))
+  }, [getToken])
 
   // One-time: nuke any stale localStorage cart from the old persist middleware
   useEffect(() => {
@@ -31,29 +33,20 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           const token = await getToken({ template: 'backend' })
           if (!token) return
 
+          // never send client-supplied identity in the body.
+          // The backend must derive who the user is from the Bearer token,
+          // not from anything the client POSTs. Empty body; token does the work.
           try {
-            await api.post('/api/users/sync', {
-              type: 'user.created',
-              data: {
-                id:              clerkUser.id,
-                email_addresses: clerkUser.emailAddresses.map((e) => ({
-                  email_address: e.emailAddress,
-                })),
-                username:   clerkUser.username,
-                image_url:  clerkUser.imageUrl,
-                first_name: clerkUser.firstName,
-                last_name:  clerkUser.lastName,
-              },
-            })
+            await api.post('/api/users/clerk/sync', {})
           } catch {
-            // Already exists — that's fine
+           
           }
 
           // Upsert Novu subscriber so realtime delivery works for this user
           try {
             await api.post('/api/notifications/sync-subscriber')
           } catch {
-            // Non-fatal — notifications will still work on next login
+     
           }
 
           await fetchUser()

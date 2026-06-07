@@ -13,8 +13,7 @@ import AppError from '../utils/AppError'
 import asyncHandler from '../utils/asyncHandler'
 import { createNotification } from '../controllers/notification.controller'
 import { getStreamServer } from '../lib/stream'
-
-// REMOVED: import Message from '../models/Message'
+import logger from '../utils/logger'
 
 const router = express.Router()
 
@@ -67,14 +66,12 @@ router.post(
           Notification.deleteMany({
             $or: [{ recipient: user._id }, { sender: user._id }],
           }),
-          // Delete the user from Stream — removes them from all channels
-          // and cleans up their messages on the Stream side
+          // FIX 1 — replaced console.error with logger.error
           streamClient.deleteUser(user._id.toString(), {
             mark_messages_deleted: true,
             hard_delete:           true,
           }).catch((err) => {
-            // Non-critical: log but don't block the rest of the cleanup
-            console.error('[Webhook] Stream user deletion failed', err)
+            logger.error('[Webhook] Stream user deletion failed', err)
           }),
           User.updateMany(
             { followers: user._id },
@@ -143,7 +140,34 @@ router.post(
 // URL: https://your-backend.com/api/webhooks/stream/message-created
 // Events: message.new
 router.post('/stream/message-created', async (req: Request, res: Response) => {
-  const event = req.body
+  // FIX 2 — verify Stream webhook signature so arbitrary POSTs are rejected.
+  // Stream signs requests with an HMAC-SHA256 of the raw body using your
+  // API secret. getStreamServer().verifyWebhook() does this check for you.
+  const signature = req.headers['x-signature'] as string
+
+  if (!signature) {
+    logger.warn('[Stream webhook] Missing x-signature header — request rejected')
+    return res.sendStatus(403)
+  }
+
+  const streamClient = getStreamServer()
+
+  // req.body is a Buffer here because app.ts applies express.raw() to /api/webhooks
+  const rawBody = req.body instanceof Buffer ? req.body : Buffer.from(JSON.stringify(req.body))
+
+  const isValid = streamClient.verifyWebhook(rawBody, signature)
+  if (!isValid) {
+    logger.warn('[Stream webhook] Invalid signature — request rejected')
+    return res.sendStatus(403)
+  }
+
+  // Body is now verified — parse it
+  let event: any
+  try {
+    event = JSON.parse(rawBody.toString())
+  } catch {
+    return res.sendStatus(400)
+  }
 
   if (event.type !== 'message.new') return res.sendStatus(200)
 
@@ -164,7 +188,8 @@ router.post('/stream/message-created', async (req: Request, res: Response) => {
       link:         '/messages',
     })
   } catch (err) {
-    console.error('[Stream webhook] notification failed', err)
+    // FIX 1 — replaced console.error with logger.error
+    logger.error('[Stream webhook] notification failed', err)
   }
 
   res.sendStatus(200)

@@ -99,14 +99,18 @@ export default function SignInPage() {
 
         await fetchCart()
 
+        // FIX 2 & 3: Log poll errors + enforce a hard 6 s deadline
         let attempts = 0
-        while (attempts < 5) {
+        const deadline = Date.now() + 6000
+        while (attempts < 5 && Date.now() < deadline) {
           try {
             const res = await api.get('/api/users/me', { headers: authHeader })
             const user = res.data?.data
             if (user?.role === 'admin') { router.replace('/admin'); return }
             if (user?.role)             { router.replace('/');      return }
-          } catch {}
+          } catch (pollErr) {
+            console.warn('[role-check] attempt', attempts, pollErr)
+          }
           attempts++
           await new Promise((r) => setTimeout(r, 800))
         }
@@ -154,7 +158,10 @@ export default function SignInPage() {
 
       if (needsEmail) {
         try {
-          await signIn.prepareFirstFactor({ strategy: 'email_code', emailAddressId: (result.supportedFirstFactors?.find((f: any) => f.strategy === 'email_code') as any)?.emailAddressId ?? '' })
+          await signIn.prepareFirstFactor({
+            strategy: 'email_code',
+            emailAddressId: (result.supportedFirstFactors?.find((f: any) => f.strategy === 'email_code') as any)?.emailAddressId ?? '',
+          })
         } catch {
           // prepareFirstFactor may not be needed for second-factor flows — ignore
         }
@@ -225,6 +232,7 @@ export default function SignInPage() {
 
   // ── google ────────────────────────────────────────────────────────────────────
   const handleGoogleSignIn = async () => {
+    // FIX 1: Null-safe clerk.client — don't use the non-null assertion operator
     if (!clerk.loaded || googleLoading) return
     setGoogleLoading(true)
 
@@ -232,8 +240,16 @@ export default function SignInPage() {
       process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') ||
       window.location.origin
 
+    // FIX 1: Guard clerk.client explicitly before accessing .signIn on it
+    const clerkSignIn = clerk.client?.signIn
+    if (!clerkSignIn) {
+      setError('Auth not ready. Please refresh the page and try again.')
+      setGoogleLoading(false)
+      return
+    }
+
     try {
-      await clerk.client!.signIn.authenticateWithRedirect({
+      await clerkSignIn.authenticateWithRedirect({
         strategy:            'oauth_google',
         redirectUrl:         `${appUrl}/sso-callback`,
         redirectUrlComplete: `${appUrl}/`,
@@ -296,6 +312,7 @@ export default function SignInPage() {
   if (syncError) return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-4" style={{ background: 'hsl(var(--background))' }}>
       <div style={{ ...errorBoxStyle, maxWidth: 420, textAlign: 'center' }}>{syncError}</div>
+      {/* FIX 4: Reset lastSyncedUserId so the sync effect can re-run after "Try again" */}
       <button className="btn-ghost" onClick={() => { setSyncError(''); lastSyncedUserId.current = null }}>
         Try again
       </button>

@@ -24,7 +24,7 @@ type ErrKey = typeof ERR[keyof typeof ERR] | ''
 
 const RESEND_WAIT = 30 // seconds
 
-// ── dev-only logger (fix 1) ────────────────────────────────────────────────────
+// ── dev-only logger ────────────────────────────────────────────────────────────
 const devLog = (...args: unknown[]) => {
   if (process.env.NODE_ENV === 'development') console.log(...args)
 }
@@ -66,7 +66,7 @@ function parseClerkError(err: any): { code: string; message: string; longMessage
 }
 
 function friendlyError(code: string, message: string, longMessage: string): string {
-  devLog('[Clerk error]', { code, message, longMessage }) // fix 1 — dev only
+  devLog('[Clerk error]', { code, message, longMessage })
   if (code.includes('captcha') || message.toLowerCase().includes('captcha'))
     return 'Security check failed. Please refresh and try again.'
   if (code === 'form_identifier_exists' || code === 'identifier_already_signed_in')
@@ -80,7 +80,6 @@ function friendlyError(code: string, message: string, longMessage: string): stri
   if (code === 'form_param_format_invalid' || message.toLowerCase().includes('email')) return 'Please enter a valid email address.'
   if (code === 'form_param_nil')                       return longMessage || 'A required field is missing.'
   if (code === 'too_many_requests')                    return 'Too many attempts. Please wait and try again.'
-  // fix 5 — session expiry during OTP stage
   if (code === 'expired_activity' || code === 'session_exists' || longMessage.toLowerCase().includes('expired'))
     return '__EXPIRED__'
   return longMessage || message || 'Sign up failed. Please try again.'
@@ -121,7 +120,7 @@ export default function SignUpPage() {
   // cleanup countdown on unmount
   useEffect(() => () => { if (cooldownRef.current) clearInterval(cooldownRef.current) }, [])
 
-  // fix 2 — redirect already-signed-in users immediately
+  // redirect already-signed-in users immediately
   useEffect(() => {
     if (clerk.loaded && isSignedIn && !syncing) router.replace('/')
   }, [clerk.loaded, isSignedIn, syncing, router])
@@ -160,13 +159,19 @@ export default function SignUpPage() {
           return
         }
 
-        for (let i = 0; i < 5; i++) {
+        // FIX 2 & 3: Log poll errors + enforce a hard 6 s deadline
+        let attempts = 0
+        const deadline = Date.now() + 6000
+        while (attempts < 5 && Date.now() < deadline) {
           try {
             const res = await api.get('/api/users/me', { headers: h })
             const user = res.data?.data
             if (user?.role === 'admin') { router.replace('/admin'); return }
             if (user?.role)             { router.replace('/');      return }
-          } catch {}
+          } catch (pollErr) {
+            console.warn('[role-check] attempt', attempts, pollErr)
+          }
+          attempts++
           await new Promise(r => setTimeout(r, 800))
         }
         router.replace('/')
@@ -207,7 +212,7 @@ export default function SignUpPage() {
         const friendly = friendlyError(code, message, longMessage)
         setErrorKey(friendly as ErrKey)
         setError(friendly)
-        setPassword('') // fix 3 — clear password on failure
+        setPassword('')
         return
       }
 
@@ -223,7 +228,7 @@ export default function SignUpPage() {
       const friendly = friendlyError(code, message, longMessage)
       setErrorKey(friendly as ErrKey)
       setError(friendly)
-      setPassword('') // fix 3 — clear password on failure
+      setPassword('')
     } finally {
       setLoading(false)
     }
@@ -244,12 +249,11 @@ export default function SignUpPage() {
         await setActive({ session: sessionId })
       } else {
         setError('Verification incomplete. Please try again.')
-        setCode('') // fix 4 — clear bad code
+        setCode('')
       }
     } catch (err: any) {
       const { code: errCode, message, longMessage } = parseClerkError(err)
       const friendly = friendlyError(errCode, message, longMessage)
-      // fix 5 — expired session: bounce back to form
       if (friendly === '__EXPIRED__') {
         setStage('form')
         setCode('')
@@ -259,7 +263,7 @@ export default function SignUpPage() {
         return
       }
       setError(friendly)
-      setCode('') // fix 4 — clear bad code
+      setCode('')
     } finally {
       setLoading(false)
     }
@@ -292,7 +296,7 @@ export default function SignUpPage() {
     }
   }
 
-  // ── google — FIXED: use clerk.client.signUp instead of useSignUp() resource ──
+  // ── google — FIX 1: null-safe clerk.client guard ──────────────────────────────
   const handleGoogleSignUp = async () => {
     if (!clerk.loaded || googleLoading) return
     setGoogleLoading(true)
@@ -301,8 +305,16 @@ export default function SignUpPage() {
       process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') ||
       window.location.origin
 
+    // FIX 1: Guard clerk.client explicitly — don't use the ! non-null assertion
+    const clerkSignUp = clerk.client?.signUp
+    if (!clerkSignUp) {
+      setError('Auth not ready. Please refresh the page and try again.')
+      setGoogleLoading(false)
+      return
+    }
+
     try {
-      await clerk.client!.signUp.authenticateWithRedirect({
+      await clerkSignUp.authenticateWithRedirect({
         strategy:            'oauth_google',
         redirectUrl:         `${appUrl}/sso-callback`,
         redirectUrlComplete: `${appUrl}/`,
@@ -356,6 +368,7 @@ export default function SignUpPage() {
   if (syncError) return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-4" style={{ background: 'hsl(var(--background))' }}>
       <div style={{ ...errorBoxStyle, maxWidth: 420, textAlign: 'center' }}>{syncError}</div>
+      {/* lastSyncedUserId reset so the sync effect can re-run after "Try again" */}
       <button className="btn-ghost" onClick={() => { setSyncError(''); lastSyncedUserId.current = null }}>
         Try again
       </button>
