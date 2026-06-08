@@ -3,20 +3,19 @@
 /**
  * MasonryPreview — v3 · Shoppin
  *
- * v2 → v3:
- *  - Accent color removed from all decorative uses (pill bg, pill text,
- *    underline bar, italic word). Monochromatic system matches SSENSE/Mytheresa.
- *  - Eyebrow pill: accent → muted border + muted text
- *  - Underline bar: accent → border color
- *  - "In today." italic: accent → foreground
- *  - Top hairline: accent gradient → solid border color
- *  - Sparkles icon: accent → muted
+ * v2 → v3 (top-brand alignment):
+ *  - Eyebrow pill + Sparkles icon removed
+ *  - Animated underline bar removed
+ *  - Header: bare label + headline, CTA right — same pattern as other sections
+ *  - Full-width 1px border-top replaces gradient hairline
+ *  - Bottom CTA simplified — plain text, no circle arrow (hero only)
+ *  - Section padding: pt-10, bottom CTA has its own spacing
  */
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { Sparkles, ArrowRight } from 'lucide-react'
+import { MoveRight } from 'lucide-react'
 import { apiClient } from '@/lib/api'
 import { MasonryGrid } from '@/components/product/MasonryGrid'
 
@@ -48,106 +47,65 @@ export function MasonryPreview() {
 
   return (
     <section
-      className="section-padding relative overflow-hidden"
+      className="pt-10"
       aria-label="New arrivals"
+      style={{ borderTop: '1px solid hsl(var(--border) / 0.5)' }}
     >
-      {/* Top hairline */}
-      <div
-        aria-hidden
-        className="absolute top-0 inset-x-0 h-px pointer-events-none"
-        style={{ background: 'hsl(var(--border))' }}
-      />
-
-      <div className="container-wide relative">
+      <div className="container-wide">
 
         {/* ── Header ── */}
-        <div className="flex items-end justify-between mb-8 md:mb-12">
-
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+        <div className="flex items-baseline justify-between mb-6">
+          <p
+            style={{
+              fontSize: '10px',
+              fontWeight: 500,
+              letterSpacing: '0.18em',
+              textTransform: 'uppercase',
+              color: 'hsl(var(--muted))',
+            }}
           >
-            {/* Eyebrow pill — monochromatic */}
-            <div className="flex items-center gap-2.5 mb-4">
-              <span
-                className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1"
-                style={{
-                  border:     '0.5px solid hsl(var(--border))',
-                  background: 'transparent',
-                }}
-              >
-                <Sparkles
-                  size={11}
-                  strokeWidth={2}
-                  style={{ color: 'hsl(var(--muted))' }}
-                  aria-hidden
-                />
-                <span
-                  className="text-[10px] font-semibold tracking-[0.18em] uppercase"
-                  style={{ color: 'hsl(var(--muted))' }}
-                >
-                  New
-                </span>
-              </span>
-            </div>
+            New
+          </p>
 
-            {/* Headline — no accent italic */}
-            <h2
-              className="font-display font-bold tracking-[-0.03em] leading-[1.05]"
-              style={{ fontSize: 'clamp(1.75rem, 3vw, var(--text-section))' }}
-            >
-              In today.
-            </h2>
-
-            {/* Underline — border color, not accent */}
-            <motion.div
-              className="mt-4 h-[1.5px] w-10 rounded-full"
-              style={{ background: 'hsl(var(--border))' }}
-              initial={{ scaleX: 0, originX: 0 }}
-              whileInView={{ scaleX: 1 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
-            />
-          </motion.div>
-
-          {/* Desktop CTA */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.4, delay: 0.15 }}
-            className="hidden sm:block"
+          <Link
+            href="/explore"
+            className="hidden sm:inline-flex items-center gap-1.5 group"
+            style={{
+              fontSize: '10px',
+              fontWeight: 500,
+              letterSpacing: '0.12em',
+              textTransform: 'uppercase',
+              color: 'hsl(var(--muted))',
+              textDecoration: 'none',
+              transition: 'color 0.2s',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.color = 'hsl(var(--foreground))')}
+            onMouseLeave={e => (e.currentTarget.style.color = 'hsl(var(--muted))')}
           >
-            <Link
-              href="/explore"
-              className="group inline-flex items-center gap-3"
-              style={{ textDecoration: 'none' }}
-            >
-              <span
-                className="text-[10px] font-medium tracking-[0.2em] uppercase transition-opacity duration-300 group-hover:opacity-50"
-                style={{ color: 'hsl(var(--foreground))' }}
-              >
-                See all
-              </span>
-              <span
-                className="inline-flex items-center justify-center rounded-full
-                           group-hover:bg-[hsl(var(--foreground))] group-hover:text-[hsl(var(--background))]"
-                style={{
-                  width:      '36px',
-                  height:     '36px',
-                  border:     '0.5px solid hsl(var(--border))',
-                  color:      'hsl(var(--foreground))',
-                  transition: 'background 0.35s cubic-bezier(0.22,1,0.36,1), color 0.35s',
-                  flexShrink: 0,
-                }}
-              >
-                <ArrowRight size={13} strokeWidth={1.5} />
-              </span>
-            </Link>
-          </motion.div>
+            See all
+            <MoveRight size={11} strokeWidth={1.5} className="transition-transform duration-200 group-hover:translate-x-0.5" />
+          </Link>
         </div>
+
+        <motion.h2
+          className="font-display mb-8 md:mb-12"
+          style={{
+            fontSize: 'clamp(1.75rem, 3vw, 2.75rem)',
+            fontWeight: 300,
+            letterSpacing: '-0.02em',
+            lineHeight: 1,
+            color: 'hsl(var(--foreground))',
+          }}
+          initial={{ opacity: 0, y: 12 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+        >
+          In{' '}
+          <em className="not-italic" style={{ color: 'hsl(var(--accent))' }}>
+            today.
+          </em>
+        </motion.h2>
 
         {/* ── Masonry Grid ── */}
         <MasonryGrid
@@ -158,37 +116,42 @@ export function MasonryPreview() {
 
         {/* ── Bottom CTA ── */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
+          className="mt-12 mb-4 flex items-center justify-between"
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-          className="mt-14 flex items-center justify-center"
+          transition={{ duration: 0.4 }}
+          style={{ borderTop: '1px solid hsl(var(--border) / 0.5)', paddingTop: '24px' }}
         >
+          <p
+            style={{
+              fontSize: '10px',
+              fontWeight: 500,
+              letterSpacing: '0.18em',
+              textTransform: 'uppercase',
+              color: 'hsl(var(--muted))',
+            }}
+          >
+            That's not all
+          </p>
+
           <Link
             href="/explore"
-            className="group inline-flex items-center gap-3"
-            style={{ textDecoration: 'none' }}
+            className="inline-flex items-center gap-1.5 group"
+            style={{
+              fontSize: '10px',
+              fontWeight: 500,
+              letterSpacing: '0.12em',
+              textTransform: 'uppercase',
+              color: 'hsl(var(--foreground))',
+              textDecoration: 'none',
+              transition: 'opacity 0.2s',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.opacity = '0.5')}
+            onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
           >
-            <span
-              className="text-[10px] font-medium tracking-[0.2em] uppercase transition-opacity duration-300 group-hover:opacity-50"
-              style={{ color: 'hsl(var(--foreground))' }}
-            >
-              See everything
-            </span>
-            <span
-              className="inline-flex items-center justify-center rounded-full
-                         group-hover:bg-[hsl(var(--foreground))] group-hover:text-[hsl(var(--background))]"
-              style={{
-                width:      '36px',
-                height:     '36px',
-                border:     '0.5px solid hsl(var(--border))',
-                color:      'hsl(var(--foreground))',
-                transition: 'background 0.35s cubic-bezier(0.22,1,0.36,1), color 0.35s',
-                flexShrink: 0,
-              }}
-            >
-              <ArrowRight size={13} strokeWidth={1.5} />
-            </span>
+            See everything
+            <MoveRight size={11} strokeWidth={1.5} className="transition-transform duration-200 group-hover:translate-x-0.5" />
           </Link>
         </motion.div>
 

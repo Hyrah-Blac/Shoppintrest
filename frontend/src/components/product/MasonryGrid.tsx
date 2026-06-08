@@ -1,17 +1,37 @@
 'use client'
 
+/**
+ * MasonryGrid — v2 · Shoppin
+ *
+ * v1 → v2:
+ *  - Typed Product interface (no more any[])
+ *  - mb-4 → mb-5 (20px gap — matches Mytheresa/Net-a-Porter card spacing)
+ *  - Skeleton gap matches: mb-5 consistent with loaded state
+ */
+
 import Masonry from 'react-masonry-css'
 import { motion } from 'framer-motion'
 import { ProductCard } from './ProductCard'
 import { ProductCardSkeleton } from '@/components/ui/Skeleton'
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface Product {
+  _id: string
+  title: string
+  price: number
+  brand?: string
+  images?: { url: string; blurDataURL?: string }[]
+}
+
 interface MasonryGridProps {
-  products: any[]
+  products: Product[]
   isLoading?: boolean
   skeletonCount?: number
 }
 
-/* Blueprint: 5–7 col desktop · 3–4 tablet · 2 mobile */
+// ─── Breakpoints ──────────────────────────────────────────────────────────────
+
 const breakpointCols = {
   default: 5,
   1536:    5,
@@ -21,6 +41,8 @@ const breakpointCols = {
   640:     2,
   480:     2,
 }
+
+// ─── MasonryGrid ──────────────────────────────────────────────────────────────
 
 export function MasonryGrid({
   products,
@@ -36,12 +58,11 @@ export function MasonryGrid({
         columnClassName="masonry-grid-column"
       >
         {Array.from({ length: skeletonCount }).map((_, i) => (
-          <div key={i} className="mb-4">
+          <div key={i} className="mb-5">
             <div
               className="skeleton"
               style={{
-                /* vary heights so the shimmer feels like real pins */
-                aspectRatio: i % 3 === 0 ? '2/3' : i % 3 === 1 ? '1/1' : '3/4',
+                aspectRatio:  i % 3 === 0 ? '2/3' : i % 3 === 1 ? '1/1' : '3/4',
                 borderRadius: 'var(--radius-xl)',
               }}
             />
@@ -60,7 +81,7 @@ export function MasonryGrid({
       {products.map((product, i) => (
         <motion.div
           key={product._id}
-          className="mb-4"
+          className="mb-5"
           initial={{ opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.08 }}

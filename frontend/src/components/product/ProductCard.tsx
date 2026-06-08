@@ -1,5 +1,16 @@
 'use client'
 
+/**
+ * ProductCard — v2 · Shoppin
+ *
+ * v1 → v2:
+ *  - Typed Product interface (no more any)
+ *  - Save button: accent → dark foreground when saved (heart fill + shadow)
+ *  - Rating dots: accent → foreground for filled dots
+ *  - Featured badge: badge-red → badge-mono (featured is not a sale/alert state)
+ *  - btn-save on Quick Add kept — flagged; review globals.css
+ */
+
 import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -11,13 +22,44 @@ import { useUserStore } from '@/store/useUserStore'
 import { useCartStore } from '@/store/useCartStore'
 import { toast } from 'sonner'
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface ProductImage {
+  url: string
+  alt?: string
+  blurDataURL?: string
+}
+
+interface ProductVariant {
+  size: string
+}
+
+interface Product {
+  _id: string
+  title: string
+  price: number
+  comparePrice?: number
+  brand?: string
+  isFeatured?: boolean
+  totalInventory?: number
+  rating?: number
+  reviewCount?: number
+  images?: ProductImage[]
+  variants?: ProductVariant[]
+  videoUrl?: string
+}
+
 interface ProductCardProps {
-  product: any
+  product: Product
   priority?: boolean
   className?: string
 }
 
+// ─── Constants ────────────────────────────────────────────────────────────────
+
 const ease = [0.16, 1, 0.3, 1] as const
+
+// ─── ProductCard ──────────────────────────────────────────────────────────────
 
 export function ProductCard({ product, priority = false, className }: ProductCardProps) {
   const { isSignedIn }    = useAuth()
@@ -28,10 +70,10 @@ export function ProductCard({ product, priority = false, className }: ProductCar
   const [isHovered,         setIsHovered]         = useState(false)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [isSaving,          setIsSaving]          = useState(false)
-  const [isAdding,          setIsAdding]          = useState(false)
+  const [isAdding,          setIsAdding]           = useState(false)
 
   const discount    = calculateDiscount(product.price, product.comparePrice)
-  const hasMany     = product.images?.length > 1
+  const hasMany     = (product.images?.length ?? 0) > 1
   const defaultSize = product.variants?.[0]?.size
   const isSoldOut   = product.totalInventory === 0
 
@@ -43,7 +85,7 @@ export function ProductCard({ product, priority = false, className }: ProductCar
       await toggleSaveProduct(product._id)
       toast.success(isSaved ? 'Removed from saved' : 'Saved!')
     } catch { toast.error('Something went wrong') }
-    finally  { setIsSaving(false) }
+    finally { setIsSaving(false) }
   }
 
   const handleQuickAdd = async (e: React.MouseEvent) => {
@@ -54,8 +96,9 @@ export function ProductCard({ product, priority = false, className }: ProductCar
     try {
       await addItem(product._id, defaultSize, 1)
       toast.success('Added to cart')
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Could not add to cart')
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(msg || 'Could not add to cart')
     } finally { setIsAdding(false) }
   }
 
@@ -70,9 +113,7 @@ export function ProductCard({ product, priority = false, className }: ProductCar
     >
       <Link href={`/product/${product._id}`}>
 
-        {/* ══════════════════════════════════════════════════════════════
-            IMAGE CONTAINER — card-pin: shadow depth, no hard borders
-        ══════════════════════════════════════════════════════════════ */}
+        {/* ── Image container ── */}
         <div className={cn('card-pin relative aspect-[3/4]')}>
 
           {/* Image layers */}
@@ -102,10 +143,10 @@ export function ProductCard({ product, priority = false, className }: ProductCar
                 <div
                   className="w-full h-full flex items-center justify-center"
                   style={{
-                    background: 'hsl(var(--surface-inset))',
-                    fontSize:   'var(--text-xs)',
-                    color:      'hsl(var(--muted-foreground))',
-                    fontWeight: 300,
+                    background:    'hsl(var(--surface-inset))',
+                    fontSize:      'var(--text-xs)',
+                    color:         'hsl(var(--muted))',
+                    fontWeight:    300,
                     letterSpacing: '0.04em',
                   }}
                 >
@@ -121,7 +162,7 @@ export function ProductCard({ product, priority = false, className }: ProductCar
           {/* Multi-image hover zones — desktop only */}
           {hasMany && isHovered && (
             <div className="hidden md:flex absolute inset-0 z-10">
-              {product.images.map((_: any, i: number) => (
+              {product.images!.map((_, i) => (
                 <div
                   key={i}
                   className="flex-1 cursor-pointer"
@@ -131,7 +172,7 @@ export function ProductCard({ product, priority = false, className }: ProductCar
             </div>
           )}
 
-          {/* Image progress — refined pill indicators */}
+          {/* Image progress dots */}
           {hasMany && isHovered && (
             <motion.div
               initial={{ opacity: 0, y: 4 }}
@@ -140,14 +181,11 @@ export function ProductCard({ product, priority = false, className }: ProductCar
               transition={{ duration: 0.2, ease }}
               className="hidden md:flex absolute bottom-3 left-1/2 -translate-x-1/2 gap-1 z-20"
             >
-              {product.images.slice(0, 5).map((_: any, i: number) => (
+              {product.images!.slice(0, 5).map((_, i) => (
                 <motion.div
                   key={i}
                   className="rounded-full"
-                  style={{
-                    height:     '2px',
-                    background: 'white',
-                  }}
+                  style={{ height: '2px', background: 'white' }}
                   animate={{
                     width:   i === currentImageIndex ? '1rem' : '0.3125rem',
                     opacity: i === currentImageIndex ? 1 : 0.45,
@@ -158,10 +196,28 @@ export function ProductCard({ product, priority = false, className }: ProductCar
             </motion.div>
           )}
 
-          {/* ── Badges — top left ───────────────────────────────────── */}
+          {/* ── Badges — top left ── */}
           <div className="absolute top-2.5 left-2.5 flex flex-col gap-1.5 z-20">
             {product.isFeatured && (
-              <span className="badge badge-red">Featured</span>
+              // Not a sale/alert state — plain mono badge, not badge-red
+              <span
+                style={{
+                  display:       'inline-flex',
+                  alignItems:    'center',
+                  padding:       '2px 7px',
+                  borderRadius:  '100px',
+                  fontSize:      '9px',
+                  fontWeight:    500,
+                  letterSpacing: '0.12em',
+                  textTransform: 'uppercase',
+                  background:    'rgba(255,255,255,0.15)',
+                  backdropFilter: 'blur(8px)',
+                  color:         'rgba(255,255,255,0.9)',
+                  border:        '0.5px solid rgba(255,255,255,0.2)',
+                }}
+              >
+                Featured
+              </span>
             )}
             {discount && !product.isFeatured && (
               <motion.span
@@ -175,18 +231,13 @@ export function ProductCard({ product, priority = false, className }: ProductCar
             )}
           </div>
 
-          {/* ── Sold Out overlay — atmospheric, not aggressive ──────── */}
+          {/* ── Sold Out overlay ── */}
           {isSoldOut && (
             <div
               className="absolute inset-0 z-20 overflow-hidden pointer-events-none"
               style={{ borderRadius: 'var(--radius-xl)' }}
             >
-              {/* Dim veil */}
-              <div
-                className="absolute inset-0"
-                style={{ background: 'rgba(0,0,0,0.28)' }}
-              />
-              {/* Glass ribbon */}
+              <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.28)' }} />
               <div
                 className="absolute flex items-center justify-center"
                 style={{
@@ -217,15 +268,15 @@ export function ProductCard({ product, priority = false, className }: ProductCar
             </div>
           )}
 
-          {/* ── Hover actions — desktop ──────────────────────────────── */}
+          {/* ── Hover actions — desktop ── */}
           <AnimatePresence>
             {isHovered && (
               <>
-                {/* Save — top right glass button */}
+                {/* Save button — top right */}
                 <motion.div
                   initial={{ opacity: 0, y: -8,  scale: 0.92 }}
                   animate={{ opacity: 1, y: 0,   scale: 1    }}
-                  exit={{   opacity: 0, y: -6,  scale: 0.94  }}
+                  exit={{   opacity: 0, y: -6,   scale: 0.94 }}
                   transition={{ duration: 0.2, ease }}
                   className="absolute top-2.5 right-2.5 z-30 hidden md:flex"
                 >
@@ -245,15 +296,15 @@ export function ProductCard({ product, priority = false, className }: ProductCar
                       background:           isSaved
                         ? 'rgba(255,255,255,0.96)'
                         : 'rgba(0,0,0,0.36)',
+                      // Saved: dark heart on white glass — no accent
                       color: isSaved
-                        ? 'hsl(var(--accent))'
+                        ? 'rgba(0,0,0,0.85)'
                         : 'rgba(255,255,255,0.92)',
                       border:     'none',
                       cursor:     'pointer',
-                      transition: `background var(--duration-hover) var(--ease-smooth),
-                                   transform  var(--duration-fast)  var(--ease-cinematic)`,
-                      boxShadow: isSaved
-                        ? 'var(--shadow-red), 0 0 0 1px rgba(255,255,255,0.4)'
+                      transition: 'background 0.2s ease, transform 0.15s ease',
+                      boxShadow:  isSaved
+                        ? '0 2px 12px rgba(0,0,0,0.18), 0 0 0 1px rgba(255,255,255,0.4)'
                         : '0 2px 8px rgba(0,0,0,0.3)',
                     }}
                     onMouseEnter={e => {
@@ -275,7 +326,7 @@ export function ProductCard({ product, priority = false, className }: ProductCar
                   </button>
                 </motion.div>
 
-                {/* Quick Add — bottom glass bar, desktop only */}
+                {/* Quick Add — bottom glass bar */}
                 {!isSoldOut && (
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
@@ -284,6 +335,7 @@ export function ProductCard({ product, priority = false, className }: ProductCar
                     transition={{ duration: 0.2, ease, delay: 0.03 }}
                     className="absolute bottom-0 left-0 right-0 z-30 p-2.5 hidden md:flex"
                   >
+                    {/* NOTE: btn-save likely has accent bg — review globals.css */}
                     <button
                       onClick={handleQuickAdd}
                       disabled={isAdding}
@@ -291,7 +343,7 @@ export function ProductCard({ product, priority = false, className }: ProductCar
                       style={{ height: '2.25rem', fontSize: 'var(--text-xs)' }}
                     >
                       <ShoppingBag size={12} strokeWidth={2} />
-                      {isAdding ? 'Adding…' : 'Quick Add'}
+                      {isAdding ? 'Adding…' : 'Quick add'}
                     </button>
                   </motion.div>
                 )}
@@ -300,16 +352,14 @@ export function ProductCard({ product, priority = false, className }: ProductCar
           </AnimatePresence>
         </div>
 
-        {/* ══════════════════════════════════════════════════════════════
-            PRODUCT INFO — editorial hierarchy, no boxing
-        ══════════════════════════════════════════════════════════════ */}
+        {/* ── Product info ── */}
         <div
           style={{
-            marginTop: '0.875rem',
+            marginTop:    '0.875rem',
             paddingInline: '0.125rem',
-            display: 'flex',
+            display:      'flex',
             flexDirection: 'column',
-            gap: '0.25rem',
+            gap:          '0.25rem',
           }}
         >
           {/* Brand eyebrow */}
@@ -342,10 +392,7 @@ export function ProductCard({ product, priority = false, className }: ProductCar
           >
             {discount ? (
               <>
-                <span
-                  className="price price-sale"
-                  style={{ fontWeight: 600 }}
-                >
+                <span className="price price-sale" style={{ fontWeight: 600 }}>
                   {formatPrice(product.price, 'KES')}
                 </span>
                 <span className="price-original">
@@ -359,8 +406,8 @@ export function ProductCard({ product, priority = false, className }: ProductCar
             )}
           </div>
 
-          {/* Rating — restrained dots, not stars */}
-          {product.rating > 0 && (
+          {/* Rating dots — foreground not accent */}
+          {(product.rating ?? 0) > 0 && (
             <div
               style={{
                 display:    'flex',
@@ -370,7 +417,7 @@ export function ProductCard({ product, priority = false, className }: ProductCar
               }}
             >
               {Array.from({ length: 5 }).map((_, i) => {
-                const filled = i < Math.round(product.rating)
+                const filled = i < Math.round(product.rating!)
                 return (
                   <div
                     key={i}
@@ -379,19 +426,19 @@ export function ProductCard({ product, priority = false, className }: ProductCar
                       height:       filled ? '0.3125rem' : '0.25rem',
                       borderRadius: '50%',
                       background:   filled
-                        ? 'hsl(var(--accent))'
+                        ? 'hsl(var(--foreground))'
                         : 'hsl(var(--border))',
                       flexShrink: 0,
-                      transition: 'background var(--duration-fast) ease',
+                      transition: 'background 0.15s ease',
                     }}
                   />
                 )
               })}
-              {product.reviewCount > 0 && (
+              {(product.reviewCount ?? 0) > 0 && (
                 <span
                   style={{
                     fontSize:   'var(--text-2xs)',
-                    color:      'hsl(var(--muted-foreground))',
+                    color:      'hsl(var(--muted))',
                     fontWeight: 300,
                     marginLeft: '0.125rem',
                   }}
