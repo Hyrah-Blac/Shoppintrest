@@ -5,9 +5,6 @@ import {
   getMe,
   updateMe,
   getUserByUsername,
-  toggleFollow,
-  getFollowers,
-  getFollowing,
   toggleSaveProduct,
   getSavedProducts,
   searchUsers,
@@ -31,9 +28,6 @@ router.get('/me/saved',            protect,     getSavedProducts)
 router.post('/me/save/:productId', protect,     toggleSaveProduct)
 
 // ─── DYNAMIC /:username ROUTES LAST ──────────────────────────────────────────
-router.get('/:username',           optionalAuth, getUserByUsername)
-router.get('/:username/followers', optionalAuth, getFollowers)
-router.get('/:username/following', optionalAuth, getFollowing)
-router.post('/:userId/follow',     protect,      toggleFollow)
+router.get('/:username', optionalAuth, getUserByUsername)
 
 export default router
