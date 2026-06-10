@@ -72,22 +72,6 @@ router.post(
           }).catch((err) => {
             logger.error('[Webhook] Stream user deletion failed', err)
           }),
-          User.updateMany(
-            { followers: user._id },
-            { $pull: { followers: user._id } }
-          ),
-          User.updateMany(
-            { following: user._id },
-            { $pull: { following: user._id } }
-          ),
-          User.updateMany(
-            { savedProducts: { $in: user.savedProducts } },
-            { $pull: { savedProducts: { $in: user.savedProducts } } }
-          ),
-          User.updateMany(
-            { collections: { $in: user.collections } },
-            { $pull: { collections: { $in: user.collections } } }
-          ),
         ])
 
         await User.findByIdAndDelete(user._id)
@@ -135,9 +119,6 @@ router.post(
 )
 
 // ─── STREAM CHAT WEBHOOK ─────────────────────────────────────────────────────
-// Configure in Stream Dashboard → Developers → Webhooks
-// URL: https://your-backend.com/api/webhooks/stream/message-created
-// Events: message.new
 router.post('/stream/message-created', async (req: Request, res: Response) => {
   const signature = req.headers['x-signature'] as string
 

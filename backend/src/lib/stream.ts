@@ -1,15 +1,7 @@
-import { StreamChat } from 'stream-chat'
+import { StreamChat, ChannelData } from 'stream-chat'
 
 let instance: StreamChat | null = null
 
-/**
- * Returns a lazy singleton of the server-side StreamChat client.
- * Safe to import from multiple files — only one connection is ever created.
- *
- * Reads from .env:
- *   STREAM_API_KEY
- *   STREAM_API_SECRET
- */
 export function getStreamServer(): StreamChat {
   if (!instance) {
     instance = StreamChat.getInstance(
@@ -19,6 +11,7 @@ export function getStreamServer(): StreamChat {
   }
   return instance
 }
+
 export async function createSupportChannel(
   userId: string,
   category: string,
@@ -27,13 +20,15 @@ export async function createSupportChannel(
   const server    = getStreamServer()
   const channelId = `support_${userId}_${Date.now()}`
   const channel   = server.channel('support', channelId, {
-    members:      [userId],
-    ticketStatus: 'open',
+    members:  [userId],
     category,
-    orderId:      orderId ?? null,
-    priority:     'normal',
-    createdAt:    new Date().toISOString(),
-  })
+    priority: 'normal',
+    data: {
+      ticketStatus: 'open',
+      orderId:      orderId ?? null,
+      createdAt:    new Date().toISOString(),
+    },
+  } as unknown as ChannelData)
   await channel.create()
   return channelId
 }
@@ -42,13 +37,13 @@ export async function assignAgentToChannel(channelId: string, agentId: string) {
   const server  = getStreamServer()
   const channel = server.channel('support', channelId)
   await channel.addMembers([agentId])
-  await channel.updatePartial({ set: { agentId } })
+  await channel.updatePartial({ set: { agentId } as any })
 }
 
 export async function closeSupportChannel(channelId: string) {
   const server  = getStreamServer()
   const channel = server.channel('support', channelId)
-  await channel.updatePartial({ set: { ticketStatus: 'closed' } })
+  await channel.updatePartial({ set: { ticketStatus: 'closed' } as any })
 }
 
 export async function getSupportToken(userId: string): Promise<string> {

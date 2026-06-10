@@ -1,18 +1,14 @@
 import { Request, Response, NextFunction } from 'express'
 import { clerkClient, getAuth } from '@clerk/express'
-import { escape } from 'lodash'
 import User from '../models/User'
 import Product from '../models/Product'
-import Notification from '../models/Notification'
 import asyncHandler from '../utils/asyncHandler'
 import AppError from '../utils/AppError'
 import { sendSuccess, sendPaginated } from '../utils/apiResponse'
 
 // ─── GET CURRENT USER ────────────────────────────────────────────────────────
 export const getMe = asyncHandler(async (req: Request, res: Response) => {
-  const user = await User.findById(req.user._id)
-    .populate('collections', 'title coverImage saves')
-    .lean()
+  const user = await User.findById(req.user._id).lean()
   sendSuccess(res, user)
 })
 
@@ -62,93 +58,11 @@ export const getUserByUsername = asyncHandler(async (req: Request, res: Response
     return next(new AppError('Username is required', 400))
   }
 
-  const user = await User.findOne({ username: req.params.username })
-    .populate('collections', 'title coverImage saves isPrivate')
-    .lean()
+  const user = await User.findOne({ username: req.params.username }).lean()
 
   if (!user) return next(new AppError('User not found', 404))
 
   sendSuccess(res, user)
-})
-
-// ─── FOLLOW / UNFOLLOW ───────────────────────────────────────────────────────
-export const toggleFollow = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
-  const targetUser = await User.findById(req.params.userId)
-
-  if (!targetUser) return next(new AppError('User not found', 404))
-
-  if (targetUser._id.toString() === req.user._id.toString()) {
-    return next(new AppError('You cannot follow yourself', 400))
-  }
-
-  const isFollowing = req.user.following.includes(targetUser._id)
-
-  if (isFollowing) {
-    await User.findByIdAndUpdate(req.user._id, { $pull: { following: targetUser._id } })
-    await User.findByIdAndUpdate(targetUser._id, { $pull: { followers: req.user._id } })
-    sendSuccess(res, { isFollowing: false }, 'Unfollowed successfully')
-  } else {
-    await User.findByIdAndUpdate(req.user._id, { $addToSet: { following: targetUser._id } })
-    await User.findByIdAndUpdate(targetUser._id, { $addToSet: { followers: req.user._id } })
-
-    await Notification.create({
-      recipient: targetUser._id,
-      sender: req.user._id,
-      type: 'follow',
-      message: `${escape(req.user.displayName)} started following you`,
-      link: `/profile/${req.user.username}`,
-    })
-
-    sendSuccess(res, { isFollowing: true }, 'Followed successfully')
-  }
-})
-
-// ─── GET FOLLOWERS ───────────────────────────────────────────────────────────
-export const getFollowers = asyncHandler(async (req: Request, res: Response) => {
-  const page  = parseInt(req.query.page as string) || 1
-  const limit = Math.min(parseInt(req.query.limit as string) || 24, 100)
-  const skip  = (page - 1) * limit
-
-  const user = await User.findOne({ username: req.params.username })
-    .select('followers')
-    .lean()
-
-  const total = user?.followers?.length || 0
-
-  const populated = await User.findOne({ username: req.params.username })
-    .select('followers')
-    .populate({
-      path: 'followers',
-      select: 'username displayName avatar isVerified',
-      options: { skip, limit },
-    })
-    .lean()
-
-  sendPaginated(res, (populated?.followers as any[]) || [], total, page, limit)
-})
-
-// ─── GET FOLLOWING ───────────────────────────────────────────────────────────
-export const getFollowing = asyncHandler(async (req: Request, res: Response) => {
-  const page  = parseInt(req.query.page as string) || 1
-  const limit = Math.min(parseInt(req.query.limit as string) || 24, 100)
-  const skip  = (page - 1) * limit
-
-  const user = await User.findOne({ username: req.params.username })
-    .select('following')
-    .lean()
-
-  const total = user?.following?.length || 0
-
-  const populated = await User.findOne({ username: req.params.username })
-    .select('following')
-    .populate({
-      path: 'following',
-      select: 'username displayName avatar isVerified',
-      options: { skip, limit },
-    })
-    .lean()
-
-  sendPaginated(res, (populated?.following as any[]) || [], total, page, limit)
 })
 
 // ─── SAVE / UNSAVE PRODUCT ───────────────────────────────────────────────────
@@ -213,8 +127,6 @@ export const searchUsers = asyncHandler(async (req: Request, res: Response) => {
 })
 
 // ─── SYNC CLERK USER ─────────────────────────────────────────────────────────
-// Identity is derived from the verified Clerk JWT via getAuth(req).
-// protect is intentionally omitted — this route creates the user if missing.
 export const syncClerkUser = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
   const { userId } = getAuth(req)
   if (!userId) return next(new AppError('Unauthorised', 401))
@@ -237,18 +149,8 @@ export const syncClerkUser = asyncHandler(async (req: Request, res: Response, ne
     const user = await User.findOneAndUpdate(
       { clerkId: userId },
       {
-        $set: {
-          email,
-          displayName,
-          avatar: clerkUser.imageUrl,
-          isActive: true,
-        },
-        $setOnInsert: {
-          clerkId: userId,
-          username: generatedUsername,
-          role: 'user',
-          isVerified: false,
-        },
+        $set:         { email, displayName, avatar: clerkUser.imageUrl, isActive: true },
+        $setOnInsert: { clerkId: userId, username: generatedUsername, role: 'user', isVerified: false },
       },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     )
@@ -258,18 +160,8 @@ export const syncClerkUser = asyncHandler(async (req: Request, res: Response, ne
       const user = await User.findOneAndUpdate(
         { clerkId: userId },
         {
-          $set: {
-            email,
-            displayName,
-            avatar: clerkUser.imageUrl,
-            isActive: true,
-          },
-          $setOnInsert: {
-            clerkId: userId,
-            username: `${generatedUsername}${Date.now()}`,
-            role: 'user',
-            isVerified: false,
-          },
+          $set:         { email, displayName, avatar: clerkUser.imageUrl, isActive: true },
+          $setOnInsert: { clerkId: userId, username: `${generatedUsername}${Date.now()}`, role: 'user', isVerified: false },
         },
         { upsert: true, new: true, setDefaultsOnInsert: true }
       )
