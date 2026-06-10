@@ -9,10 +9,7 @@ export interface IUserDocument extends Document {
   bio?: string
   website?: string
   role: 'user' | 'admin' | 'moderator'
-  followers: mongoose.Types.ObjectId[]
-  following: mongoose.Types.ObjectId[]
   savedProducts: mongoose.Types.ObjectId[]
-  collections: mongoose.Types.ObjectId[]
   isVerified: boolean
   isActive: boolean
   createdAt: Date
@@ -57,10 +54,8 @@ const UserSchema = new Schema<IUserDocument>(
       enum: ['user', 'admin', 'moderator'],
       default: 'user',
     },
-    followers: [{ type: Schema.Types.ObjectId, ref: 'User' }],
-    following: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+   
     savedProducts: [{ type: Schema.Types.ObjectId, ref: 'Product' }],
-    collections: [{ type: Schema.Types.ObjectId, ref: 'Collection' }],
     isVerified: { type: Boolean, default: false },
     isActive: { type: Boolean, default: true },
   },

@@ -19,3 +19,39 @@ export function getStreamServer(): StreamChat {
   }
   return instance
 }
+export async function createSupportChannel(
+  userId: string,
+  category: string,
+  orderId?: string
+) {
+  const server    = getStreamServer()
+  const channelId = `support_${userId}_${Date.now()}`
+  const channel   = server.channel('support', channelId, {
+    members:      [userId],
+    ticketStatus: 'open',
+    category,
+    orderId:      orderId ?? null,
+    priority:     'normal',
+    createdAt:    new Date().toISOString(),
+  })
+  await channel.create()
+  return channelId
+}
+
+export async function assignAgentToChannel(channelId: string, agentId: string) {
+  const server  = getStreamServer()
+  const channel = server.channel('support', channelId)
+  await channel.addMembers([agentId])
+  await channel.updatePartial({ set: { agentId } })
+}
+
+export async function closeSupportChannel(channelId: string) {
+  const server  = getStreamServer()
+  const channel = server.channel('support', channelId)
+  await channel.updatePartial({ set: { ticketStatus: 'closed' } })
+}
+
+export async function getSupportToken(userId: string): Promise<string> {
+  const server = getStreamServer()
+  return server.createToken(userId)
+}

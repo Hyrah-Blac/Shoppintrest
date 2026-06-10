@@ -3,7 +3,7 @@
 import express, { Request, Response, NextFunction } from 'express'
 import { Webhook } from 'svix'
 import User from '../models/User'
-import Collection from '../models/Collection'
+import SavedFolder from '../models/SavedFolder'
 import Product from '../models/Product'
 import Order from '../models/Order'
 import Review from '../models/Review'
@@ -59,14 +59,13 @@ router.post(
         const streamClient = getStreamServer()
 
         await Promise.all([
-          Collection.deleteMany({ user: user._id }),
+          SavedFolder.deleteMany({ userId: user._id }),
           Review.deleteMany({ user: user._id }),
           Order.deleteMany({ user: user._id }),
           Cart.deleteMany({ user: user._id }),
           Notification.deleteMany({
             $or: [{ recipient: user._id }, { sender: user._id }],
           }),
-          // FIX 1 — replaced console.error with logger.error
           streamClient.deleteUser(user._id.toString(), {
             mark_messages_deleted: true,
             hard_delete:           true,
@@ -140,9 +139,6 @@ router.post(
 // URL: https://your-backend.com/api/webhooks/stream/message-created
 // Events: message.new
 router.post('/stream/message-created', async (req: Request, res: Response) => {
-  // FIX 2 — verify Stream webhook signature so arbitrary POSTs are rejected.
-  // Stream signs requests with an HMAC-SHA256 of the raw body using your
-  // API secret. getStreamServer().verifyWebhook() does this check for you.
   const signature = req.headers['x-signature'] as string
 
   if (!signature) {
@@ -152,7 +148,6 @@ router.post('/stream/message-created', async (req: Request, res: Response) => {
 
   const streamClient = getStreamServer()
 
-  // req.body is a Buffer here because app.ts applies express.raw() to /api/webhooks
   const rawBody = req.body instanceof Buffer ? req.body : Buffer.from(JSON.stringify(req.body))
 
   const isValid = streamClient.verifyWebhook(rawBody, signature)
@@ -161,7 +156,6 @@ router.post('/stream/message-created', async (req: Request, res: Response) => {
     return res.sendStatus(403)
   }
 
-  // Body is now verified — parse it
   let event: any
   try {
     event = JSON.parse(rawBody.toString())
@@ -188,7 +182,6 @@ router.post('/stream/message-created', async (req: Request, res: Response) => {
       link:         '/messages',
     })
   } catch (err) {
-    // FIX 1 — replaced console.error with logger.error
     logger.error('[Stream webhook] notification failed', err)
   }
 

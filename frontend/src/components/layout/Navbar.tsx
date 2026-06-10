@@ -1,20 +1,15 @@
 'use client'
 
 /**
- * Navbar — v2 · Shoppin
+ * Navbar — v3 · Shoppin
  *
- * v1 → v2:
- *  - Accent removed from: active nav indicator, active mobile drawer items,
- *    avatar backgrounds, admin dropdown, sign-out hover, LogOut icon bg
- *  - Active nav indicator: foreground underline dot (was accent)
- *  - Active mobile items: bg-surface + foreground text (was accent-muted + accent)
- *  - Avatar bg: foreground (was accent) — monochromatic
- *  - Admin dropdown: foreground treatment, no accent tint
- *  - Sign-out hover: background-secondary + foreground (no accent)
- *  - LogOut icon bg: background-secondary (was accent / 0.08)
- *  - Orders subtitle: "See your history" (was "Track your purchases")
- *  - badge-red kept — notification badges are functional indicators, not decorative
- *  - btn-save kept — flagged; likely has accent, review in globals.css
+ * v2 → v3:
+ *  - Removed: Collections nav item, Messages nav item
+ *  - Removed: useMessageStore (store being deleted)
+ *  - Removed: BookMarked, MessageCircle imports
+ *  - Added:   Support to desktop dropdown + mobile links
+ *  - Added:   Headphones icon
+ *  - Mobile fill-current guard updated (removed /messages reference)
  */
 
 import { useState, useEffect, useRef } from 'react'
@@ -25,14 +20,13 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '@clerk/nextjs'
 import {
   Search, ShoppingBag, Heart, Bell,
-  Menu, X, Compass, BookMarked,
-  MessageCircle, ChevronRight, LogOut,
+  Menu, X, Compass, ChevronRight, LogOut,
   User, LayoutDashboard, ArrowRight, Package,
+  Headphones,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useCartStore } from '@/store/useCartStore'
 import { useNotificationStore } from '@/store/useNotificationStore'
-import { useMessageStore } from '@/store/useMessageStore'
 import { useUserStore } from '@/store/useUserStore'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import { SearchModal } from '@/components/search/SearchModal'
@@ -40,14 +34,13 @@ import { SearchModal } from '@/components/search/SearchModal'
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
 const navLinks = [
-  { href: '/explore',     label: 'Explore',     icon: Compass    },
-  { href: '/collections', label: 'Collections', icon: BookMarked },
+  { href: '/explore', label: 'Explore', icon: Compass },
 ]
 
 const mobileOnlyLinks = [
-  { href: '/saved',    label: 'Saved',     icon: Heart         },
-  { href: '/messages', label: 'Messages',  icon: MessageCircle },
-  { href: '/orders',   label: 'My Orders', icon: Package       },
+  { href: '/saved',   label: 'Saved',     icon: Heart      },
+  { href: '/orders',  label: 'My Orders', icon: Package    },
+  { href: '/support', label: 'Support',   icon: Headphones },
 ]
 
 // ─── Navbar ───────────────────────────────────────────────────────────────────
@@ -66,7 +59,6 @@ export function Navbar() {
   const itemCount   = useCartStore((s) => s.itemCount)
   const toggleCart  = useCartStore((s) => s.toggleCart)
   const unreadCount = useNotificationStore((s) => s.unreadCount)
-  const totalUnread = useMessageStore((s) => s.totalUnread)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -99,7 +91,6 @@ export function Navbar() {
     ? user.displayName.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
     : user?.email?.[0]?.toUpperCase() ?? 'U'
 
-  // ── Avatar — reused in mobile + desktop ──────────────────────────────────
   const Avatar = ({ size = 28 }: { size?: number }) => (
     <div
       className="rounded-full flex items-center justify-center
@@ -210,32 +201,6 @@ export function Navbar() {
                   <Heart size={17} className={cn(pathname === '/saved' && 'fill-current')} />
                 </Link>
 
-                {/* Messages — desktop only */}
-                <Link
-                  href="/messages"
-                  aria-label="Messages"
-                  className={cn(
-                    'btn-icon relative hidden md:inline-flex',
-                    pathname === '/messages' && 'text-[hsl(var(--foreground))]'
-                  )}
-                >
-                  <MessageCircle size={17} className={cn(pathname === '/messages' && 'fill-current')} />
-                  <AnimatePresence>
-                    {totalUnread > 0 && (
-                      <motion.span
-                        key={totalUnread}
-                        initial={{ scale: 0, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        exit={{   scale: 0, opacity: 0 }}
-                        transition={{ type: 'spring', stiffness: 500, damping: 28 }}
-                        className="badge badge-red badge-notification"
-                      >
-                        {totalUnread > 9 ? '9+' : totalUnread}
-                      </motion.span>
-                    )}
-                  </AnimatePresence>
-                </Link>
-
                 {/* Cart */}
                 <button onClick={toggleCart} aria-label="Cart" className="btn-icon relative">
                   <ShoppingBag size={17} />
@@ -332,7 +297,6 @@ export function Navbar() {
                             Account
                           </p>
 
-                          {/* Profile */}
                           <DropdownItem
                             href={`/profile/${user?.username}`}
                             icon={<User size={14} style={{ color: 'hsl(var(--muted))' }} />}
@@ -340,12 +304,18 @@ export function Navbar() {
                             sub={`shoppin.com/@${user?.username}`}
                           />
 
-                          {/* Orders */}
                           <DropdownItem
                             href="/orders"
                             icon={<Package size={14} style={{ color: 'hsl(var(--muted))' }} />}
                             label="My orders"
                             sub="See your history"
+                          />
+
+                          <DropdownItem
+                            href="/support"
+                            icon={<Headphones size={14} style={{ color: 'hsl(var(--muted))' }} />}
+                            label="Support"
+                            sub="Get help with your orders"
                           />
 
                           {isAdmin && (
@@ -427,7 +397,6 @@ export function Navbar() {
                   >
                     Sign in
                   </Link>
-                  {/* NOTE: btn-save likely has accent bg — review in globals.css */}
                   <Link href="/sign-up" className="btn-save text-sm">Join free</Link>
                 </div>
               </>
@@ -486,7 +455,6 @@ export function Navbar() {
                   {allMobileLinks.map((link, i) => {
                     const Icon   = link.icon
                     const active = pathname === link.href
-                    const badge  = link.href === '/messages' ? totalUnread : 0
                     return (
                       <motion.div
                         key={link.href}
@@ -511,14 +479,9 @@ export function Navbar() {
                               ? 'bg-[hsl(var(--background-secondary))] text-[hsl(var(--foreground))]'
                               : 'bg-[hsl(var(--background-secondary))] text-[hsl(var(--muted))] group-hover:text-[hsl(var(--foreground))]'
                           )}>
-                            <Icon size={14} className={cn((link.href === '/saved' || link.href === '/messages') && active && 'fill-current')} />
+                            <Icon size={14} className={cn(link.href === '/saved' && active && 'fill-current')} />
                           </span>
                           <span className="flex-1 text-sm font-medium">{link.label}</span>
-                          {badge > 0 && (
-                            <span className="badge badge-red" style={{ fontSize: '10px', padding: '2px 6px' }}>
-                              {badge > 9 ? '9+' : badge}
-                            </span>
-                          )}
                           <ChevronRight
                             size={13}
                             className={cn(
@@ -605,7 +568,6 @@ export function Navbar() {
                       >
                         Sign in
                       </Link>
-                      {/* NOTE: btn-save likely has accent bg — review in globals.css */}
                       <Link href="/sign-up" className="btn-save w-full justify-center gap-2 py-3 text-sm">
                         Join free
                         <ArrowRight size={14} />
@@ -665,10 +627,7 @@ export function Navbar() {
 // ─── DropdownItem ─────────────────────────────────────────────────────────────
 
 function DropdownItem({
-  href,
-  icon,
-  label,
-  sub,
+  href, icon, label, sub,
 }: {
   href: string
   icon: React.ReactNode
@@ -691,17 +650,11 @@ function DropdownItem({
         {icon}
       </span>
       <span className="flex-1 min-w-0">
-        <span
-          className="block text-[13.5px] font-[450] leading-none"
-          style={{ color: 'hsl(var(--foreground))' }}
-        >
+        <span className="block text-[13.5px] font-[450] leading-none" style={{ color: 'hsl(var(--foreground))' }}>
           {label}
         </span>
         {sub && (
-          <span
-            className="block text-[11.5px] mt-0.5 truncate"
-            style={{ color: 'hsl(var(--muted))' }}
-          >
+          <span className="block text-[11.5px] mt-0.5 truncate" style={{ color: 'hsl(var(--muted))' }}>
             {sub}
           </span>
         )}

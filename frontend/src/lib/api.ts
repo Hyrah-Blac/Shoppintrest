@@ -146,9 +146,6 @@ export const apiClient = {
       api.patch(`/api/reviews/${id}/helpful`),
   },
 
-  // Messages — removed (now handled by Stream Chat SDK directly)
-  // All messaging is done via channel.sendMessage(), channel.watch() etc.
-
   // Chat — fetches a Stream Chat auth token from the backend
   // Used internally by StreamProvider — not called from pages directly
   chat: {
@@ -205,5 +202,41 @@ export const apiClient = {
       api.get('/api/orders', { params }),
     updateOrderStatus: (id: string, data: any) =>
       api.patch(`/api/orders/${id}/status`, data),
+  },
+
+  // Saved
+  saved: {
+    getAll: () =>
+      api.get('/api/saved'),
+    getFolders: () =>
+      api.get('/api/saved/folders'),
+    getFolder: (slug: string) =>
+      api.get(`/api/saved/folders/${slug}`),
+    save: (productId: string, folderId?: string) =>
+      api.post(`/api/saved/${productId}`, { folderId }),
+    unsave: (productId: string) =>
+      api.delete(`/api/saved/${productId}`),
+    move: (productId: string, from: string, to: string) =>
+      api.post(`/api/saved/${productId}/move`, { fromSlug: from, toSlug: to }),
+    createFolder: (name: string) =>
+      api.post('/api/saved/folders', { name }),
+    renameFolder: (slug: string, name: string) =>
+      api.patch(`/api/saved/folders/${slug}`, { name }),
+    deleteFolder: (slug: string) =>
+      api.delete(`/api/saved/folders/${slug}`),
+  },
+
+  // Support
+  support: {
+    getTickets: () =>
+      api.get('/api/support/tickets'),
+    createTicket: (body: { category: string; orderId?: string }) =>
+      api.post('/api/support/tickets', body),
+    getTicket: (id: string) =>
+      api.get(`/api/support/tickets/${id}`),
+    closeTicket: (id: string) =>
+      api.patch(`/api/support/tickets/${id}/close`),
+    getStreamToken: () =>
+      api.get('/api/support/stream-token'),
   },
 }
