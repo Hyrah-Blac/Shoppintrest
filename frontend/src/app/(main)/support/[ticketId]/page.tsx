@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useSupportStore } from '@/store/useSupportStore'
 import { useSupportChat } from '@/hooks/useSupportChat'
 import { TicketStatus, TicketCategory } from '@/types/support'
-import { useStreamChatClient } from '@/components/providers/StreamProvider'
+import { useStreamContext } from '@/components/providers/StreamProvider'
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 
@@ -543,7 +543,7 @@ export default function TicketDetailPage() {
   const ticketId = params.ticketId as string
 
   const { tickets, isLoaded, loadTickets, closeTicket } = useSupportStore()
-  const { client, isReady }                             = useStreamChatClient()
+  const { client, isReady } = useStreamContext()
   const { messages, isLoading, openTicket, sendMessage, loadOlderMessages } =
     useSupportChat(client, isReady)
 
