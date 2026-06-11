@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Package, ShoppingCart,
   Users, BarChart3, Settings, LogOut,
-  Tag, Bell, ChevronRight,
+  Headset, Bell, ChevronRight,
 } from 'lucide-react'
 import { useClerk } from '@clerk/nextjs'
 import { cn } from '@/lib/utils'
@@ -16,7 +16,7 @@ const navItems = [
   { label: 'Products',    href: '/admin/products',    icon: Package         },
   { label: 'Orders',      href: '/admin/orders',      icon: ShoppingCart    },
   { label: 'Users',       href: '/admin/users',       icon: Users           },
-  { label: 'Collections', href: '/admin/collections', icon: Tag             },
+  { label: 'Support',     href: '/admin/support',     icon: Headset         },
   { label: 'Analytics',   href: '/admin/analytics',   icon: BarChart3       },
   { label: 'Settings',    href: '/admin/settings',    icon: Settings        },
 ]

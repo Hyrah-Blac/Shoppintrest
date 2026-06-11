@@ -22,6 +22,7 @@ import adminRoutes        from './routes/admin.routes'
 import webhookRoutes      from './routes/webhookRoutes'
 import savedFolderRoutes  from './routes/savedFolder.routes'
 import supportRoutes      from './routes/support.routes'
+import adminSupportRoutes from './routes/admin-support.routes'
 
 const app = express()
 
@@ -106,6 +107,7 @@ app.use('/api/upload',        uploadRoutes)
 app.use('/api/admin',         adminRoutes)
 app.use('/api/saved',         savedFolderRoutes)
 app.use('/api/support',       supportRoutes)
+app.use('/api/support/admin', adminSupportRoutes)
 
 app.use('*', (req, res) => {
   res.status(404).json({

@@ -238,5 +238,15 @@ export const apiClient = {
       api.patch(`/api/support/tickets/${id}/close`),
     getStreamToken: () =>
       api.get('/api/support/stream-token'),
+
+    // ── Admin ──
+    admin: {
+      getAllTickets: (status?: string) =>
+        api.get('/api/support/admin/tickets', { params: status ? { status } : undefined }),
+      getTicket: (ticketId: string) =>
+        api.get(`/api/support/admin/tickets/${ticketId}`),
+      closeTicket: (ticketId: string) =>
+        api.patch(`/api/support/admin/tickets/${ticketId}/close`),
+    },
   },
 }

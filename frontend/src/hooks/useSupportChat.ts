@@ -14,7 +14,7 @@ export function useSupportChat(client: StreamChat | null, isReady: boolean) {
 
     const loadTickets = async () => {
       const channels = await client.queryChannels(
-        { type: 'support', members: { $in: [client.userID!] } },
+        { type: 'messaging', members: { $in: [client.userID!] } },
         { last_message_at: -1 },
         { watch: true, state: true }
       )
@@ -38,7 +38,7 @@ export function useSupportChat(client: StreamChat | null, isReady: boolean) {
     if (!client) return
     setIsLoading(true)
     try {
-      const channel = client.channel('support', channelId)
+      const channel = client.channel('messaging', channelId)
       await channel.watch()
       const state = channel.state.messages
       setActiveChannel(channel)
