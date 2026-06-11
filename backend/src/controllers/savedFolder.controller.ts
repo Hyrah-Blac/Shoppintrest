@@ -10,7 +10,7 @@ const toSlug = (name: string) =>
   name.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
 
 export const createFolder = asyncHandler(async (req: Request, res: Response) => {
-  const userId = (req as any).userId
+  const userId = (req as any).user._id
   const { name } = req.body
   if (!name) throw new AppError('Folder name is required', 400)
 
@@ -26,13 +26,13 @@ export const createFolder = asyncHandler(async (req: Request, res: Response) => 
 })
 
 export const getFolders = asyncHandler(async (req: Request, res: Response) => {
-  const userId = (req as any).userId
+  const userId = (req as any).user._id
   const folders = await SavedFolder.find({ userId }).sort({ isDefault: -1, createdAt: 1 })
   sendSuccess(res, folders, 'Folders fetched')
 })
 
 export const getFolder = asyncHandler(async (req: Request, res: Response) => {
-  const userId = (req as any).userId
+  const userId = (req as any).user._id
   const { slug } = req.params
   const page  = parseInt(req.query.page as string) || 1
   const limit = 20
@@ -46,7 +46,7 @@ export const getFolder = asyncHandler(async (req: Request, res: Response) => {
 })
 
 export const renameFolder = asyncHandler(async (req: Request, res: Response) => {
-  const userId = (req as any).userId
+  const userId = (req as any).user._id
   const { slug } = req.params
   const { name } = req.body
   if (!name) throw new AppError('Name is required', 400)
@@ -65,7 +65,7 @@ export const renameFolder = asyncHandler(async (req: Request, res: Response) => 
 })
 
 export const deleteFolder = asyncHandler(async (req: Request, res: Response) => {
-  const userId = (req as any).userId
+  const userId = (req as any).user._id
   const { slug } = req.params
 
   const folder = await SavedFolder.findOne({ userId, slug })
@@ -77,7 +77,7 @@ export const deleteFolder = asyncHandler(async (req: Request, res: Response) => 
 })
 
 export const saveProduct = asyncHandler(async (req: Request, res: Response) => {
-  const userId        = (req as any).userId
+  const userId        = (req as any).user._id
   const { productId } = req.params
   const { folderId }  = req.body
 
@@ -95,7 +95,7 @@ export const saveProduct = asyncHandler(async (req: Request, res: Response) => {
 })
 
 export const unsaveProduct = asyncHandler(async (req: Request, res: Response) => {
-  const userId        = (req as any).userId
+  const userId        = (req as any).user._id
   const { productId } = req.params
 
   await User.findByIdAndUpdate(userId, { $pull: { savedProducts: productId } })
@@ -105,7 +105,7 @@ export const unsaveProduct = asyncHandler(async (req: Request, res: Response) =>
 })
 
 export const moveProduct = asyncHandler(async (req: Request, res: Response) => {
-  const userId        = (req as any).userId
+  const userId        = (req as any).user._id
   const { productId } = req.params
   const { fromSlug, toSlug: destSlug } = req.body
 
@@ -122,7 +122,7 @@ export const moveProduct = asyncHandler(async (req: Request, res: Response) => {
 })
 
 export const getAllSaved = asyncHandler(async (req: Request, res: Response) => {
-  const userId = (req as any).userId
+  const userId = (req as any).user._id
   const page   = parseInt(req.query.page as string) || 1
   const limit  = 20
 
