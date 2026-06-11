@@ -1,10 +1,11 @@
 import { Request, Response } from 'express'
 import SupportTicket from '../models/SupportTicket'
-import asyncHandler from '../utils/asyncHandler'
-import AppError from '../utils/AppError'
+import Notification  from '../models/Notification'
+import asyncHandler  from '../utils/asyncHandler'
+import AppError      from '../utils/AppError'
 import { sendSuccess } from '../utils/apiResponse'
 
-// ─── ADMIN — GET ALL TICKETS (across every user) ─────────────────────────────
+// ─── ADMIN — GET ALL TICKETS ──────────────────────────────────────────────────
 export const getAllTickets = asyncHandler(async (req: Request, res: Response) => {
   const { status } = req.query
 
@@ -19,7 +20,7 @@ export const getAllTickets = asyncHandler(async (req: Request, res: Response) =>
   sendSuccess(res, tickets, 'Tickets fetched')
 })
 
-// ─── ADMIN — GET ONE TICKET (any user) ───────────────────────────────────────
+// ─── ADMIN — GET ONE TICKET ───────────────────────────────────────────────────
 export const getTicketAdmin = asyncHandler(async (req: Request, res: Response) => {
   const { ticketId } = req.params
 
@@ -32,7 +33,7 @@ export const getTicketAdmin = asyncHandler(async (req: Request, res: Response) =
   sendSuccess(res, ticket, 'Ticket fetched')
 })
 
-// ─── ADMIN — CLOSE TICKET (any user) ─────────────────────────────────────────
+// ─── ADMIN — CLOSE TICKET ─────────────────────────────────────────────────────
 export const closeTicketAdmin = asyncHandler(async (req: Request, res: Response) => {
   const { ticketId } = req.params
 
@@ -47,4 +48,22 @@ export const closeTicketAdmin = asyncHandler(async (req: Request, res: Response)
   await ticket.save()
 
   sendSuccess(res, ticket, 'Ticket closed')
+})
+
+// ─── ADMIN — NOTIFY SUPPORT REPLY ────────────────────────────────────────────
+export const notifySupportReply = asyncHandler(async (req: Request, res: Response) => {
+  const { ticketId } = req.params
+
+  const ticket = await SupportTicket.findById(ticketId)
+  if (!ticket) throw new AppError('Ticket not found', 404)
+
+  await Notification.create({
+    userId:  ticket.userId,
+    type:    'message',
+    message: 'New message from Support',
+    link:    `/support/${ticket._id}`,
+    read:    false,
+  })
+
+  sendSuccess(res, null, 'Notification sent')
 })

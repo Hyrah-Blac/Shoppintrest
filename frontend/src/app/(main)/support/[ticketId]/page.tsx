@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useSupportStore } from '@/store/useSupportStore'
@@ -8,38 +8,14 @@ import { useSupportChat } from '@/hooks/useSupportChat'
 import { TicketStatus, TicketCategory } from '@/types/support'
 import { useStreamContext } from '@/components/providers/StreamProvider'
 
-// ─── Design tokens ────────────────────────────────────────────────────────────
-
 const DISPLAY: React.CSSProperties = {
   fontFamily: 'var(--font-display, "Cormorant Garamond", Georgia, serif)',
 }
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
 const CATEGORY_LABELS: Record<TicketCategory, string> = {
-  order:   'Order issue',
-  return:  'Return',
-  refund:  'Refund',
-  account: 'Account',
-  other:   'Other',
+  order: 'Order issue', return: 'Return', refund: 'Refund',
+  account: 'Account', other: 'Message',
 }
-
-const CATEGORY_ICONS: Record<TicketCategory, string> = {
-  order:   'ti-package',
-  return:  'ti-arrow-back-up',
-  refund:  'ti-credit-card',
-  account: 'ti-user-circle',
-  other:   'ti-message-circle',
-}
-
-const STATUS_META: Record<TicketStatus, { label: string; color: string }> = {
-  open:     { label: 'Open',      color: 'var(--color-text-info)'      },
-  pending:  { label: 'In review', color: 'var(--color-text-warning)'   },
-  resolved: { label: 'Resolved',  color: 'var(--color-text-success)'   },
-  closed:   { label: 'Closed',    color: 'var(--color-text-secondary)' },
-}
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function timeLabel(d?: string | Date) {
   if (!d) return ''
@@ -49,7 +25,7 @@ function timeLabel(d?: string | Date) {
 function relativeTime(d?: string | Date) {
   if (!d) return ''
   const diff = Date.now() - new Date(d as string).getTime()
-  const m    = Math.floor(diff / 60000)
+  const m = Math.floor(diff / 60000)
   if (m < 1) return 'Just now'
   if (m < 60) return `${m}m ago`
   const h = Math.floor(m / 60)
@@ -67,11 +43,10 @@ function dayLabel(d?: string | Date) {
 }
 
 // ─── Typing indicator ─────────────────────────────────────────────────────────
-// Pattern from Intercom: makes the experience feel alive and app-like.
 
-function TypingIndicator() {
+function TypingDots() {
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, padding: '4px 0' }}>
+    <div style={{ display: 'flex', alignItems: 'flex-end', padding: '4px 0' }}>
       <div style={{
         display: 'flex', alignItems: 'center', gap: 4,
         background: 'var(--color-background-secondary)',
@@ -80,63 +55,43 @@ function TypingIndicator() {
         padding: '10px 14px',
       }}>
         {[0, 0.2, 0.4].map((delay, i) => (
-          <span
-            key={i}
-            style={{
-              width: 5, height: 5, borderRadius: '50%',
-              background: 'var(--color-text-secondary)',
-              display: 'block',
-              animation: `bounce 1.2s ${delay}s infinite ease-in-out`,
-            }}
-          />
+          <span key={i} style={{
+            width: 5, height: 5, borderRadius: '50%',
+            background: 'var(--color-text-secondary)',
+            display: 'block',
+            animation: `bounce 1.2s ${delay}s infinite ease-in-out`,
+          }} />
         ))}
       </div>
       <style>{`
         @keyframes bounce {
-          0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
-          30%            { transform: translateY(-5px); opacity: 1; }
+          0%,60%,100%{transform:translateY(0);opacity:.4}
+          30%{transform:translateY(-5px);opacity:1}
         }
       `}</style>
     </div>
   )
 }
 
-// ─── Read receipt ─────────────────────────────────────────────────────────────
-
-function ReadReceipt({ isRead }: { isRead?: boolean }) {
-  return (
-    <span style={{
-      fontSize: 10, color: isRead ? 'var(--color-text-info)' : 'var(--color-text-secondary)',
-      opacity: isRead ? 1 : 0.5, userSelect: 'none',
-    }}>
-      {isRead ? '✓✓' : '✓'}
-    </span>
-  )
-}
-
 // ─── Message bubble ───────────────────────────────────────────────────────────
 
-function MessageBubble({
+function Bubble({
   text, isMine, createdAt, isSystem, isRead,
 }: {
-  text: string
-  isMine: boolean
-  createdAt?: string | Date
-  isSystem?: boolean
-  isRead?: boolean
+  text: string; isMine: boolean; createdAt?: string | Date
+  isSystem?: boolean; isRead?: boolean
 }) {
-  const [showAbsolute, setShowAbsolute] = useState(false)
+  const [showTime, setShowTime] = useState(false)
 
   if (isSystem) {
     return (
-      <div style={{ textAlign: 'center', padding: '8px 0', margin: '8px 0' }}>
+      <div style={{ textAlign: 'center', padding: '10px 0' }}>
         <span style={{
-          ...DISPLAY,
-          fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase',
-          color: 'var(--color-text-secondary)',
+          fontSize: 11, color: 'var(--color-text-secondary)',
           background: 'var(--color-background-secondary)',
           padding: '4px 14px', borderRadius: 20,
           border: '0.5px solid var(--color-border-tertiary)',
+          whiteSpace: 'pre-line',
         }}>
           {text}
         </span>
@@ -150,236 +105,81 @@ function MessageBubble({
       alignItems: isMine ? 'flex-end' : 'flex-start',
       margin: '3px 0',
     }}>
-      <div
-        style={{
-          maxWidth: '72%',
-          background: isMine ? 'var(--color-text-primary)' : 'var(--color-background-secondary)',
-          color: isMine ? 'var(--color-background-primary)' : 'var(--color-text-primary)',
-          borderRadius: isMine ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
-          padding: '9px 13px', fontSize: 13, lineHeight: 1.65,
-          border: isMine ? 'none' : '0.5px solid var(--color-border-tertiary)',
-        }}
-      >
+      <div style={{
+        maxWidth: '75%',
+        background: isMine ? 'var(--color-text-primary)' : 'var(--color-background-secondary)',
+        color: isMine ? 'var(--color-background-primary)' : 'var(--color-text-primary)',
+        borderRadius: isMine ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+        padding: '10px 14px', fontSize: 14, lineHeight: 1.6,
+        border: isMine ? 'none' : '0.5px solid var(--color-border-tertiary)',
+        wordBreak: 'break-word',
+      }}>
         {text}
       </div>
-
-      {/* Timestamp — relative by default, absolute on hover (Muzli best practice) */}
       {createdAt && (
         <div
           style={{
             display: 'flex', alignItems: 'center', gap: 4,
             marginTop: 3, padding: '0 4px', cursor: 'default',
           }}
-          onMouseEnter={() => setShowAbsolute(true)}
-          onMouseLeave={() => setShowAbsolute(false)}
+          onMouseEnter={() => setShowTime(true)}
+          onMouseLeave={() => setShowTime(false)}
         >
-          <span style={{ fontSize: 10, letterSpacing: '0.04em', color: 'var(--color-text-secondary)', transition: 'opacity 0.15s' }}>
-            {showAbsolute ? timeLabel(createdAt) : relativeTime(createdAt)}
+          <span style={{ fontSize: 10, color: 'var(--color-text-secondary)' }}>
+            {showTime ? timeLabel(createdAt) : relativeTime(createdAt)}
           </span>
-          {isMine && <ReadReceipt isRead={isRead} />}
+          {isMine && (
+            <span style={{
+              fontSize: 10,
+              color: isRead ? 'var(--color-text-info)' : 'var(--color-text-secondary)',
+              opacity: isRead ? 1 : 0.5,
+            }}>
+              {isRead ? '✓✓' : '✓'}
+            </span>
+          )}
         </div>
       )}
     </div>
   )
 }
 
-// ─── Agent info bar ───────────────────────────────────────────────────────────
-// Humanises the support experience — users know a real person will reply.
+// ─── CSAT ─────────────────────────────────────────────────────────────────────
 
-function AgentInfoBar() {
-  return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 10,
-      padding: '10px 16px',
-      borderBottom: '0.5px solid var(--color-border-tertiary)',
-      background: 'var(--color-background-secondary)',
-      flexShrink: 0,
-    }}>
-      {/* Stacked agent avatars */}
-      <div style={{ display: 'flex', position: 'relative', width: 44 }}>
-        {['S', 'A'].map((initial, i) => (
-          <div key={i} style={{
-            position: i === 0 ? 'relative' : 'absolute',
-            left: i === 0 ? 0 : 16,
-            width: 24, height: 24, borderRadius: '50%',
-            background: i === 0 ? 'var(--color-text-primary)' : 'var(--color-border-secondary)',
-            border: '1.5px solid var(--color-background-secondary)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 10, fontWeight: 600,
-            color: i === 0 ? 'var(--color-background-primary)' : 'var(--color-text-secondary)',
-            zIndex: i === 0 ? 1 : 0,
-          }}>
-            {initial}
-          </div>
-        ))}
-      </div>
-
-      <div style={{ flex: 1 }}>
-        <p style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-primary)', margin: 0 }}>
-          Shoppintrest Support
-        </p>
-        <p style={{ fontSize: 11, color: 'var(--color-text-secondary)', margin: '1px 0 0' }}>
-          Replies within a few hours · Human team
-        </p>
-      </div>
-
-      {/* Online indicator */}
-      <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--color-text-secondary)' }}>
-        <span style={{
-          width: 6, height: 6, borderRadius: '50%',
-          background: 'var(--color-text-success)',
-          boxShadow: '0 0 0 2px color-mix(in srgb, var(--color-text-success) 25%, transparent)',
-        }} />
-        Online
-      </span>
-    </div>
-  )
-}
-
-// ─── Close confirmation ───────────────────────────────────────────────────────
-
-function CloseConfirm({ onConfirm, onCancel, closing }: {
-  onConfirm: () => void
-  onCancel: () => void
-  closing: boolean
-}) {
-  useEffect(() => {
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = prev }
-  }, [])
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onCancel() }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [onCancel])
-
-  return (
-    <div
-      onClick={e => { if (e.target === e.currentTarget) onCancel() }}
-      style={{
-        position: 'fixed', inset: 0, zIndex: 9000,
-        background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(8px)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: '1.5rem',
-      }}
-    >
-      <div style={{
-        background: 'var(--color-background-primary)',
-        border: '0.5px solid var(--color-border-tertiary)',
-        borderRadius: 14, padding: '2rem',
-        maxWidth: 380, width: '100%',
-      }}>
-        <p style={{
-          ...DISPLAY,
-          fontSize: 9, letterSpacing: '0.3em', textTransform: 'uppercase',
-          color: 'var(--color-text-secondary)', margin: '0 0 10px',
-        }}>
-          Confirm action
-        </p>
-        <h2 style={{
-          ...DISPLAY,
-          fontSize: 'clamp(1.4rem, 4vw, 1.8rem)', fontWeight: 300,
-          color: 'var(--color-text-primary)', margin: '0 0 12px', lineHeight: 1,
-        }}>
-          Close this ticket?
-        </h2>
-        <p style={{
-          fontSize: 12, lineHeight: 1.7,
-          color: 'var(--color-text-secondary)', margin: '0 0 1.75rem',
-        }}>
-          The conversation will be archived. If the issue returns, you can open a new request
-          and we'll have full context from this one.
-        </p>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button
-            onClick={onCancel}
-            disabled={closing}
-            style={{
-              flex: 1, padding: '10px', fontSize: 11, fontWeight: 500,
-              letterSpacing: '0.16em', textTransform: 'uppercase',
-              borderRadius: 8, cursor: 'pointer',
-              background: 'transparent', color: 'var(--color-text-secondary)',
-              border: '0.5px solid var(--color-border-secondary)',
-              transition: 'all 0.15s',
-            }}
-            onMouseEnter={e => e.currentTarget.style.background = 'var(--color-background-secondary)'}
-            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-          >
-            Keep open
-          </button>
-          <button
-            onClick={onConfirm}
-            disabled={closing}
-            style={{
-              flex: 1, padding: '10px', fontSize: 11, fontWeight: 500,
-              letterSpacing: '0.16em', textTransform: 'uppercase',
-              borderRadius: 8, cursor: closing ? 'not-allowed' : 'pointer',
-              background: 'var(--color-text-primary)',
-              color: 'var(--color-background-primary)',
-              border: 'none', transition: 'opacity 0.15s',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              opacity: closing ? 0.7 : 1,
-            }}
-          >
-            {closing ? <><i className="ti ti-loader-2 ti-spin" /> Closing…</> : 'Close ticket'}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ─── CSAT prompt (shown when ticket is resolved) ──────────────────────────────
-
-function CSATPrompt() {
-  const [voted, setVoted] = useState<'up' | 'down' | null>(null)
+function CSAT() {
+  const [voted,   setVoted]   = useState<'up' | 'down' | null>(null)
   const [comment, setComment] = useState('')
-  const [submitted, setSubmitted] = useState(false)
+  const [done,    setDone]    = useState(false)
 
-  if (submitted) {
-    return (
-      <div style={{
-        padding: '14px 20px',
-        borderTop: '0.5px solid var(--color-border-tertiary)',
-        display: 'flex', alignItems: 'center', gap: 8,
-        fontSize: 12, color: 'var(--color-text-secondary)',
-        flexShrink: 0,
-      }}>
-        <i className="ti ti-check" style={{ fontSize: 13, color: 'var(--color-text-success)' }} />
-        Thanks for the feedback — it helps us improve.
-      </div>
-    )
-  }
+  if (done) return (
+    <div style={{
+      padding: '12px 20px', borderTop: '0.5px solid var(--color-border-tertiary)',
+      display: 'flex', alignItems: 'center', gap: 8,
+      fontSize: 12, color: 'var(--color-text-secondary)', flexShrink: 0,
+    }}>
+      <i className="ti ti-check" style={{ color: 'var(--color-text-success)', fontSize: 13 }} />
+      Thanks — that helps us improve.
+    </div>
+  )
 
   return (
     <div style={{
-      padding: '14px 20px',
-      borderTop: '0.5px solid var(--color-border-tertiary)',
+      padding: '12px 20px', borderTop: '0.5px solid var(--color-border-tertiary)',
       flexShrink: 0,
     }}>
       <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '0 0 10px' }}>
-        Was this resolved to your satisfaction?
+        Was this helpful?
       </p>
-      <div style={{ display: 'flex', gap: 8, marginBottom: voted ? 10 : 0 }}>
+      <div style={{ display: 'flex', gap: 8 }}>
         {(['up', 'down'] as const).map(v => (
-          <button
-            key={v}
-            onClick={() => setVoted(v)}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              padding: '6px 14px', fontSize: 12, fontWeight: 500,
-              borderRadius: 8, cursor: 'pointer', transition: 'all 0.15s',
-              background: voted === v ? 'var(--color-background-secondary)' : 'transparent',
-              border: voted === v
-                ? '0.5px solid var(--color-border-secondary)'
-                : '0.5px solid var(--color-border-tertiary)',
-              color: voted === v ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
-            }}
-          >
-            {v === 'up' ? '👍' : '👎'}
-            {v === 'up' ? 'Yes' : 'Not quite'}
+          <button key={v} onClick={() => setVoted(v)} style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '6px 14px', fontSize: 13, borderRadius: 8, cursor: 'pointer',
+            background: voted === v ? 'var(--color-background-secondary)' : 'transparent',
+            border: `0.5px solid ${voted === v ? 'var(--color-border-secondary)' : 'var(--color-border-tertiary)'}`,
+            color: voted === v ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
+            transition: 'all 0.15s',
+          }}>
+            {v === 'up' ? '👍 Yes' : '👎 Not quite'}
           </button>
         ))}
       </div>
@@ -400,29 +200,15 @@ function CSATPrompt() {
               fontFamily: 'var(--font-sans)',
             }}
           />
-          <button
-            onClick={() => setSubmitted(true)}
-            style={{
-              marginTop: 8, padding: '7px 16px', fontSize: 11, fontWeight: 500,
-              letterSpacing: '0.16em', textTransform: 'uppercase',
-              background: 'var(--color-text-primary)', color: 'var(--color-background-primary)',
-              border: 'none', borderRadius: 7, cursor: 'pointer',
-            }}
-          >
-            Submit
-          </button>
         </div>
       )}
-      {voted === 'up' && (
-        <button
-          onClick={() => setSubmitted(true)}
-          style={{
-            marginTop: 10, padding: '7px 16px', fontSize: 11, fontWeight: 500,
-            letterSpacing: '0.16em', textTransform: 'uppercase',
-            background: 'var(--color-text-primary)', color: 'var(--color-background-primary)',
-            border: 'none', borderRadius: 7, cursor: 'pointer',
-          }}
-        >
+      {voted && (
+        <button onClick={() => setDone(true)} style={{
+          marginTop: 10, padding: '7px 16px', fontSize: 11, fontWeight: 500,
+          background: 'var(--color-text-primary)',
+          color: 'var(--color-background-primary)',
+          border: 'none', borderRadius: 7, cursor: 'pointer',
+        }}>
           Submit
         </button>
       )}
@@ -434,89 +220,78 @@ function CSATPrompt() {
 
 function Composer({
   onSend,
+  onTyping,
   disabled,
 }: {
-  onSend: (text: string) => Promise<void>
+  onSend: (t: string) => Promise<void>
+  onTyping?: () => void
   disabled?: boolean
 }) {
   const [input,   setInput]   = useState('')
   const [sending, setSending] = useState(false)
-  const textareaRef           = useRef<HTMLTextAreaElement>(null)
-  const focused               = useRef(false)
+  const ref = useRef<HTMLTextAreaElement>(null)
 
-  // Auto-grow textarea
   useEffect(() => {
-    const el = textareaRef.current
+    const el = ref.current
     if (!el) return
     el.style.height = 'auto'
     el.style.height = `${Math.min(el.scrollHeight, 120)}px`
   }, [input])
 
-  async function handleSend() {
+  const send = useCallback(async () => {
     const text = input.trim()
     if (!text || sending || disabled) return
     setSending(true)
-    try { await onSend(text); setInput('') }
-    finally { setSending(false) }
-  }
-
-  function handleKey(e: React.KeyboardEvent) {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() }
-  }
+    try { await onSend(text); setInput('') } finally { setSending(false) }
+  }, [input, sending, disabled, onSend])
 
   const canSend = !!input.trim() && !sending && !disabled
 
   return (
     <div style={{
-      padding: '10px 14px 12px',
+      padding: '10px 14px 14px',
       borderTop: '0.5px solid var(--color-border-tertiary)',
       flexShrink: 0,
     }}>
-      <div
-        style={{
-          display: 'flex', gap: 8, alignItems: 'flex-end',
-          border: '0.5px solid var(--color-border-secondary)',
-          borderRadius: 13, padding: '7px 7px 7px 14px',
-          transition: 'border-color 0.15s',
-        }}
-        onFocusCapture={() => {
-          const el = document.getElementById('composer-wrap')
-          if (el) el.style.borderColor = 'var(--color-border-primary)'
-        }}
-        onBlurCapture={() => {
-          const el = document.getElementById('composer-wrap')
-          if (el) el.style.borderColor = 'var(--color-border-secondary)'
-        }}
-        id="composer-wrap"
-      >
+      <div style={{
+        display: 'flex', gap: 8, alignItems: 'flex-end',
+        border: '0.5px solid var(--color-border-secondary)',
+        borderRadius: 14, padding: '8px 8px 8px 14px',
+        transition: 'border-color 0.15s',
+      }}>
         <textarea
-          ref={textareaRef}
+          ref={ref}
           value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={handleKey}
-          placeholder="Message support…"
+          onChange={e => {
+            setInput(e.target.value)
+            onTyping?.()
+          }}
+          onKeyDown={e => {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() }
+          }}
+          placeholder={disabled ? 'This conversation is closed.' : 'Message support…'}
           rows={1}
           disabled={disabled}
           style={{
             flex: 1, resize: 'none', border: 'none', outline: 'none',
-            background: 'transparent', fontSize: 13, lineHeight: 1.6,
+            background: 'transparent', fontSize: 14, lineHeight: 1.6,
             color: 'var(--color-text-primary)',
             fontFamily: 'var(--font-sans)',
-            overflowY: 'hidden', padding: '3px 0',
+            overflowY: 'hidden', padding: '2px 0',
           }}
         />
         <button
-          onClick={handleSend}
+          onClick={send}
           disabled={!canSend}
           aria-label="Send"
           style={{
-            width: 34, height: 34, borderRadius: 9, flexShrink: 0,
+            width: 36, height: 36, borderRadius: 10, flexShrink: 0,
             background: canSend ? 'var(--color-text-primary)' : 'transparent',
             border: '0.5px solid var(--color-border-secondary)',
             color: canSend ? 'var(--color-background-primary)' : 'var(--color-text-secondary)',
             cursor: canSend ? 'pointer' : 'not-allowed',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 14, transition: 'all 0.15s',
+            fontSize: 15, transition: 'all 0.15s',
           }}
         >
           {sending
@@ -526,8 +301,8 @@ function Composer({
         </button>
       </div>
       <p style={{
-        fontSize: 10, letterSpacing: '0.06em',
-        color: 'var(--color-text-secondary)', textAlign: 'center', margin: '6px 0 0',
+        fontSize: 10, color: 'var(--color-text-secondary)',
+        textAlign: 'center', margin: '5px 0 0', letterSpacing: '0.04em',
       }}>
         Enter to send · Shift+Enter for new line
       </p>
@@ -538,23 +313,23 @@ function Composer({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function TicketDetailPage() {
-  const router   = useRouter()
   const params   = useParams()
   const ticketId = params.ticketId as string
 
-  const { tickets, isLoaded, loadTickets, closeTicket } = useSupportStore()
+  const { tickets, isLoaded, loadTickets } = useSupportStore()
   const { client, isReady } = useStreamContext()
-  const { messages, isLoading, openTicket, sendMessage, loadOlderMessages } =
-    useSupportChat(client, isReady)
-
-  const [showClose,     setShowClose]     = useState(false)
-  const [closing,       setClosing]       = useState(false)
-  const [agentTyping,   setAgentTyping]   = useState(false)
+  const {
+    messages, isLoading, isTyping, readBy,
+    openTicket, sendMessage, loadOlderMessages, sendTyping,
+  } = useSupportChat(client, isReady)
 
   const bottomRef = useRef<HTMLDivElement>(null)
   const listRef   = useRef<HTMLDivElement>(null)
+  const ticket    = tickets.find(t => t._id === ticketId)
 
-  const ticket = tickets.find(t => t._id === ticketId)
+  // Smart auto-scroll bookkeeping
+  const [showNewMessages, setShowNewMessages] = useState(false)
+  const wasNearBottomRef = useRef(true)
 
   useEffect(() => { if (!isLoaded) loadTickets() }, [isLoaded, loadTickets])
 
@@ -562,280 +337,311 @@ export default function TicketDetailPage() {
     if (ticket?.streamChannelId) openTicket(ticket.streamChannelId)
   }, [ticket?.streamChannelId, openTicket])
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages.length, agentTyping])
+  const isNearBottom = useCallback(() => {
+    const el = listRef.current
+    if (!el) return true
+    return el.scrollHeight - el.scrollTop - el.clientHeight < 120
+  }, [])
 
-  // Infinite scroll upward
+  // Track whether the user is near the bottom + handle scroll-to-top loading
   useEffect(() => {
     const el = listRef.current
     if (!el) return
-    const handler = () => { if (el.scrollTop < 60) loadOlderMessages() }
-    el.addEventListener('scroll', handler)
+    let ticking = false
+    const handler = () => {
+      wasNearBottomRef.current = isNearBottom()
+      if (wasNearBottomRef.current) setShowNewMessages(false)
+
+      if (ticking) return
+      ticking = true
+      requestAnimationFrame(() => {
+        if (el.scrollTop < 60) loadOlderMessages()
+        ticking = false
+      })
+    }
+    el.addEventListener('scroll', handler, { passive: true })
     return () => el.removeEventListener('scroll', handler)
-  }, [loadOlderMessages])
+  }, [loadOlderMessages, isNearBottom])
+
+  // Smart auto-scroll: only jump to bottom if the user was already near it
+  useEffect(() => {
+    if (wasNearBottomRef.current) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    } else {
+      setShowNewMessages(true)
+    }
+  }, [messages.length, isTyping])
+
+  const scrollToBottom = useCallback(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    setShowNewMessages(false)
+    wasNearBottomRef.current = true
+  }, [])
 
   const handleSend = useCallback(async (text: string) => {
     await sendMessage(text)
-    // Simulate agent typing after user sends (remove if Stream handles this)
-    setAgentTyping(true)
-    setTimeout(() => setAgentTyping(false), 3000)
   }, [sendMessage])
 
-  async function handleClose() {
-    setClosing(true)
-    try { await closeTicket(ticketId); router.push('/support') }
-    finally { setClosing(false); setShowClose(false) }
-  }
+  // Memoised day grouping — only recomputes when messages array changes
+  const grouped = useMemo(() => {
+    const result: { day: string; msgs: typeof messages }[] = []
+    for (const msg of messages) {
+      const day  = dayLabel(msg.created_at)
+      const last = result[result.length - 1]
+      if (last?.day === day) last.msgs.push(msg)
+      else result.push({ day, msgs: [msg] })
+    }
+    return result
+  }, [messages])
 
-  // ── Loading ───────────────────────────────────────────────────────────────
-  if (!isLoaded) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
-        <i className="ti ti-loader-2 ti-spin" style={{ fontSize: 20, color: 'var(--color-text-secondary)' }} />
-      </div>
+  // Whether the current user's last message has been seen by support
+  const lastMineSeenBySupport = useMemo(() => {
+    const mine = [...messages].reverse().find(m => m.user?.id === client?.userID)
+    if (!mine?.created_at) return false
+    return Object.values(readBy).some(
+      ts => new Date(ts).getTime() >= new Date(mine.created_at as string).getTime()
     )
-  }
+  }, [messages, readBy, client?.userID])
 
-  // ── Not found ─────────────────────────────────────────────────────────────
-  if (!ticket) {
-    return (
-      <div style={{ maxWidth: 480, margin: '5rem auto', padding: '0 1.5rem', textAlign: 'center' }}>
-        <div style={{
-          width: 44, height: 44, borderRadius: 11, margin: '0 auto 1.5rem',
-          border: '0.5px solid var(--color-border-tertiary)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 18, color: 'var(--color-text-secondary)',
-        }}>
-          <i className="ti ti-file-off" aria-hidden="true" />
-        </div>
-        <p style={{ ...DISPLAY, fontSize: 22, fontWeight: 300, color: 'var(--color-text-primary)', margin: '0 0 8px', lineHeight: 1 }}>
-          Ticket not found
-        </p>
-        <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '0 0 2rem', lineHeight: 1.7 }}>
-          This ticket doesn't exist or has been removed.
-        </p>
+  if (!isLoaded) return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
+      <i className="ti ti-loader-2 ti-spin" style={{ fontSize: 20, color: 'var(--color-text-secondary)' }} />
+    </div>
+  )
+
+  if (!ticket) return (
+    <div style={{ maxWidth: 480, margin: '5rem auto', padding: '0 1.5rem', textAlign: 'center' }}>
+      <p style={{ ...DISPLAY, fontSize: 22, fontWeight: 300, margin: '0 0 8px' }}>
+        Conversation not found
+      </p>
+      <p style={{
+        fontSize: 12, color: 'var(--color-text-secondary)',
+        margin: '0 0 2rem', lineHeight: 1.7,
+      }}>
+        This message thread doesn't exist or has been removed.
+      </p>
+      <Link href="/support" style={{
+        display: 'inline-flex', alignItems: 'center', gap: 7,
+        fontSize: 12, fontWeight: 500, textDecoration: 'none',
+        color: 'var(--color-text-primary)', padding: '9px 18px',
+        border: '0.5px solid var(--color-border-secondary)', borderRadius: 8,
+      }}>
+        <i className="ti ti-arrow-left" style={{ fontSize: 12 }} />
+        Back to help
+      </Link>
+    </div>
+  )
+
+  const isClosed = ticket.status === 'resolved' || ticket.status === 'closed'
+
+  return (
+    <div style={{
+      maxWidth: 640, margin: '0 auto',
+      display: 'flex', flexDirection: 'column',
+      height: 'calc(100dvh - 64px)',
+      position: 'relative',
+    }}>
+
+      {/* Top bar */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 12,
+        padding: '10px 16px',
+        borderBottom: '0.5px solid var(--color-border-tertiary)',
+        flexShrink: 0,
+      }}>
         <Link
           href="/support"
           style={{
-            display: 'inline-flex', alignItems: 'center', gap: 7,
-            fontSize: 11, fontWeight: 500, letterSpacing: '0.18em', textTransform: 'uppercase',
-            textDecoration: 'none', color: 'var(--color-text-primary)',
-            padding: '9px 18px', border: '0.5px solid var(--color-border-secondary)', borderRadius: 8,
+            display: 'flex', alignItems: 'center',
+            color: 'var(--color-text-secondary)', textDecoration: 'none',
+            padding: '4px 6px 4px 0', transition: 'color 0.15s',
           }}
         >
-          <i className="ti ti-arrow-left" style={{ fontSize: 12 }} />
-          Back to support
+          <i className="ti ti-arrow-left" style={{ fontSize: 18 }} aria-label="Back" />
         </Link>
-      </div>
-    )
-  }
 
-  const isClosed   = ticket.status === 'closed' || ticket.status === 'resolved'
-  const statusMeta = STATUS_META[ticket.status]
-
-  // Group messages by day
-  const grouped: { day: string; msgs: typeof messages }[] = []
-  for (const msg of messages) {
-    const day  = dayLabel(msg.created_at)
-    const last = grouped[grouped.length - 1]
-    if (last?.day === day) last.msgs.push(msg)
-    else grouped.push({ day, msgs: [msg] })
-  }
-
-  return (
-    <>
-      <div style={{
-        maxWidth: 680, margin: '0 auto',
-        display: 'flex', flexDirection: 'column',
-        height: 'calc(100dvh - 64px)',
-      }}>
-
-        {/* ── Top bar ── */}
+        {/* Avatar with online dot */}
         <div style={{
-          display: 'flex', alignItems: 'center', gap: 12,
-          padding: '11px 20px',
-          borderBottom: '0.5px solid var(--color-border-tertiary)',
-          flexShrink: 0,
+          width: 36, height: 36, borderRadius: '50%',
+          background: 'var(--color-background-secondary)',
+          border: '0.5px solid var(--color-border-secondary)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 14, color: 'var(--color-text-secondary)',
+          flexShrink: 0, position: 'relative',
         }}>
-          <Link
-            href="/support"
-            style={{
-              display: 'flex', alignItems: 'center',
-              color: 'var(--color-text-secondary)', textDecoration: 'none',
-              padding: 4, marginRight: 4, transition: 'color 0.15s',
-            }}
-            onMouseEnter={e => e.currentTarget.style.color = 'var(--color-text-primary)'}
-            onMouseLeave={e => e.currentTarget.style.color = 'var(--color-text-secondary)'}
-          >
-            <i className="ti ti-arrow-left" style={{ fontSize: 17 }} aria-label="Back" />
-          </Link>
-
-          <div style={{
-            width: 34, height: 34, borderRadius: 9, flexShrink: 0,
-            border: '0.5px solid var(--color-border-tertiary)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 14, color: 'var(--color-text-secondary)',
-          }}>
-            <i className={`ti ${CATEGORY_ICONS[ticket.category]}`} aria-hidden="true" />
-          </div>
-
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ ...DISPLAY, fontSize: 16, fontWeight: 400, color: 'var(--color-text-primary)', lineHeight: 1 }}>
-              {CATEGORY_LABELS[ticket.category]}
-            </div>
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 6, marginTop: 3,
-              fontSize: 10, letterSpacing: '0.1em',
-              color: statusMeta.color, fontWeight: 500,
-            }}>
-              <span style={{ width: 5, height: 5, borderRadius: '50%', background: statusMeta.color, flexShrink: 0 }} />
-              {statusMeta.label} · #{ticketId.slice(-8).toUpperCase()}
-            </div>
-          </div>
-
-          {!isClosed && (
-            <button
-              onClick={() => setShowClose(true)}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 5,
-                padding: '6px 12px', fontSize: 11, fontWeight: 500,
-                letterSpacing: '0.14em', textTransform: 'uppercase',
-                background: 'transparent', color: 'var(--color-text-secondary)',
-                border: '0.5px solid var(--color-border-tertiary)',
-                borderRadius: 7, cursor: 'pointer', flexShrink: 0,
-                transition: 'all 0.15s',
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.borderColor = 'var(--color-border-secondary)'
-                e.currentTarget.style.color = 'var(--color-text-primary)'
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.borderColor = 'var(--color-border-tertiary)'
-                e.currentTarget.style.color = 'var(--color-text-secondary)'
-              }}
-            >
-              <i className="ti ti-check" style={{ fontSize: 12 }} />
-              Resolve
-            </button>
-          )}
+          <i className="ti ti-headset" aria-hidden="true" />
+          <span style={{
+            position: 'absolute', bottom: 1, right: 1,
+            width: 8, height: 8, borderRadius: '50%',
+            background: 'var(--color-text-success)',
+            border: '2px solid var(--color-background-primary)',
+          }} />
         </div>
 
-        {/* ── Agent info bar ── */}
-        <AgentInfoBar />
-
-        {/* ── Message list ── */}
-        <div
-          ref={listRef}
-          style={{
-            flex: 1, overflowY: 'auto',
-            padding: '18px 18px',
-            display: 'flex', flexDirection: 'column', gap: 2,
-          }}
-        >
-          {isLoading && (
-            <div style={{ textAlign: 'center', padding: '2rem' }}>
-              <i className="ti ti-loader-2 ti-spin" style={{ fontSize: 18, color: 'var(--color-text-secondary)' }} />
-            </div>
-          )}
-
-          {!isLoading && messages.length === 0 && (
-            <div style={{
-              flex: 1, display: 'flex', flexDirection: 'column',
-              alignItems: 'center', justifyContent: 'center',
-              gap: 12, padding: '3rem 1rem', textAlign: 'center',
-            }}>
-              <div style={{
-                width: 44, height: 44, borderRadius: 11,
-                border: '0.5px solid var(--color-border-tertiary)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 18, color: 'var(--color-text-secondary)',
-              }}>
-                <i className="ti ti-messages" aria-hidden="true" />
-              </div>
-              <div>
-                <p style={{ ...DISPLAY, fontSize: 20, fontWeight: 300, margin: '0 0 6px', color: 'var(--color-text-primary)' }}>
-                  Start the conversation
-                </p>
-                <p style={{ fontSize: 12, margin: 0, color: 'var(--color-text-secondary)', lineHeight: 1.7 }}>
-                  Describe your issue below and we'll reply within a few hours.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {grouped.map(({ day, msgs }) => (
-            <div key={day}>
-              <div style={{ textAlign: 'center', margin: '14px 0 10px' }}>
-                <span style={{
-                  ...DISPLAY,
-                  fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase',
-                  color: 'var(--color-text-secondary)',
-                  background: 'var(--color-background-secondary)',
-                  padding: '3px 12px', borderRadius: 20,
-                  border: '0.5px solid var(--color-border-tertiary)',
-                }}>
-                  {day}
-                </span>
-              </div>
-              {msgs.map((msg, i) => (
-                <MessageBubble
-                  key={msg.id}
-                  text={msg.text ?? ''}
-                  isMine={msg.user?.id === client?.userID}
-                  createdAt={msg.created_at}
-                  isSystem={msg.type === 'system'}
-                  isRead={i < msgs.length - 1}  // last message not yet read
-                />
-              ))}
-            </div>
-          ))}
-
-          {/* Typing indicator — shows agent is active */}
-          {agentTyping && <TypingIndicator />}
-
-          <div ref={bottomRef} />
-        </div>
-
-        {/* ── Closed notice ── */}
-        {isClosed && (
-          <div style={{
-            padding: '12px 20px', flexShrink: 0,
-            borderTop: '0.5px solid var(--color-border-tertiary)',
-            display: 'flex', alignItems: 'center', gap: 10,
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{
+            fontSize: 14, fontWeight: 500,
+            color: 'var(--color-text-primary)', margin: 0, lineHeight: 1.2,
           }}>
-            <i className="ti ti-lock" style={{ fontSize: 13, color: 'var(--color-text-secondary)' }} aria-hidden="true" />
-            <span style={{ fontSize: 12, letterSpacing: '0.04em', color: 'var(--color-text-secondary)', flex: 1 }}>
-              This ticket is {ticket.status}.
-            </span>
-            <Link
-              href="/support"
-              style={{
-                flexShrink: 0, fontSize: 11, fontWeight: 500,
-                letterSpacing: '0.14em', textTransform: 'uppercase',
-                color: 'var(--color-text-primary)',
-                textDecoration: 'underline', textUnderlineOffset: 3,
-              }}
-            >
-              New request
-            </Link>
+            Support Team
+          </p>
+          <p style={{
+            fontSize: 11, color: 'var(--color-text-secondary)',
+            margin: '2px 0 0', lineHeight: 1,
+          }}>
+            {isClosed ? (
+              <span style={{ color: 'var(--color-text-success)' }}>
+                · Resolved
+              </span>
+            ) : (
+              'Usually replies within a few minutes'
+            )}
+          </p>
+        </div>
+      </div>
+
+      {/* Message list */}
+      <div
+        ref={listRef}
+        style={{
+          flex: 1, overflowY: 'auto',
+          padding: '16px 18px',
+          display: 'flex', flexDirection: 'column', gap: 2,
+        }}
+      >
+        {isLoading && (
+          <div style={{ textAlign: 'center', padding: '2rem' }}>
+            <i className="ti ti-loader-2 ti-spin" style={{ fontSize: 18, color: 'var(--color-text-secondary)' }} />
           </div>
         )}
 
-        {/* ── CSAT on resolved tickets ── */}
-        {ticket.status === 'resolved' && <CSATPrompt />}
+        {!isLoading && messages.length === 0 && (
+          <div style={{
+            flex: 1, display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center',
+            gap: 10, padding: '3rem 1rem', textAlign: 'center',
+          }}>
+            <div style={{
+              width: 44, height: 44, borderRadius: 11,
+              border: '0.5px solid var(--color-border-tertiary)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 18, color: 'var(--color-text-secondary)',
+            }}>
+              <i className="ti ti-messages" aria-hidden="true" />
+            </div>
+            <div>
+              <p style={{
+                ...DISPLAY, fontSize: 19, fontWeight: 300,
+                margin: '0 0 5px', color: 'var(--color-text-primary)',
+              }}>
+                Need help?
+              </p>
+              <p style={{
+                fontSize: 12, margin: 0,
+                color: 'var(--color-text-secondary)', lineHeight: 1.7,
+              }}>
+                Send a message and our support team will get back to you shortly.
+              </p>
+            </div>
+          </div>
+        )}
 
-        {/* ── Composer ── */}
-        {!isClosed && <Composer onSend={handleSend} />}
+        {grouped.map(({ day, msgs }) => (
+          <div key={day}>
+            <div style={{ textAlign: 'center', margin: '14px 0 10px' }}>
+              <span style={{
+                fontSize: 11, color: 'var(--color-text-secondary)',
+                background: 'var(--color-background-secondary)',
+                padding: '3px 12px', borderRadius: 20,
+                border: '0.5px solid var(--color-border-tertiary)',
+              }}>
+                {day}
+              </span>
+            </div>
+            {msgs.map((msg) => {
+              const isMine = msg.user?.id === client?.userID
+              const isLastMineOverall = isMine && msg.id === [...messages].reverse().find(m => m.user?.id === client?.userID)?.id
+              return (
+                <Bubble
+                  key={msg.id}
+                  text={msg.text ?? ''}
+                  isMine={isMine}
+                  createdAt={msg.created_at}
+                  isSystem={msg.type === 'system'}
+                  isRead={isMine ? (isLastMineOverall ? lastMineSeenBySupport : true) : undefined}
+                />
+              )
+            })}
+          </div>
+        ))}
+
+        {isTyping && (
+          <div style={{ padding: '0 4px 4px', fontSize: 11, color: 'var(--color-text-secondary)' }}>
+            Support is typing…
+          </div>
+        )}
+        {isTyping && <TypingDots />}
+        <div ref={bottomRef} />
       </div>
 
-      {showClose && (
-        <CloseConfirm
-          onConfirm={handleClose}
-          onCancel={() => setShowClose(false)}
-          closing={closing}
-        />
+      {/* New messages button */}
+      {showNewMessages && (
+        <button
+          onClick={scrollToBottom}
+          style={{
+            position: 'absolute', bottom: isClosed ? 70 : (ticket.status === 'resolved' ? 160 : 90),
+            left: '50%', transform: 'translateX(-50%)',
+            padding: '6px 16px', borderRadius: 20, fontSize: 12, fontWeight: 500,
+            background: 'var(--color-text-primary)', color: 'var(--color-background-primary)',
+            border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)', zIndex: 5,
+          }}
+        >
+          <i className="ti ti-arrow-down" style={{ fontSize: 12 }} />
+          New Messages
+        </button>
       )}
-    </>
+
+      {/* Seen by Support */}
+      {!isClosed && lastMineSeenBySupport && (
+        <div style={{
+          textAlign: 'right', fontSize: 10,
+          color: 'var(--color-text-secondary)',
+          padding: '0 22px',
+        }}>
+          Seen by Support
+        </div>
+      )}
+
+      {/* Resolved bar */}
+      {isClosed && (
+        <div style={{
+          padding: '12px 20px',
+          borderTop: '0.5px solid var(--color-border-tertiary)',
+          display: 'flex', alignItems: 'center', gap: 10,
+          fontSize: 12, color: 'var(--color-text-secondary)',
+          flexShrink: 0,
+        }}>
+          <i className="ti ti-circle-check" style={{
+            fontSize: 14, color: 'var(--color-text-success)', flexShrink: 0,
+          }} />
+          <span style={{ flex: 1 }}>This conversation is resolved.</span>
+          <Link href="/support" style={{
+            fontSize: 11, fontWeight: 500,
+            color: 'var(--color-text-primary)',
+            textDecoration: 'underline', textUnderlineOffset: 3,
+            flexShrink: 0,
+          }}>
+            New message
+          </Link>
+        </div>
+      )}
+
+      {/* CSAT — only on resolved, not closed */}
+      {ticket.status === 'resolved' && <CSAT />}
+
+      {/* Composer — hidden when closed */}
+      {!isClosed && <Composer onSend={handleSend} onTyping={sendTyping} />}
+    </div>
   )
 }

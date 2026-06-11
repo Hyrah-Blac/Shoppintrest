@@ -21,17 +21,13 @@ export async function createSupportChannel(
   const server   = getStreamServer()
   const memberId = String(userId)
 
-  // Ensure the customer exists in Stream
   await server.upsertUser({ id: memberId })
 
-  // Pull in every admin so any of them can see and reply to this ticket
   const admins   = await User.find({ role: 'admin' }).select('_id').lean()
   const adminIds = admins.map(a => String(a._id))
 
   if (adminIds.length > 0) {
-    await server.upsertUsers(
-      adminIds.map(id => ({ id }))
-    )
+    await server.upsertUsers(adminIds.map(id => ({ id })))
   }
 
   const members = Array.from(new Set([memberId, ...adminIds]))
@@ -48,7 +44,16 @@ export async function createSupportChannel(
       createdAt:    new Date().toISOString(),
     },
   } as unknown as ChannelData)
+
   await channel.create()
+
+  // Automated welcome message after channel creation
+  await channel.sendMessage({
+    text:    'Hi! Thanks for contacting support.\n\nWe\'ve received your request and will get back to you as soon as possible.\n\nYou can continue replying here at any time.',
+    user_id: 'system',
+    type:    'system',
+  } as any)
+
   return channelId
 }
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { apiClient } from '@/lib/api'
@@ -76,6 +76,37 @@ function dayLabel(d?: string | Date) {
   if (diff === 0) return 'Today'
   if (diff === 1) return 'Yesterday'
   return date.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })
+}
+
+// ─── Typing dots ──────────────────────────────────────────────────────────────
+
+function TypingDots() {
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-end', padding: '4px 0' }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 4,
+        background: 'var(--color-background-secondary)',
+        border: '0.5px solid var(--color-border-tertiary)',
+        borderRadius: '14px 14px 14px 4px',
+        padding: '10px 14px',
+      }}>
+        {[0, 0.2, 0.4].map((delay, i) => (
+          <span key={i} style={{
+            width: 5, height: 5, borderRadius: '50%',
+            background: 'var(--color-text-secondary)',
+            display: 'block',
+            animation: `bounce 1.2s ${delay}s infinite ease-in-out`,
+          }} />
+        ))}
+      </div>
+      <style>{`
+        @keyframes bounce {
+          0%,60%,100%{transform:translateY(0);opacity:.4}
+          30%{transform:translateY(-5px);opacity:1}
+        }
+      `}</style>
+    </div>
+  )
 }
 
 // ─── Message bubble ───────────────────────────────────────────────────────────
@@ -272,7 +303,15 @@ function CloseConfirm({ onConfirm, onCancel, closing }: {
 
 // ─── Composer ─────────────────────────────────────────────────────────────────
 
-function Composer({ onSend, disabled }: { onSend: (text: string) => Promise<void>; disabled?: boolean }) {
+function Composer({
+  onSend,
+  onTyping,
+  disabled,
+}: {
+  onSend: (text: string) => Promise<void>
+  onTyping?: () => void
+  disabled?: boolean
+}) {
   const [input,   setInput]   = useState('')
   const [sending, setSending] = useState(false)
   const textareaRef           = useRef<HTMLTextAreaElement>(null)
@@ -308,7 +347,7 @@ function Composer({ onSend, disabled }: { onSend: (text: string) => Promise<void
         <textarea
           ref={textareaRef}
           value={input}
-          onChange={e => setInput(e.target.value)}
+          onChange={e => { setInput(e.target.value); onTyping?.() }}
           onKeyDown={handleKey}
           placeholder="Reply to customer…"
           rows={1}
@@ -352,16 +391,22 @@ export default function AdminTicketDetailPage() {
   const ticketId = params.ticketId as string
 
   const { client, isReady } = useStreamContext()
-  const { messages, isLoading, openTicket, sendMessage, loadOlderMessages } =
-    useSupportChat(client, isReady)
+  const {
+    messages, isLoading, isTyping, openTicket, sendMessage,
+    loadOlderMessages, sendTyping,
+  } = useSupportChat(client, isReady)
 
   const [ticket,    setTicket]    = useState<AdminTicket | null>(null)
   const [loaded,    setLoaded]    = useState(false)
   const [showClose, setShowClose] = useState(false)
   const [closing,   setClosing]   = useState(false)
 
-  const bottomRef = useRef<HTMLDivElement>(null)
-  const listRef   = useRef<HTMLDivElement>(null)
+  const bottomRef        = useRef<HTMLDivElement>(null)
+  const listRef          = useRef<HTMLDivElement>(null)
+  const wasNearBottomRef = useRef(true)
+
+  // ── Smart auto-scroll state ──────────────────────────────────────────────
+  const [showNewMessages, setShowNewMessages] = useState(false)
 
   // Fetch ticket meta
   useEffect(() => {
@@ -378,21 +423,54 @@ export default function AdminTicketDetailPage() {
     if (ticket?.streamChannelId) openTicket(ticket.streamChannelId)
   }, [ticket?.streamChannelId, openTicket])
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages.length])
+  // ── isNearBottom helper ──────────────────────────────────────────────────
+  const isNearBottom = useCallback(() => {
+    const el = listRef.current
+    if (!el) return true
+    return el.scrollHeight - el.scrollTop - el.clientHeight < 120
+  }, [])
 
+  // ── scrollToBottom helper ────────────────────────────────────────────────
+  const scrollToBottom = useCallback(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    setShowNewMessages(false)
+    wasNearBottomRef.current = true
+  }, [])
+
+  // ── Track near-bottom + load older on scroll-to-top ─────────────────────
   useEffect(() => {
     const el = listRef.current
     if (!el) return
-    const handler = () => { if (el.scrollTop < 60) loadOlderMessages() }
-    el.addEventListener('scroll', handler)
-    return () => el.removeEventListener('scroll', handler)
-  }, [loadOlderMessages])
+    let ticking = false
+    const handler = () => {
+      wasNearBottomRef.current = isNearBottom()
+      if (wasNearBottomRef.current) setShowNewMessages(false)
 
+      if (ticking) return
+      ticking = true
+      requestAnimationFrame(() => {
+        if (el.scrollTop < 60) loadOlderMessages()
+        ticking = false
+      })
+    }
+    el.addEventListener('scroll', handler, { passive: true })
+    return () => el.removeEventListener('scroll', handler)
+  }, [loadOlderMessages, isNearBottom])
+
+  // ── Smart auto-scroll on new messages / typing ───────────────────────────
+  useEffect(() => {
+    if (wasNearBottomRef.current) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    } else {
+      setShowNewMessages(true)
+    }
+  }, [messages.length, isTyping])
+
+  // ── Send + fire-and-forget notify ────────────────────────────────────────
   const handleSend = useCallback(async (text: string) => {
     await sendMessage(text)
-  }, [sendMessage])
+    apiClient.support.admin.notifyReply(ticketId).catch(() => {})
+  }, [sendMessage, ticketId])
 
   async function handleClose() {
     setClosing(true)
@@ -404,6 +482,18 @@ export default function AdminTicketDetailPage() {
       setShowClose(false)
     }
   }
+
+  // ── Day grouping ─────────────────────────────────────────────────────────
+  const grouped = useMemo(() => {
+    const result: { day: string; msgs: typeof messages }[] = []
+    for (const msg of messages) {
+      const day  = dayLabel(msg.created_at)
+      const last = result[result.length - 1]
+      if (last?.day === day) last.msgs.push(msg)
+      else result.push({ day, msgs: [msg] })
+    }
+    return result
+  }, [messages])
 
   // ── Loading ───────────────────────────────────────────────────────────────
   if (!loaded) {
@@ -441,20 +531,13 @@ export default function AdminTicketDetailPage() {
   const isClosed   = ticket.status === 'closed' || ticket.status === 'resolved'
   const statusMeta = STATUS_META[ticket.status]
 
-  const grouped: { day: string; msgs: typeof messages }[] = []
-  for (const msg of messages) {
-    const day  = dayLabel(msg.created_at)
-    const last = grouped[grouped.length - 1]
-    if (last?.day === day) last.msgs.push(msg)
-    else grouped.push({ day, msgs: [msg] })
-  }
-
   return (
     <>
       <div style={{
         maxWidth: 760, margin: '0 auto',
         display: 'flex', flexDirection: 'column',
         height: 'calc(100dvh - 64px)',
+        position: 'relative',
       }}>
 
         {/* ── Top bar ── */}
@@ -516,7 +599,10 @@ export default function AdminTicketDetailPage() {
         <CustomerInfoBar ticket={ticket} />
 
         {/* ── Message list ── */}
-        <div ref={listRef} style={{ flex: 1, overflowY: 'auto', padding: '18px 18px', display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <div
+          ref={listRef}
+          style={{ flex: 1, overflowY: 'auto', padding: '18px 18px', display: 'flex', flexDirection: 'column', gap: 2 }}
+        >
           {isLoading && (
             <div style={{ textAlign: 'center', padding: '2rem' }}>
               <i className="ti ti-loader-2 ti-spin" style={{ fontSize: 18, color: 'var(--color-text-secondary)' }} />
@@ -563,8 +649,36 @@ export default function AdminTicketDetailPage() {
             </div>
           ))}
 
+          {/* ── Customer typing indicator ── */}
+          {isTyping && (
+            <div style={{ padding: '0 4px 4px', fontSize: 11, color: 'var(--color-text-secondary)' }}>
+              Customer is typing…
+            </div>
+          )}
+          {isTyping && <TypingDots />}
+
           <div ref={bottomRef} />
         </div>
+
+        {/* ── New messages button — above composer ── */}
+        {showNewMessages && (
+          <button
+            onClick={scrollToBottom}
+            style={{
+              position: 'absolute',
+              bottom: isClosed ? 56 : 80,
+              left: '50%', transform: 'translateX(-50%)',
+              padding: '6px 16px', borderRadius: 20, fontSize: 12, fontWeight: 500,
+              background: 'var(--color-text-primary)', color: 'var(--color-background-primary)',
+              border: 'none', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: 6,
+              boxShadow: '0 4px 12px rgba(0,0,0,0.15)', zIndex: 5,
+            }}
+          >
+            <i className="ti ti-arrow-down" style={{ fontSize: 12 }} />
+            New Messages
+          </button>
+        )}
 
         {/* ── Closed notice ── */}
         {isClosed && (
@@ -577,7 +691,7 @@ export default function AdminTicketDetailPage() {
         )}
 
         {/* ── Composer ── */}
-        {!isClosed && <Composer onSend={handleSend} />}
+        {!isClosed && <Composer onSend={handleSend} onTyping={sendTyping} />}
       </div>
 
       {showClose && (

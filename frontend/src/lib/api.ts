@@ -1,4 +1,4 @@
-// PATH: src/lib/api.ts  (REPLACE the existing file)
+// PATH: src/lib/api.ts
 
 import axios from 'axios'
 
@@ -146,8 +146,7 @@ export const apiClient = {
       api.patch(`/api/reviews/${id}/helpful`),
   },
 
-  // Chat — fetches a Stream Chat auth token from the backend
-  // Used internally by StreamProvider — not called from pages directly
+  // Chat
   chat: {
     getToken: () => api.post<{ data: { token: string } }>('/api/chat/token'),
   },
@@ -247,6 +246,8 @@ export const apiClient = {
         api.get(`/api/support/admin/tickets/${ticketId}`),
       closeTicket: (ticketId: string) =>
         api.patch(`/api/support/admin/tickets/${ticketId}/close`),
+      notifyReply: (ticketId: string) =>
+        api.post(`/api/support/admin/tickets/${ticketId}/notify`),
     },
   },
 }

@@ -17,10 +17,12 @@ export interface SupportTicket {
 }
 
 export interface SupportTicketPreview {
-  ticketId:        string
-  streamChannelId: string
-  category:        TicketCategory
-  status:          TicketStatus
-  lastMessage?:    string
-  lastMessageAt?:  string
+  ticketId:           string
+  streamChannelId:    string
+  category:           TicketCategory
+  status:             TicketStatus
+  lastMessage?:       string
+  lastMessageAt?:     string
+  unreadCount?:       number
+  lastMessageUserId?: string
 }
