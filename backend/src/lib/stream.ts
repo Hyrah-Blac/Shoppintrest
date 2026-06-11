@@ -17,10 +17,15 @@ export async function createSupportChannel(
   category: string,
   orderId?: string
 ) {
-  const server    = getStreamServer()
-  const channelId = `support_${userId}_${Date.now()}`
+  const server   = getStreamServer()
+  const memberId = String(userId)
+
+  // Ensure the user exists in Stream before adding as a channel member
+  await server.upsertUser({ id: memberId })
+
+  const channelId = `support_${memberId}_${Date.now()}`
   const channel   = server.channel('support', channelId, {
-    members:  [userId],
+    members:  [memberId],
     category,
     priority: 'normal',
     data: {
@@ -47,6 +52,11 @@ export async function closeSupportChannel(channelId: string) {
 }
 
 export async function getSupportToken(userId: string): Promise<string> {
-  const server = getStreamServer()
-  return server.createToken(userId)
+  const server   = getStreamServer()
+  const memberId = String(userId)
+
+  // Ensure the user exists in Stream before issuing a token for them
+  await server.upsertUser({ id: memberId })
+
+  return server.createToken(memberId)
 }

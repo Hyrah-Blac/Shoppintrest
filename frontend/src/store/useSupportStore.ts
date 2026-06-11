@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { apiClient } from '@/lib/api'
 import { SupportTicket, TicketCategory } from '@/types/support'
 
 interface SupportState {
@@ -6,6 +7,7 @@ interface SupportState {
   isLoaded:   boolean
   loadTickets: () => Promise<void>
   createTicket: (category: TicketCategory, orderId?: string) => Promise<SupportTicket>
+  closeTicket: (id: string) => Promise<void>
 }
 
 export const useSupportStore = create<SupportState>((set, get) => ({
@@ -14,27 +16,29 @@ export const useSupportStore = create<SupportState>((set, get) => ({
 
   loadTickets: async () => {
     try {
-      const res  = await fetch('/api/support/tickets', { credentials: 'include' })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.message ?? 'Failed to load tickets')
-      set({ tickets: json.data ?? [], isLoaded: true })
+      const res = await apiClient.support.getTickets()
+      set({ tickets: res.data?.data ?? [], isLoaded: true })
     } catch {
       set({ isLoaded: true })
     }
   },
 
   createTicket: async (category, orderId) => {
-    const res  = await fetch('/api/support/tickets', {
-      method:      'POST',
-      credentials: 'include',
-      headers:     { 'Content-Type': 'application/json' },
-      body:        JSON.stringify({ category, ...(orderId ? { orderId } : {}) }),
+    const res = await apiClient.support.createTicket({
+      category,
+      ...(orderId ? { orderId } : {}),
     })
-    const json = await res.json()
-    if (!res.ok) throw new Error(json.message ?? 'Failed to create ticket')
-
-    const ticket: SupportTicket = json.data
+    const ticket: SupportTicket = res.data?.data
     set({ tickets: [ticket, ...get().tickets] })
     return ticket
+  },
+
+  closeTicket: async (id) => {
+    await apiClient.support.closeTicket(id)
+    set({
+      tickets: get().tickets.map(t =>
+        t._id === id ? { ...t, status: 'closed' } : t
+      ),
+    })
   },
 }))
