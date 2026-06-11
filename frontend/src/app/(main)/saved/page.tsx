@@ -1,10 +1,253 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
-import { Folder } from 'lucide-react'
+import Image from 'next/image'
+import { Folder, MoreVertical, FolderInput, Trash2 } from 'lucide-react'
 import { useSavedStore } from '@/store/useSavedStore'
 import { ProductCard } from '@/components/product/ProductCard'
+import { toast } from 'sonner'
+
+// ─── Move to folder modal ─────────────────────────────────────────────────────
+
+function MoveToFolderModal({
+  productId,
+  onClose,
+}: {
+  productId: string
+  onClose: () => void
+}) {
+  const { folders, moveProduct } = useSavedStore()
+  const [loading, setLoading] = useState<string | null>(null)
+
+  async function handleMove(slug: string) {
+    setLoading(slug)
+    try {
+      await moveProduct(productId, '', slug)
+      toast.success('Added to folder')
+      onClose()
+    } catch {
+      toast.error('Could not move product')
+    } finally {
+      setLoading(null)
+    }
+  }
+
+  return (
+    <div
+      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 50,
+        background: 'rgba(0,0,0,0.35)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '1rem',
+      }}
+    >
+      <div style={{
+        background: 'var(--color-background-primary)',
+        borderRadius: 16,
+        border: '0.5px solid var(--color-border-tertiary)',
+        width: '100%', maxWidth: 360,
+        overflow: 'hidden',
+      }}>
+        {/* header */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '14px 16px',
+          borderBottom: '0.5px solid var(--color-border-tertiary)',
+        }}>
+          <span style={{ fontSize: 15, fontWeight: 500 }}>Add to folder</span>
+          <button onClick={onClose} style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            color: 'var(--color-text-secondary)', fontSize: 18, padding: 4, lineHeight: 1,
+          }}>
+            <i className="ti ti-x" />
+          </button>
+        </div>
+
+        {/* folder list */}
+        {folders.length === 0 ? (
+          <div style={{ padding: '2rem 1rem', textAlign: 'center' }}>
+            <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', margin: '0 0 1rem' }}>
+              No folders yet.
+            </p>
+            <Link
+              href="/saved/folders"
+              onClick={onClose}
+              style={{
+                fontSize: 13, fontWeight: 500,
+                color: 'var(--color-text-primary)',
+                textDecoration: 'underline',
+              }}
+            >
+              Create one
+            </Link>
+          </div>
+        ) : (
+          <div style={{ padding: '6px' }}>
+            {folders.map(f => (
+              <button
+                key={f._id}
+                onClick={() => handleMove(f.slug)}
+                disabled={loading === f.slug}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  width: '100%', padding: '9px 12px',
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  borderRadius: 10, textAlign: 'left',
+                  transition: 'background 0.1s',
+                  opacity: loading === f.slug ? 0.6 : 1,
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-background-secondary)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+              >
+                {/* cover thumb */}
+                <div style={{
+                  width: 36, height: 36, borderRadius: 8, flexShrink: 0,
+                  background: f.coverImage
+                    ? `url(${f.coverImage}) center/cover`
+                    : 'var(--color-background-secondary)',
+                  border: '0.5px solid var(--color-border-tertiary)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 16, color: 'var(--color-text-secondary)',
+                }}>
+                  {!f.coverImage && <i className="ti ti-bookmark" />}
+                </div>
+
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 13, fontWeight: 500, margin: 0, color: 'var(--color-text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {f.name}
+                  </p>
+                  <p style={{ fontSize: 11, margin: 0, color: 'var(--color-text-secondary)' }}>
+                    {f.products.length} {f.products.length === 1 ? 'item' : 'items'}
+                  </p>
+                </div>
+
+                {loading === f.slug && (
+                  <span style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>Adding…</span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─── Product card with three-dot menu ────────────────────────────────────────
+
+function SavedProductCard({ product }: { product: any }) {
+  const { unsaveProduct } = useSavedStore()
+  const [menuOpen,   setMenuOpen]   = useState(false)
+  const [showMove,   setShowMove]   = useState(false)
+  const [removing,   setRemoving]   = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  // Close menu on outside click
+  useEffect(() => {
+    if (!menuOpen) return
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node))
+        setMenuOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [menuOpen])
+
+  async function handleUnsave() {
+    setMenuOpen(false)
+    setRemoving(true)
+    try {
+      await unsaveProduct(product._id)
+      toast.success('Removed from saved')
+    } catch {
+      toast.error('Could not remove')
+      setRemoving(false)
+    }
+  }
+
+  return (
+    <div style={{ position: 'relative', opacity: removing ? 0.4 : 1, transition: 'opacity 0.2s' }}>
+      <ProductCard product={product} />
+
+      {/* three-dot button — sits below the image, top-right of the info area */}
+      <div ref={menuRef} style={{ position: 'absolute', bottom: 72, right: 4, zIndex: 10 }}>
+        <button
+          onClick={() => setMenuOpen(o => !o)}
+          style={{
+            width: 28, height: 28, borderRadius: '50%',
+            background: 'var(--color-background-primary)',
+            border: '0.5px solid var(--color-border-tertiary)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+          }}
+          aria-label="Product options"
+        >
+          <MoreVertical size={13} style={{ color: 'var(--color-text-secondary)' }} />
+        </button>
+
+        {menuOpen && (
+          <>
+            <div
+              onClick={() => setMenuOpen(false)}
+              style={{ position: 'fixed', inset: 0, zIndex: 10 }}
+            />
+            <div style={{
+              position: 'absolute', bottom: 34, right: 0, zIndex: 20,
+              background: 'var(--color-background-primary)',
+              border: '0.5px solid var(--color-border-tertiary)',
+              borderRadius: 10, overflow: 'hidden',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+              minWidth: 160,
+            }}>
+              <button
+                onClick={() => { setMenuOpen(false); setShowMove(true) }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  width: '100%', padding: '9px 14px',
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  fontSize: 13, color: 'var(--color-text-primary)', textAlign: 'left',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-background-secondary)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+              >
+                <FolderInput size={13} style={{ color: 'var(--color-text-secondary)' }} />
+                Add to folder
+              </button>
+
+              <div style={{ height: '0.5px', background: 'var(--color-border-tertiary)', margin: '2px 0' }} />
+
+              <button
+                onClick={handleUnsave}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  width: '100%', padding: '9px 14px',
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  fontSize: 13, color: 'var(--color-text-danger)', textAlign: 'left',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-background-secondary)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+              >
+                <Trash2 size={13} />
+                Remove
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+
+      {showMove && (
+        <MoveToFolderModal
+          productId={product._id}
+          onClose={() => setShowMove(false)}
+        />
+      )}
+    </div>
+  )
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SavedPage() {
   const { savedProducts, folders, isLoaded, loadSaved } = useSavedStore()
@@ -69,10 +312,7 @@ export default function SavedPage() {
         }}>
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i}>
-              <div style={{
-                aspectRatio: '3/4', borderRadius: 12,
-                background: 'var(--color-background-secondary)',
-              }} />
+              <div style={{ aspectRatio: '3/4', borderRadius: 12, background: 'var(--color-background-secondary)' }} />
               <div style={{ marginTop: 10 }}>
                 <div style={{ height: 11, width: '40%', borderRadius: 4, background: 'var(--color-background-secondary)', marginBottom: 6 }} />
                 <div style={{ height: 13, width: '80%', borderRadius: 4, background: 'var(--color-background-secondary)', marginBottom: 6 }} />
@@ -114,7 +354,7 @@ export default function SavedPage() {
           gap: 16,
         }}>
           {savedProducts.map((product) => (
-            <ProductCard key={product._id} product={product} />
+            <SavedProductCard key={product._id} product={product} />
           ))}
         </div>
       )}

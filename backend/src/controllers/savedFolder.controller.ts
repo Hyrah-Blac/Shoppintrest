@@ -109,14 +109,18 @@ export const moveProduct = asyncHandler(async (req: Request, res: Response) => {
   const { productId } = req.params
   const { fromSlug, toSlug: destSlug } = req.body
 
-  const [from, to] = await Promise.all([
-    SavedFolder.findOne({ userId, slug: fromSlug }),
-    SavedFolder.findOne({ userId, slug: destSlug }),
-  ])
-  if (!from || !to) throw new AppError('Folder not found', 404)
+  const to = await SavedFolder.findOne({ userId, slug: destSlug })
+  if (!to) throw new AppError('Folder not found', 404)
 
-  await SavedFolder.findByIdAndUpdate(from._id, { $pull:     { products: productId } })
-  await SavedFolder.findByIdAndUpdate(to._id,   { $addToSet: { products: productId } })
+  // fromSlug is optional — if provided, remove from source folder first
+  if (fromSlug) {
+    const from = await SavedFolder.findOne({ userId, slug: fromSlug })
+    if (from) {
+      await SavedFolder.findByIdAndUpdate(from._id, { $pull: { products: productId } })
+    }
+  }
+
+  await SavedFolder.findByIdAndUpdate(to._id, { $addToSet: { products: productId } })
 
   sendSuccess(res, null, 'Product moved')
 })
