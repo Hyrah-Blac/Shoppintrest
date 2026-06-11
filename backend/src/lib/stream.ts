@@ -24,7 +24,9 @@ export async function createSupportChannel(
   await server.upsertUser({ id: memberId })
 
   const channelId = `support_${memberId}_${Date.now()}`
-  const channel   = server.channel('support', channelId, {
+  // 'support' is not a built-in Stream channel type — use 'messaging'
+  // (or create a custom 'support' channel type via the dashboard/API first)
+  const channel   = server.channel('messaging', channelId, {
     members:       [memberId],
     created_by_id: memberId,
     category,
@@ -41,14 +43,14 @@ export async function createSupportChannel(
 
 export async function assignAgentToChannel(channelId: string, agentId: string) {
   const server  = getStreamServer()
-  const channel = server.channel('support', channelId)
+  const channel = server.channel('messaging', channelId)
   await channel.addMembers([agentId])
   await channel.updatePartial({ set: { agentId } as any })
 }
 
 export async function closeSupportChannel(channelId: string) {
   const server  = getStreamServer()
-  const channel = server.channel('support', channelId)
+  const channel = server.channel('messaging', channelId)
   await channel.updatePartial({ set: { ticketStatus: 'closed' } as any })
 }
 
