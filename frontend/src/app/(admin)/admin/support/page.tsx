@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
-import { useStreamContext } from 'stream-chat-react'
+import { useStreamContext } from '@/components/providers/StreamProvider'
 import { apiClient } from '@/lib/api'
 import { useSupportChat } from '@/hooks/useSupportChat'
 import { TicketCategory, TicketStatus } from '@/types/support'
