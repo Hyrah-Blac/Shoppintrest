@@ -49,7 +49,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
         apiClient.users.search(q),
       ])
       setResults(productsRes.data.data || [])
-      setUsers(usersRes.data.data   || [])
+      setUsers(usersRes.data.data      || [])
     } catch { /* silent */ }
     finally { setIsLoading(false) }
   }, 300)
@@ -133,7 +133,6 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
               {/* ── Results ── */}
               <div className="max-h-[60vh] overflow-y-auto scrollbar-hide">
                 {isLoading ? (
-                  /* Loading skeletons */
                   <div className="p-4 space-y-2">
                     {[1, 2, 3].map((i) => (
                       <div key={i} className="flex items-center gap-3 px-3 py-2">
@@ -142,14 +141,8 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
                           style={{ borderRadius: 'var(--radius-sm)' }}
                         />
                         <div className="flex-1 space-y-1.5">
-                          <div
-                            className="skeleton h-3.5 w-40"
-                            style={{ borderRadius: 'var(--radius-sm)' }}
-                          />
-                          <div
-                            className="skeleton h-3 w-24"
-                            style={{ borderRadius: 'var(--radius-sm)' }}
-                          />
+                          <div className="skeleton h-3.5 w-40" style={{ borderRadius: 'var(--radius-sm)' }} />
+                          <div className="skeleton h-3 w-24"   style={{ borderRadius: 'var(--radius-sm)' }} />
                         </div>
                       </div>
                     ))}
@@ -164,7 +157,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
                 ) : (
                   <div className="p-3">
 
-                    {/* Products */}
+                    {/* ── Products ── */}
                     {results.length > 0 && (
                       <div className="mb-4">
                         <p className="eyebrow px-3 py-2">Products</p>
@@ -179,14 +172,12 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
                                          duration-[var(--duration-hover)]"
                               style={{ color: 'inherit' }}
                               onMouseEnter={(e) =>
-                                (e.currentTarget.style.background =
-                                  'hsl(var(--accent-muted))')}
+                                (e.currentTarget.style.background = 'hsl(var(--accent-muted))')}
                               onMouseLeave={(e) =>
                                 (e.currentTarget.style.background = 'transparent')}
                             >
                               <div
-                                className="w-10 h-10 rounded-[var(--radius-sm)]
-                                           overflow-hidden shrink-0"
+                                className="w-10 h-10 rounded-[var(--radius-sm)] overflow-hidden shrink-0"
                                 style={{ background: 'hsl(var(--surface))' }}
                               >
                                 {product.images?.[0]?.url && (
@@ -206,15 +197,9 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
                                 >
                                   {product.title}
                                 </p>
-                                <p className="eyebrow mt-0.5">
-                                  {product.brand}
-                                </p>
+                                <p className="eyebrow mt-0.5">{product.brand}</p>
                               </div>
-                              <p
-                                className="price shrink-0"
-                              >
-                                {formatPrice(product.price)}
-                              </p>
+                              <p className="price shrink-0">{formatPrice(product.price)}</p>
                               <ArrowRight
                                 size={14}
                                 className="shrink-0 opacity-0 group-hover:opacity-100
@@ -228,7 +213,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
                       </div>
                     )}
 
-                    {/* People */}
+                    {/* ── People ── */}
                     {users.length > 0 && (
                       <div className="mb-2">
                         <p className="eyebrow px-3 py-2">People</p>
@@ -242,8 +227,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
                                          rounded-[var(--radius)] transition-all
                                          duration-[var(--duration-hover)]"
                               onMouseEnter={(e) =>
-                                (e.currentTarget.style.background =
-                                  'hsl(var(--accent-muted))')}
+                                (e.currentTarget.style.background = 'hsl(var(--accent-muted))')}
                               onMouseLeave={(e) =>
                                 (e.currentTarget.style.background = 'transparent')}
                             >
@@ -268,10 +252,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
                                 >
                                   {user.displayName}
                                 </p>
-                                <p
-                                  className="text-xs"
-                                  style={{ color: 'hsl(var(--muted))' }}
-                                >
+                                <p className="text-xs" style={{ color: 'hsl(var(--muted))' }}>
                                   @{user.username}
                                 </p>
                               </div>
@@ -281,14 +262,14 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
                       </div>
                     )}
 
-                    {/* Quick links — shown when no query */}
+                    {/* ── Quick links (no query) ── */}
                     {!query && (
                       <div className="py-1">
-                        <p className="eyebrow px-3 py-2">Quick Links</p>
+                        <p className="eyebrow px-3 py-2">Quick links</p>
                         {[
                           { href: '/explore',              label: 'Browse all products' },
                           { href: '/explore?sort=popular', label: 'Trending now'        },
-                          { href: '/collections',          label: 'View collections'    },
+                          { href: '/support',              label: 'Contact support'     },
                         ].map((link) => (
                           <Link
                             key={link.href}
@@ -323,16 +304,13 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
                 )}
               </div>
 
-              {/* ── Footer hint ── */}
+              {/* ── Footer ── */}
               {(results.length > 0 || users.length > 0) && query && (
                 <div
                   className="px-5 py-3 border-t flex items-center justify-between"
                   style={{ borderColor: 'hsl(var(--border))' }}
                 >
-                  <span
-                    className="text-xs"
-                    style={{ color: 'hsl(var(--muted-foreground))' }}
-                  >
+                  <span className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
                     {results.length + users.length} results
                   </span>
                   <Link

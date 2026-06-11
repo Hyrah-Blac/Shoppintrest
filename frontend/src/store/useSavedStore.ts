@@ -2,8 +2,23 @@ import { create } from 'zustand'
 import { SavedFolder } from '@/types/savedFolder'
 import { apiClient }   from '@/lib/api'
 
+interface Product {
+  _id:          string
+  title:        string
+  price:        number
+  comparePrice?: number
+  brand?:       string
+  isFeatured?:  boolean
+  totalInventory?: number
+  rating?:      number
+  reviewCount?: number
+  images?:      { url: string; alt?: string }[]
+  variants?:    { size: string }[]
+}
+
 interface SavedState {
   savedProductIds: Set<string>
+  savedProducts:   Product[]
   folders:         SavedFolder[]
   isLoaded:        boolean
 
@@ -19,6 +34,7 @@ interface SavedState {
 
 export const useSavedStore = create<SavedState>((set, get) => ({
   savedProductIds: new Set(),
+  savedProducts:   [],
   folders:         [],
   isLoaded:        false,
 
@@ -27,10 +43,12 @@ export const useSavedStore = create<SavedState>((set, get) => ({
       apiClient.saved.getAll(),
       apiClient.saved.getFolders(),
     ])
-    const ids = (savedRes.data.data as { _id: string }[]).map(p => p._id)
+    const products = (savedRes.data.data as Product[]) ?? []
+    const ids      = products.map(p => p._id)
     set({
+      savedProducts:   products,
       savedProductIds: new Set(ids),
-      folders:         foldersRes.data.data,
+      folders:         foldersRes.data.data ?? [],
       isLoaded:        true,
     })
   },
@@ -45,7 +63,10 @@ export const useSavedStore = create<SavedState>((set, get) => ({
     set(s => {
       const next = new Set(s.savedProductIds)
       next.delete(productId)
-      return { savedProductIds: next }
+      return {
+        savedProductIds: next,
+        savedProducts:   s.savedProducts.filter(p => p._id !== productId),
+      }
     })
   },
 
@@ -61,10 +82,10 @@ export const useSavedStore = create<SavedState>((set, get) => ({
   },
 
   renameFolder: async (slug, newName) => {
-    const res    = await apiClient.saved.renameFolder(slug, newName)
+    const res     = await apiClient.saved.renameFolder(slug, newName)
     const updated = res.data.data as SavedFolder
     set(s => ({
-      folders: s.folders.map(f => f.slug === slug ? updated : f)
+      folders: s.folders.map(f => f.slug === slug ? updated : f),
     }))
   },
 
