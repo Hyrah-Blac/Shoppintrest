@@ -25,7 +25,8 @@ export async function createSupportChannel(
 
   const channelId = `support_${memberId}_${Date.now()}`
   const channel   = server.channel('support', channelId, {
-    members:  [memberId],
+    members:       [memberId],
+    created_by_id: memberId,
     category,
     priority: 'normal',
     data: {
