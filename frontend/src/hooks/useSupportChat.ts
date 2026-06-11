@@ -113,9 +113,13 @@ export function useSupportChat(client: StreamChat | null, isReady: boolean) {
     setIsLoading(true)
     setIsTyping(false)
     try {
-      const channel = client.channel('messaging', channelId)
-      await channel.watch()
+     const channel = client.channel('messaging', channelId)
+await channel.watch()
 
+// Ensure admin is a member so they can read history & receive future events
+if (!channel.state.members[client.userID!]) {
+  await channel.addMembers([client.userID!])
+}
       activeChannelRef.current = channel
       setActiveChannel(channel)
       setMessages([...channel.state.messages])

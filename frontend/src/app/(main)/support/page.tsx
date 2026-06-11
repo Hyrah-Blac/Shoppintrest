@@ -66,6 +66,7 @@ function NewMessageSheet({
 }) {
   const router = useRouter()
   const { createTicket } = useSupportStore()
+  const { client } = useStreamContext()
   const [message, setMessage] = useState(initialText ?? '')
   const [orderId, setOrderId] = useState('')
   const [loading, setLoading] = useState(false)
@@ -101,12 +102,25 @@ function NewMessageSheet({
     setError('')
     try {
       const ticket = await createTicket(initialCategory ?? 'other', orderId.trim() || undefined)
+
+      // Send the customer's actual typed message into the new ticket's channel
+      if (client && ticket.streamChannelId) {
+        try {
+          const channel = client.channel('messaging', ticket.streamChannelId)
+          await channel.watch()
+          await channel.sendMessage({ text: message.trim() })
+        } catch {
+          // Non-fatal: ticket exists even if this message fails to send.
+          // The customer can retry from inside the conversation.
+        }
+      }
+
       router.push(`/support/${ticket._id}`)
     } catch {
       setError('Something went wrong — please try again.')
       setLoading(false)
     }
-  }, [message, loading, initialCategory, orderId, createTicket, router])
+  }, [message, loading, initialCategory, orderId, createTicket, router, client])
 
   const onKey = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() }
