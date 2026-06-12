@@ -9,8 +9,6 @@ const DISPLAY: React.CSSProperties = {
   fontFamily: 'var(--font-display, "Cormorant Garamond", Georgia, serif)',
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
 function timeLabel(d?: string | Date) {
   if (!d) return ''
   return new Date(d as string).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -36,59 +34,56 @@ function dayLabel(d?: string | Date) {
   return date.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })
 }
 
-// ─── Typing indicator ─────────────────────────────────────────────────────────
-
 function TypingDots() {
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-end', padding: '4px 0' }}>
+    <div style={{ display: 'flex', alignItems: 'flex-end', padding: '2px 0 4px' }}>
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 4,
+        display: 'flex', alignItems: 'center', gap: 5,
         background: 'var(--color-background-secondary)',
         border: '0.5px solid var(--color-border-tertiary)',
-        borderRadius: '14px 14px 14px 4px',
-        padding: '10px 14px',
+        borderRadius: '18px 18px 18px 4px',
+        padding: '10px 16px',
       }}>
-        {[0, 0.2, 0.4].map((delay, i) => (
+        {[0, 0.18, 0.36].map((delay, i) => (
           <span key={i} style={{
-            width: 5, height: 5, borderRadius: '50%',
+            width: 6, height: 6, borderRadius: '50%',
             background: 'var(--color-text-secondary)',
             display: 'block',
-            animation: `bounce 1.2s ${delay}s infinite ease-in-out`,
+            animation: `typingBounce 1.2s ${delay}s infinite ease-in-out`,
           }} />
         ))}
       </div>
       <style>{`
-        @keyframes bounce {
-          0%,60%,100%{transform:translateY(0);opacity:.4}
-          30%{transform:translateY(-5px);opacity:1}
+        @keyframes typingBounce {
+          0%,60%,100%{transform:translateY(0);opacity:.35}
+          30%{transform:translateY(-6px);opacity:1}
         }
       `}</style>
     </div>
   )
 }
 
-// ─── Message bubble ───────────────────────────────────────────────────────────
-
 function Bubble({
-  text, isMine, createdAt, isSystem, isRead,
+  text, isMine, createdAt, isSystem, isRead, showTail,
 }: {
   text: string
   isMine: boolean
   createdAt?: string | Date
   isSystem?: boolean
   isRead?: boolean
+  showTail?: boolean
 }) {
   const [showTime, setShowTime] = useState(false)
 
   if (isSystem) {
     return (
-      <div style={{ textAlign: 'center', padding: '10px 0' }}>
+      <div style={{ textAlign: 'center', padding: '8px 0', margin: '4px 0' }}>
         <span style={{
           fontSize: 11, color: 'var(--color-text-secondary)',
           background: 'var(--color-background-secondary)',
-          padding: '4px 14px', borderRadius: 20,
+          padding: '4px 16px', borderRadius: 20,
           border: '0.5px solid var(--color-border-tertiary)',
-          whiteSpace: 'pre-line',
+          display: 'inline-block', lineHeight: 1.6,
         }}>
           {text}
         </span>
@@ -98,46 +93,54 @@ function Bubble({
 
   return (
     <div style={{
-      display: 'flex', flexDirection: 'column',
-      alignItems: isMine ? 'flex-end' : 'flex-start',
-      margin: '3px 0',
+      display: 'flex',
+      flexDirection: isMine ? 'row-reverse' : 'row',
+      alignItems: 'flex-end',
+      gap: 6,
+      margin: '1px 0',
     }}>
-      <div style={{
-        maxWidth: '75%',
-        background: isMine ? 'var(--color-text-primary)' : 'var(--color-background-secondary)',
-        color: isMine ? 'var(--color-background-primary)' : 'var(--color-text-primary)',
-        borderRadius: isMine ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-        padding: '10px 14px', fontSize: 14, lineHeight: 1.6,
-        border: isMine ? 'none' : '0.5px solid var(--color-border-tertiary)',
-        wordBreak: 'break-word',
-      }}>
-        {text}
-      </div>
-      {createdAt && (
+      <div style={{ width: 28, flexShrink: 0 }} />
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: isMine ? 'flex-end' : 'flex-start', maxWidth: '78%' }}>
         <div
-          style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 3, padding: '0 4px', cursor: 'default' }}
-          onMouseEnter={() => setShowTime(true)}
-          onMouseLeave={() => setShowTime(false)}
+          onClick={() => setShowTime(v => !v)}
+          style={{
+            background: isMine ? 'var(--color-text-primary)' : 'var(--color-background-secondary)',
+            color: isMine ? 'var(--color-background-primary)' : 'var(--color-text-primary)',
+            borderRadius: isMine
+              ? showTail ? '18px 18px 4px 18px' : '18px'
+              : showTail ? '18px 18px 18px 4px' : '18px',
+            padding: '10px 14px',
+            fontSize: 15,
+            lineHeight: 1.5,
+            border: isMine ? 'none' : '0.5px solid var(--color-border-tertiary)',
+            wordBreak: 'break-word',
+            cursor: 'default',
+            userSelect: 'text' as const,
+          }}
         >
-          <span style={{ fontSize: 10, color: 'var(--color-text-secondary)' }}>
-            {showTime ? timeLabel(createdAt) : relativeTime(createdAt)}
+          {text}
+        </div>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 4,
+          marginTop: 3, padding: '0 2px',
+          opacity: showTime ? 1 : 0,
+          transition: 'opacity 0.15s',
+          height: showTime ? 'auto' : 0,
+          overflow: 'hidden',
+        }}>
+          <span style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>
+            {timeLabel(createdAt)}
           </span>
           {isMine && (
-            <span style={{
-              fontSize: 10,
-              color: isRead ? 'var(--color-text-info)' : 'var(--color-text-secondary)',
-              opacity: isRead ? 1 : 0.5,
-            }}>
+            <span style={{ fontSize: 13, color: isRead ? '#4fc3f7' : 'var(--color-text-secondary)', lineHeight: 1 }}>
               {isRead ? '✓✓' : '✓'}
             </span>
           )}
         </div>
-      )}
+      </div>
     </div>
   )
 }
-
-// ─── Composer ─────────────────────────────────────────────────────────────────
 
 function Composer({ onSend, onTyping }: {
   onSend:    (t: string) => Promise<void>
@@ -151,65 +154,90 @@ function Composer({ onSend, onTyping }: {
     const el = ref.current
     if (!el) return
     el.style.height = 'auto'
-    el.style.height = `${Math.min(el.scrollHeight, 120)}px`
+    el.style.height = `${Math.min(el.scrollHeight, 130)}px`
   }, [input])
 
   const send = useCallback(async () => {
     const text = input.trim()
     if (!text || sending) return
     setSending(true)
-    try { await onSend(text); setInput('') } finally { setSending(false) }
+    try { await onSend(text); setInput('') }
+    finally { setSending(false) }
   }, [input, sending, onSend])
 
+  const canSend = !!input.trim() && !sending
+
   return (
-    <div style={{ padding: '10px 14px 14px', borderTop: '0.5px solid var(--color-border-tertiary)', flexShrink: 0 }}>
-      <div style={{
-        display: 'flex', gap: 8, alignItems: 'flex-end',
-        border: '0.5px solid var(--color-border-secondary)',
-        borderRadius: 14, padding: '8px 8px 8px 14px',
-      }}>
+    <div style={{
+      padding: '8px 12px 12px',
+      background: 'var(--color-background-primary)',
+      borderTop: '0.5px solid var(--color-border-tertiary)',
+      flexShrink: 0,
+    }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'flex-end',
+          gap: 8,
+          background: 'var(--color-background-secondary)',
+          border: '0.5px solid var(--color-border-secondary)',
+          borderRadius: 24,
+          padding: '6px 6px 6px 16px',
+          transition: 'border-color 0.15s',
+        }}
+        onFocusCapture={e => (e.currentTarget.style.borderColor = 'var(--color-border-primary)')}
+        onBlurCapture={e  => (e.currentTarget.style.borderColor = 'var(--color-border-secondary)')}
+      >
         <textarea
           ref={ref}
           value={input}
           onChange={e => { setInput(e.target.value); onTyping?.() }}
-          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
-          placeholder="Message support…"
+          placeholder="Message…"
           rows={1}
           style={{
-            flex: 1, resize: 'none', border: 'none', outline: 'none',
-            background: 'transparent', fontSize: 14, lineHeight: 1.6,
-            color: 'var(--color-text-primary)', fontFamily: 'var(--font-sans)',
-            overflowY: 'hidden', padding: '2px 0',
+            flex: 1,
+            resize: 'none',
+            border: 'none',
+            outline: 'none',
+            background: 'transparent',
+            fontSize: 15,
+            lineHeight: 1.5,
+            color: 'var(--color-text-primary)',
+            fontFamily: 'var(--font-sans)',
+            overflowY: 'hidden',
+            padding: '4px 0',
+            maxHeight: 130,
           }}
         />
         <button
           onClick={send}
-          disabled={!input.trim() || sending}
-          aria-label="Send"
+          disabled={!canSend}
+          aria-label="Send message"
           style={{
-            width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-            background: input.trim() && !sending ? 'var(--color-text-primary)' : 'transparent',
-            border: '0.5px solid var(--color-border-secondary)',
-            color: input.trim() && !sending ? 'var(--color-background-primary)' : 'var(--color-text-secondary)',
-            cursor: input.trim() && !sending ? 'pointer' : 'not-allowed',
+            width: 38, height: 38, borderRadius: '50%', flexShrink: 0,
+            border: 'none',
+            background: canSend ? 'var(--color-text-primary)' : 'var(--color-border-tertiary)',
+            color: canSend ? 'var(--color-background-primary)' : 'var(--color-text-secondary)',
+            cursor: canSend ? 'pointer' : 'default',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 15, transition: 'all 0.15s',
+            transition: 'all 0.18s',
+            transform: canSend ? 'scale(1)' : 'scale(0.92)',
           }}
         >
-          {sending
-            ? <i className="ti ti-loader-2 ti-spin" />
-            : <i className="ti ti-send-2" aria-hidden="true" />
-          }
+          {sending ? (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ animation: 'spin 0.8s linear infinite' }}>
+              <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+            </svg>
+          ) : (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M3.478 2.405a.75.75 0 0 0-.926.94l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.405Z" />
+            </svg>
+          )}
         </button>
       </div>
-      <p style={{ fontSize: 10, color: 'var(--color-text-secondary)', textAlign: 'center', margin: '5px 0 0', letterSpacing: '0.04em' }}>
-        Enter to send · Shift+Enter for new line
-      </p>
     </div>
   )
 }
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SupportPage() {
   const { conversation, isLoaded, load } = useSupportStore()
@@ -224,10 +252,8 @@ export default function SupportPage() {
   const wasNearBottomRef = useRef(true)
   const [showNew, setShowNew] = useState(false)
 
-  // Load (or create) the conversation once
   useEffect(() => { load() }, [load])
 
-  // Open the Stream channel once we have the channel ID
   useEffect(() => {
     if (conversation?.streamChannelId) openChannel(conversation.streamChannelId)
   }, [conversation?.streamChannelId, openChannel])
@@ -235,7 +261,7 @@ export default function SupportPage() {
   const isNearBottom = useCallback(() => {
     const el = listRef.current
     if (!el) return true
-    return el.scrollHeight - el.scrollTop - el.clientHeight < 120
+    return el.scrollHeight - el.scrollTop - el.clientHeight < 100
   }, [])
 
   useEffect(() => {
@@ -283,42 +309,52 @@ export default function SupportPage() {
     )
   }, [messages, readBy, client?.userID])
 
+  const lastMineId = useMemo(() =>
+    [...messages].reverse().find(m => m.user?.id === client?.userID)?.id
+  , [messages, client?.userID])
+
   return (
     <div style={{
-      maxWidth: 640, margin: '0 auto',
+      maxWidth: 680, margin: '0 auto',
       display: 'flex', flexDirection: 'column',
       height: 'calc(100dvh - 64px)',
       position: 'relative',
     }}>
+
       {/* Header */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 12,
         padding: '10px 16px',
         borderBottom: '0.5px solid var(--color-border-tertiary)',
         flexShrink: 0,
+        background: 'var(--color-background-primary)',
       }}>
-        <div style={{
-          width: 38, height: 38, borderRadius: '50%',
-          background: 'var(--color-background-secondary)',
-          border: '0.5px solid var(--color-border-secondary)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 15, color: 'var(--color-text-secondary)',
-          flexShrink: 0, position: 'relative',
-        }}>
-          <i className="ti ti-headset" aria-hidden="true" />
+        <div style={{ position: 'relative', flexShrink: 0 }}>
+          <div style={{
+            width: 42, height: 42, borderRadius: '50%',
+            background: 'var(--color-background-secondary)',
+            border: '0.5px solid var(--color-border-secondary)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: 'var(--color-text-secondary)',
+          }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 18v-6a9 9 0 0 1 18 0v6" />
+              <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z" />
+            </svg>
+          </div>
           <span style={{
             position: 'absolute', bottom: 1, right: 1,
-            width: 8, height: 8, borderRadius: '50%',
-            background: 'var(--color-text-success)',
+            width: 10, height: 10, borderRadius: '50%',
+            background: '#22c55e',
             border: '2px solid var(--color-background-primary)',
           }} />
         </div>
-        <div>
-          <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)', margin: 0, lineHeight: 1.2 }}>
+        <div style={{ flex: 1 }}>
+          <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)', margin: 0, lineHeight: 1.2 }}>
             Support Team
           </p>
-          <p style={{ fontSize: 11, color: 'var(--color-text-secondary)', margin: '2px 0 0' }}>
-            Usually replies within a few hours
+          <p style={{ fontSize: 12, color: '#22c55e', margin: '2px 0 0', fontWeight: 500 }}>
+            Online · usually replies in minutes
           </p>
         </div>
       </div>
@@ -326,11 +362,18 @@ export default function SupportPage() {
       {/* Messages */}
       <div
         ref={listRef}
-        style={{ flex: 1, overflowY: 'auto', padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 2 }}
+        style={{
+          flex: 1, overflowY: 'auto',
+          padding: '12px 16px 8px',
+          display: 'flex', flexDirection: 'column', gap: 2,
+          background: 'var(--color-background-primary)',
+        }}
       >
         {(isLoading || !isLoaded) && (
-          <div style={{ textAlign: 'center', padding: '2rem' }}>
-            <i className="ti ti-loader-2 ti-spin" style={{ fontSize: 18, color: 'var(--color-text-secondary)' }} />
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-secondary)" strokeWidth="2.5" strokeLinecap="round" style={{ animation: 'spin 0.8s linear infinite' }}>
+              <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+            </svg>
           </div>
         )}
 
@@ -338,22 +381,23 @@ export default function SupportPage() {
           <div style={{
             flex: 1, display: 'flex', flexDirection: 'column',
             alignItems: 'center', justifyContent: 'center',
-            gap: 10, padding: '3rem 1rem', textAlign: 'center',
+            gap: 12, padding: '3rem 2rem', textAlign: 'center',
           }}>
             <div style={{
-              width: 44, height: 44, borderRadius: 11,
+              width: 64, height: 64, borderRadius: '50%',
+              background: 'var(--color-background-secondary)',
               border: '0.5px solid var(--color-border-tertiary)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 18, color: 'var(--color-text-secondary)',
+              fontSize: 28,
             }}>
-              <i className="ti ti-messages" aria-hidden="true" />
+              👋
             </div>
             <div>
-              <p style={{ ...DISPLAY, fontSize: 19, fontWeight: 300, margin: '0 0 5px', color: 'var(--color-text-primary)' }}>
-                How can we help?
+              <p style={{ ...DISPLAY, fontSize: 22, fontWeight: 300, margin: '0 0 6px', color: 'var(--color-text-primary)' }}>
+                Hi there!
               </p>
-              <p style={{ fontSize: 12, margin: 0, color: 'var(--color-text-secondary)', lineHeight: 1.7 }}>
-                Send a message and our team will get back to you shortly.
+              <p style={{ fontSize: 13, margin: 0, color: 'var(--color-text-secondary)', lineHeight: 1.7, maxWidth: 260 }}>
+                Got a question or need help with an order? Send us a message — we're here.
               </p>
             </div>
           </div>
@@ -361,19 +405,26 @@ export default function SupportPage() {
 
         {grouped.map(({ day, msgs }) => (
           <div key={day}>
-            <div style={{ textAlign: 'center', margin: '14px 0 10px' }}>
+            {/* Day divider */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '16px 0 10px' }}>
+              <div style={{ flex: 1, height: '0.5px', background: 'var(--color-border-tertiary)' }} />
               <span style={{
                 fontSize: 11, color: 'var(--color-text-secondary)',
                 background: 'var(--color-background-secondary)',
                 padding: '3px 12px', borderRadius: 20,
                 border: '0.5px solid var(--color-border-tertiary)',
+                whiteSpace: 'nowrap', fontWeight: 500,
               }}>
                 {day}
               </span>
+              <div style={{ flex: 1, height: '0.5px', background: 'var(--color-border-tertiary)' }} />
             </div>
-            {msgs.map(msg => {
-              const isMine = msg.user?.id === client?.userID
-              const isLastMine = isMine && msg.id === [...messages].reverse().find(m => m.user?.id === client?.userID)?.id
+
+            {msgs.map((msg, idx) => {
+              const isMine  = msg.user?.id === client?.userID
+              const nextMsg = msgs[idx + 1]
+              const isLast  = !nextMsg || nextMsg.user?.id !== msg.user?.id
+              const isLastMineOverall = isMine && msg.id === lastMineId
               return (
                 <Bubble
                   key={msg.id}
@@ -381,17 +432,45 @@ export default function SupportPage() {
                   isMine={isMine}
                   createdAt={msg.created_at}
                   isSystem={msg.type === 'system'}
-                  isRead={isMine ? (isLastMine ? lastMineRead : true) : undefined}
+                  isRead={isMine ? (isLastMineOverall ? lastMineRead : true) : undefined}
+                  showTail={isLast}
                 />
               )
             })}
           </div>
         ))}
 
-        {isTyping && <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', padding: '0 4px 4px' }}>Support is typing…</div>}
-        {isTyping && <TypingDots />}
+        {isTyping && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '2px 0' }}>
+            <div style={{
+              width: 28, height: 28, borderRadius: '50%',
+              background: 'var(--color-background-secondary)',
+              border: '0.5px solid var(--color-border-tertiary)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0,
+            }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 18v-6a9 9 0 0 1 18 0v6" />
+                <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z" />
+              </svg>
+            </div>
+            <TypingDots />
+          </div>
+        )}
+
         <div ref={bottomRef} />
       </div>
+
+      {/* Read receipt */}
+      {lastMineRead && !isTyping && (
+        <div style={{
+          textAlign: 'right', fontSize: 11, fontWeight: 500,
+          color: 'var(--color-text-secondary)',
+          padding: '2px 20px 0', flexShrink: 0,
+        }}>
+          Seen ✓✓
+        </div>
+      )}
 
       {/* New messages pill */}
       {showNew && (
@@ -399,25 +478,22 @@ export default function SupportPage() {
           onClick={scrollToBottom}
           style={{
             position: 'absolute', bottom: 80, left: '50%', transform: 'translateX(-50%)',
-            padding: '6px 16px', borderRadius: 20, fontSize: 12, fontWeight: 500,
+            padding: '7px 18px', borderRadius: 20, fontSize: 13, fontWeight: 600,
             background: 'var(--color-text-primary)', color: 'var(--color-background-primary)',
-            border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
-            boxShadow: '0 4px 12px rgba(0,0,0,0.15)', zIndex: 5,
+            border: 'none', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: 6,
+            boxShadow: '0 4px 16px rgba(0,0,0,0.18)', zIndex: 5,
           }}
         >
-          <i className="ti ti-arrow-down" style={{ fontSize: 12 }} />
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 5v14M5 12l7 7 7-7" />
+          </svg>
           New messages
         </button>
       )}
 
-      {/* Read receipt */}
-      {lastMineRead && (
-        <div style={{ textAlign: 'right', fontSize: 10, color: 'var(--color-text-secondary)', padding: '0 22px' }}>
-          Seen by Support
-        </div>
-      )}
-
       <Composer onSend={sendMessage} onTyping={sendTyping} />
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   )
 }
