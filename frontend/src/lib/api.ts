@@ -148,7 +148,7 @@ export const apiClient = {
 
   // Chat
   chat: {
-    getToken: () => api.post<{ data: { token: string } }>('/api/chat/token'),
+    getToken: () => api.get<{ data: { token: string } }>('/api/support/stream-token'),
   },
 
   // Notifications
