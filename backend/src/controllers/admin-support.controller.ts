@@ -47,7 +47,7 @@ export const migrateChannels = asyncHandler(async (req: Request, res: Response) 
   for (const convo of convos) {
     try {
       const channel = server.channel('messaging', convo.streamChannelId)
-      await channel.updatePartial({ set: { support: true } })
+     await channel.updatePartial({ set: { support: true } as any })
       results.push({ id: convo.streamChannelId, ok: true })
     } catch (err: any) {
       results.push({ id: convo.streamChannelId, error: err.message })
