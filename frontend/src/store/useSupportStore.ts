@@ -1,44 +1,22 @@
 import { create } from 'zustand'
 import { apiClient } from '@/lib/api'
-import { SupportTicket, TicketCategory } from '@/types/support'
+import { Conversation } from '@/types/support.types'
 
 interface SupportState {
-  tickets:    SupportTicket[]
-  isLoaded:   boolean
-  loadTickets: () => Promise<void>
-  createTicket: (category: TicketCategory, orderId?: string) => Promise<SupportTicket>
-  closeTicket: (id: string) => Promise<void>
+  conversation: Conversation | null
+  isLoaded:     boolean
+  load:         () => Promise<Conversation>
 }
 
 export const useSupportStore = create<SupportState>((set, get) => ({
-  tickets:  [],
-  isLoaded: false,
+  conversation: null,
+  isLoaded:     false,
 
-  loadTickets: async () => {
-    try {
-      const res = await apiClient.support.getTickets()
-      set({ tickets: res.data?.data ?? [], isLoaded: true })
-    } catch {
-      set({ isLoaded: true })
-    }
-  },
-
-  createTicket: async (category, orderId) => {
-    const res = await apiClient.support.createTicket({
-      category,
-      ...(orderId ? { orderId } : {}),
-    })
-    const ticket: SupportTicket = res.data?.data
-    set({ tickets: [ticket, ...get().tickets] })
-    return ticket
-  },
-
-  closeTicket: async (id) => {
-    await apiClient.support.closeTicket(id)
-    set({
-      tickets: get().tickets.map(t =>
-        t._id === id ? { ...t, status: 'closed' } : t
-      ),
-    })
+  load: async () => {
+    if (get().conversation) return get().conversation!
+    const res  = await apiClient.support.getConversation()
+    const convo: Conversation = res.data?.data
+    set({ conversation: convo, isLoaded: true })
+    return convo
   },
 }))

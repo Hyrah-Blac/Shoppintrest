@@ -1,19 +1,16 @@
 import { Router } from 'express'
 import { protect, restrictTo } from '../middleware/auth'
 import {
-  getAllTickets,
-  getTicketAdmin,
-  closeTicketAdmin,
-  notifySupportReply,
+  getAllConversations,
+  getConversation,
+  notifyReply,
 } from '../controllers/admin-support.controller'
 
 const router = Router()
-
 router.use(protect, restrictTo('admin'))
 
-router.get  ('/tickets',                      getAllTickets)
-router.get  ('/tickets/:ticketId',            getTicketAdmin)
-router.patch('/tickets/:ticketId/close',      closeTicketAdmin)
-router.post ('/tickets/:ticketId/notify',     notifySupportReply)
+router.get  ('/conversations',                        getAllConversations)
+router.get  ('/conversations/:conversationId',        getConversation)
+router.post ('/conversations/:conversationId/notify', notifyReply)
 
 export default router

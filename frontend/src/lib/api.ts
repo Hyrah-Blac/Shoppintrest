@@ -227,27 +227,18 @@ export const apiClient = {
 
   // Support
   support: {
-    getTickets: () =>
-      api.get('/api/support/tickets'),
-    createTicket: (body: { category: string; orderId?: string }) =>
-      api.post('/api/support/tickets', body),
-    getTicket: (id: string) =>
-      api.get(`/api/support/tickets/${id}`),
-    closeTicket: (id: string) =>
-      api.patch(`/api/support/tickets/${id}/close`),
+    getConversation: () =>
+      api.get('/api/support/conversation'),
     getStreamToken: () =>
       api.get('/api/support/stream-token'),
 
-    // ── Admin ──
     admin: {
-      getAllTickets: (status?: string) =>
-        api.get('/api/support/admin/tickets', { params: status ? { status } : undefined }),
-      getTicket: (ticketId: string) =>
-        api.get(`/api/support/admin/tickets/${ticketId}`),
-      closeTicket: (ticketId: string) =>
-        api.patch(`/api/support/admin/tickets/${ticketId}/close`),
-      notifyReply: (ticketId: string) =>
-        api.post(`/api/support/admin/tickets/${ticketId}/notify`),
+      getAllConversations: () =>
+        api.get('/api/admin/support/conversations'),
+      getConversation: (id: string) =>
+        api.get(`/api/admin/support/conversations/${id}`),
+      notifyReply: (id: string) =>
+        api.post(`/api/admin/support/conversations/${id}/notify`),
     },
   },
 }

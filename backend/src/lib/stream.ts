@@ -1,4 +1,4 @@
-import { StreamChat, ChannelData } from 'stream-chat'
+import { StreamChat } from 'stream-chat'
 import User from '../models/User'
 
 let instance: StreamChat | null = null
@@ -13,11 +13,11 @@ export function getStreamServer(): StreamChat {
   return instance
 }
 
-export async function createSupportChannel(
-  userId: string,
-  category: string,
-  orderId?: string
-) {
+/**
+ * Gets or creates the single support channel for a user.
+ * Channel ID is deterministic: support_{userId} — so it's always the same one.
+ */
+export async function getOrCreateSupportChannel(userId: string): Promise<string> {
   const server   = getStreamServer()
   const memberId = String(userId)
 
@@ -30,44 +30,17 @@ export async function createSupportChannel(
     await server.upsertUsers(adminIds.map(id => ({ id })))
   }
 
-  const members = Array.from(new Set([memberId, ...adminIds]))
+  const members   = Array.from(new Set([memberId, ...adminIds]))
+  const channelId = `support_${memberId}`
 
-  const channelId = `support_${memberId}_${Date.now()}`
-  const channel   = server.channel('messaging', channelId, {
+  const channel = server.channel('messaging', channelId, {
     members,
     created_by_id: memberId,
-    category,
-    priority: 'normal',
-    data: {
-      ticketStatus: 'open',
-      orderId:      orderId ?? null,
-      createdAt:    new Date().toISOString(),
-    },
-  } as unknown as ChannelData)
+  } as any)
 
   await channel.create()
 
-  // Automated welcome message after channel creation
-  await channel.sendMessage({
-    text:    'Hi! Thanks for contacting support.\n\nWe\'ve received your request and will get back to you as soon as possible.\n\nYou can continue replying here at any time.',
-    user_id: 'system',
-    type:    'system',
-  } as any)
-
   return channelId
-}
-
-export async function assignAgentToChannel(channelId: string, agentId: string) {
-  const server  = getStreamServer()
-  const channel = server.channel('messaging', channelId)
-  await channel.addMembers([agentId])
-  await channel.updatePartial({ set: { agentId } as any })
-}
-
-export async function closeSupportChannel(channelId: string) {
-  const server  = getStreamServer()
-  const channel = server.channel('messaging', channelId)
-  await channel.updatePartial({ set: { ticketStatus: 'closed' } as any })
 }
 
 export async function getSupportToken(userId: string): Promise<string> {

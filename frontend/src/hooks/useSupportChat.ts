@@ -1,175 +1,157 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { StreamChat, Channel, FormatMessageResponse, Event } from 'stream-chat'
-import { SupportTicketPreview } from '@/types/support'
 
-export interface SupportChannelPreview extends SupportTicketPreview {
-  unreadCount: number
-  lastMessageUserId?: string
+export interface ChannelPreview {
+  streamChannelId: string
+  userId?:         string
+  displayName?:    string
+  email?:          string
+  avatar?:         string
+  lastMessage?:    string
+  lastMessageAt?:  string
+  unreadCount:     number
 }
 
 export function useSupportChat(client: StreamChat | null, isReady: boolean) {
-  const [tickets, setTickets] = useState<SupportChannelPreview[]>([])
-  const [activeChannel, setActiveChannel] = useState<Channel | null>(null)
-  const [messages, setMessages] = useState<FormatMessageResponse[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-  const [isTyping, setIsTyping] = useState(false)
-  const [readBy, setReadBy] = useState<Record<string, string>>({}) // userId -> last_read ISO
+  // ── Inbox-level previews (used by the admin list) ─────────────────────────
+  const [previews,       setPreviews]       = useState<ChannelPreview[]>([])
+  // ── Active conversation ───────────────────────────────────────────────────
+  const [activeChannel,  setActiveChannel]  = useState<Channel | null>(null)
+  const [messages,       setMessages]       = useState<FormatMessageResponse[]>([])
+  const [isLoading,      setIsLoading]      = useState(false)
+  const [isTyping,       setIsTyping]       = useState(false)
+  const [readBy,         setReadBy]         = useState<Record<string, string>>({})
 
   const activeChannelRef = useRef<Channel | null>(null)
-  const cleanupFnsRef = useRef<(() => void)[]>([])
+  const cleanupFnsRef    = useRef<(() => void)[]>([])
 
-  const upsertPreviewFromChannel = useCallback((ch: Channel): SupportChannelPreview => {
-    const last = ch.lastMessage()
+  // ── Build a preview object from a channel ────────────────────────────────
+  const previewFromChannel = useCallback((ch: Channel): ChannelPreview => {
+    const last    = ch.lastMessage()
+    // The channel id is `support_{userId}`, so we can strip the prefix
+    const members = Object.values(ch.state.members)
+    // find the non-admin member (the customer)
+    const customer = members.find(m => m.user?.id && !m.user?.role?.includes('admin'))
+                  ?? members[0]
+
     return {
-      ticketId: (ch.data?.ticketId as string) ?? ch.id!,
       streamChannelId: ch.id!,
-      category: (ch.data?.category as any) ?? 'other',
-      status: (ch.data?.ticketStatus as any) ?? 'open',
-      lastMessage: last?.text,
-      lastMessageAt: last?.created_at?.toString(),
-      lastMessageUserId: last?.user?.id,
-      unreadCount: ch.countUnread(),
+      userId:          customer?.user?.id,
+      displayName:     (customer?.user?.name as string) ?? (customer?.user?.username as string),
+      email:           (customer?.user?.email as string),
+      avatar:          (customer?.user?.image as string),
+      lastMessage:     last?.text,
+      lastMessageAt:   last?.created_at?.toString(),
+      unreadCount:     ch.countUnread(),
     }
   }, [])
 
-  const sortPreviews = useCallback((list: SupportChannelPreview[]) => {
-    return [...list].sort((a, b) => {
-      if (a.unreadCount > 0 !== b.unreadCount > 0) {
+  const sortPreviews = useCallback((list: ChannelPreview[]) =>
+    [...list].sort((a, b) => {
+      if ((a.unreadCount > 0) !== (b.unreadCount > 0))
         return a.unreadCount > 0 ? -1 : 1
-      }
       const at = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0
       const bt = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0
       return bt - at
-    })
-  }, [])
+    }),
+  [])
 
-  // ── Load all support channels ────────────────────────────────────────────
+  // ── Load all channels the user is a member of ────────────────────────────
   useEffect(() => {
     if (!client || !isReady) return
     let cancelled = false
 
-    const loadTickets = async () => {
+    const load = async () => {
       const channels = await client.queryChannels(
         { type: 'messaging', members: { $in: [client.userID!] } },
         { last_message_at: -1 },
         { watch: true, state: true, presence: true }
       )
       if (cancelled) return
-      const previews = channels.map(upsertPreviewFromChannel)
-      setTickets(sortPreviews(previews))
+      setPreviews(sortPreviews(channels.map(previewFromChannel)))
     }
 
-    loadTickets()
+    load()
 
-    // ── Global listeners for inbox-level updates ──────────────────────────
-    const updatePreview = (event: Event) => {
+    const update = (event: Event) => {
       const channelId = event.channel_id ?? event.channel?.id
       if (!channelId) return
       const ch = client.channel('messaging', channelId)
-
-      setTickets(prev => {
-        const idx = prev.findIndex(t => t.streamChannelId === channelId)
-        const updated = upsertPreviewFromChannel(ch)
-        let next: SupportChannelPreview[]
-        if (idx === -1) {
-          next = [...prev, updated]
-        } else {
-          next = [...prev]
-          next[idx] = { ...next[idx], ...updated }
-        }
+      setPreviews(prev => {
+        const idx     = prev.findIndex(p => p.streamChannelId === channelId)
+        const updated = previewFromChannel(ch)
+        const next    = idx === -1 ? [...prev, updated] : prev.map((p, i) => i === idx ? { ...p, ...updated } : p)
         return sortPreviews(next)
       })
     }
 
-    const onNewMessage = (event: Event) => updatePreview(event)
-    const onNotificationNewMessage = (event: Event) => updatePreview(event)
-    const onChannelUpdated = (event: Event) => updatePreview(event)
-
     const subs = [
-      client.on('message.new', onNewMessage),
-      client.on('notification.message_new', onNotificationNewMessage),
-      client.on('channel.updated', onChannelUpdated),
+      client.on('message.new',               update),
+      client.on('notification.message_new',  update),
+      client.on('channel.updated',           update),
     ]
 
     return () => {
       cancelled = true
       subs.forEach(s => s.unsubscribe())
     }
-  }, [client, isReady, upsertPreviewFromChannel, sortPreviews])
+  }, [client, isReady, previewFromChannel, sortPreviews])
 
-  // ── Open a specific ticket's channel ─────────────────────────────────────
-  const openTicket = useCallback(async (channelId: string) => {
+  // ── Open a specific channel ───────────────────────────────────────────────
+  const openChannel = useCallback(async (channelId: string) => {
     if (!client) return
 
-    // Clean up previous channel's listeners + stop watching
     cleanupFnsRef.current.forEach(fn => fn())
     cleanupFnsRef.current = []
 
-    const prevChannel = activeChannelRef.current
-    if (prevChannel && prevChannel.id !== channelId) {
-      prevChannel.stopWatching().catch(() => {})
-    }
+    const prev = activeChannelRef.current
+    if (prev && prev.id !== channelId) prev.stopWatching().catch(() => {})
 
     setIsLoading(true)
     setIsTyping(false)
-    try {
-     const channel = client.channel('messaging', channelId)
-await channel.watch()
+    setMessages([])
 
-// Ensure admin is a member so they can read history & receive future events
-if (!channel.state.members[client.userID!]) {
-  await channel.addMembers([client.userID!])
-}
+    try {
+      const channel = client.channel('messaging', channelId)
+      await channel.watch()
+
+      // Ensure the current user is a member (important for admins)
+      if (!channel.state.members[client.userID!]) {
+        await channel.addMembers([client.userID!])
+      }
+
       activeChannelRef.current = channel
       setActiveChannel(channel)
       setMessages([...channel.state.messages])
 
-      // Initialize read state from channel
-      const initialReadBy: Record<string, string> = {}
-      Object.entries(channel.state.read || {}).forEach(([userId, r]) => {
-        if (userId !== client.userID && r.last_read) {
-          initialReadBy[userId] = new Date(r.last_read).toISOString()
-        }
+      // Read state
+      const rb: Record<string, string> = {}
+      Object.entries(channel.state.read || {}).forEach(([uid, r]) => {
+        if (uid !== client.userID && r.last_read)
+          rb[uid] = new Date(r.last_read).toISOString()
       })
-      setReadBy(initialReadBy)
+      setReadBy(rb)
 
-      // Mark this channel as read by current user
       channel.markRead().catch(() => {})
 
-      // ── message.new (dedup by id) ──────────────────────────────────────
-      const onMessageNew = (event: Event) => {
-        const msg = event.message as FormatMessageResponse | undefined
+      const onNew = (e: Event) => {
+        const msg = e.message as FormatMessageResponse | undefined
         if (!msg) return
-        setMessages(prev => {
-          if (prev.some(m => m.id === msg.id)) return prev
-          return [...prev, msg]
-        })
-        // Mark as read immediately if user is viewing this channel
+        setMessages(prev => prev.some(m => m.id === msg.id) ? prev : [...prev, msg])
         channel.markRead().catch(() => {})
       }
-
-      // ── typing events ────────────────────────────────────────────────────
-      const onTypingStart = (event: Event) => {
-        if (event.user?.id !== client.userID) setIsTyping(true)
-      }
-      const onTypingStop = (event: Event) => {
-        if (event.user?.id !== client.userID) setIsTyping(false)
-      }
-
-      // ── read state events ────────────────────────────────────────────────
-      const onMessageRead = (event: Event) => {
-        if (!event.user?.id || event.user.id === client.userID) return
-        setReadBy(prev => ({
-          ...prev,
-          [event.user!.id]: (event.created_at as string) ?? new Date().toISOString(),
-        }))
+      const onTypingStart = (e: Event) => { if (e.user?.id !== client.userID) setIsTyping(true) }
+      const onTypingStop  = (e: Event) => { if (e.user?.id !== client.userID) setIsTyping(false) }
+      const onRead        = (e: Event) => {
+        if (!e.user?.id || e.user.id === client.userID) return
+        setReadBy(prev => ({ ...prev, [e.user!.id]: (e.created_at as string) ?? new Date().toISOString() }))
       }
 
       const subs = [
-        channel.on('message.new', onMessageNew),
+        channel.on('message.new',  onNew),
         channel.on('typing.start', onTypingStart),
-        channel.on('typing.stop', onTypingStop),
-        channel.on('message.read', onMessageRead),
+        channel.on('typing.stop',  onTypingStop),
+        channel.on('message.read', onRead),
       ]
       cleanupFnsRef.current = subs.map(s => () => s.unsubscribe())
     } finally {
@@ -177,49 +159,42 @@ if (!channel.state.members[client.userID!]) {
     }
   }, [client])
 
-  // ── Cleanup on unmount ─────────────────────────────────────────────────────
-  useEffect(() => {
-    return () => {
-      cleanupFnsRef.current.forEach(fn => fn())
-      cleanupFnsRef.current = []
-      activeChannelRef.current?.stopWatching().catch(() => {})
-    }
+  // ── Cleanup on unmount ────────────────────────────────────────────────────
+  useEffect(() => () => {
+    cleanupFnsRef.current.forEach(fn => fn())
+    activeChannelRef.current?.stopWatching().catch(() => {})
   }, [])
 
   const sendMessage = useCallback(async (text: string) => {
-    const channel = activeChannelRef.current
-    if (!channel || !text.trim()) return
-    await channel.sendMessage({ text: text.trim() })
+    const ch = activeChannelRef.current
+    if (!ch || !text.trim()) return
+    await ch.sendMessage({ text: text.trim() })
   }, [])
 
   const loadOlderMessages = useCallback(async () => {
-    const channel = activeChannelRef.current
-    if (!channel) return
-    const oldest = messages[0]
-    if (!oldest) return
-    const { messages: older } = await channel.query({
-      messages: { limit: 25, id_lt: oldest.id },
+    const ch = activeChannelRef.current
+    if (!ch || !messages[0]) return
+    const { messages: older } = await ch.query({
+      messages: { limit: 25, id_lt: messages[0].id },
     })
     setMessages(prev => {
-      const existingIds = new Set(prev.map(m => m.id))
-      const filtered = (older as FormatMessageResponse[]).filter(m => !existingIds.has(m.id))
-      return [...filtered, ...prev]
+      const ids = new Set(prev.map(m => m.id))
+      return [...(older as FormatMessageResponse[]).filter(m => !ids.has(m.id)), ...prev]
     })
   }, [messages])
 
-  // ── Typing keystroke trigger (call from composer onChange) ────────────────
   const sendTyping = useCallback(() => {
     activeChannelRef.current?.keystroke().catch(() => {})
   }, [])
 
   return {
-    tickets,
+    previews,
     activeChannel,
     messages,
     isLoading,
     isTyping,
     readBy,
-    openTicket,
+    openChannel,
     sendMessage,
     loadOlderMessages,
     sendTyping,

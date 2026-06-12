@@ -1,12 +1,28 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
-import { useSupportStore } from '@/store/useSupportStore'
-import { useSupportChat }  from '@/hooks/useSupportChat'
+import { useParams, useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { apiClient }        from '@/lib/api'
+import { useSupportChat }   from '@/hooks/useSupportChat'
 import { useStreamContext } from '@/components/providers/StreamProvider'
 
 const DISPLAY: React.CSSProperties = {
   fontFamily: 'var(--font-display, "Cormorant Garamond", Georgia, serif)',
+}
+
+interface AdminConversation {
+  _id:             string
+  streamChannelId: string
+  createdAt:       string
+  updatedAt:       string
+  userId: {
+    _id:          string
+    username:     string
+    email:        string
+    displayName?: string
+    avatar?:      string
+  } | null
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -19,7 +35,7 @@ function timeLabel(d?: string | Date) {
 function relativeTime(d?: string | Date) {
   if (!d) return ''
   const diff = Date.now() - new Date(d as string).getTime()
-  const m = Math.floor(diff / 60000)
+  const m    = Math.floor(diff / 60000)
   if (m < 1)  return 'Just now'
   if (m < 60) return `${m}m ago`
   const h = Math.floor(m / 60)
@@ -36,7 +52,7 @@ function dayLabel(d?: string | Date) {
   return date.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })
 }
 
-// ─── Typing indicator ─────────────────────────────────────────────────────────
+// ─── Typing dots ──────────────────────────────────────────────────────────────
 
 function TypingDots() {
   return (
@@ -45,50 +61,36 @@ function TypingDots() {
         display: 'flex', alignItems: 'center', gap: 4,
         background: 'var(--color-background-secondary)',
         border: '0.5px solid var(--color-border-tertiary)',
-        borderRadius: '14px 14px 14px 4px',
-        padding: '10px 14px',
+        borderRadius: '14px 14px 14px 4px', padding: '10px 14px',
       }}>
         {[0, 0.2, 0.4].map((delay, i) => (
           <span key={i} style={{
             width: 5, height: 5, borderRadius: '50%',
-            background: 'var(--color-text-secondary)',
-            display: 'block',
+            background: 'var(--color-text-secondary)', display: 'block',
             animation: `bounce 1.2s ${delay}s infinite ease-in-out`,
           }} />
         ))}
       </div>
-      <style>{`
-        @keyframes bounce {
-          0%,60%,100%{transform:translateY(0);opacity:.4}
-          30%{transform:translateY(-5px);opacity:1}
-        }
-      `}</style>
+      <style>{`@keyframes bounce{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-5px);opacity:1}}`}</style>
     </div>
   )
 }
 
 // ─── Message bubble ───────────────────────────────────────────────────────────
 
-function Bubble({
-  text, isMine, createdAt, isSystem, isRead,
-}: {
-  text: string
-  isMine: boolean
-  createdAt?: string | Date
-  isSystem?: boolean
-  isRead?: boolean
+function Bubble({ text, isMine, createdAt, isSystem }: {
+  text: string; isMine: boolean; createdAt?: string | Date; isSystem?: boolean
 }) {
-  const [showTime, setShowTime] = useState(false)
+  const [showAbsolute, setShowAbsolute] = useState(false)
 
   if (isSystem) {
     return (
-      <div style={{ textAlign: 'center', padding: '10px 0' }}>
+      <div style={{ textAlign: 'center', padding: '8px 0', margin: '8px 0' }}>
         <span style={{
           fontSize: 11, color: 'var(--color-text-secondary)',
           background: 'var(--color-background-secondary)',
           padding: '4px 14px', borderRadius: 20,
           border: '0.5px solid var(--color-border-tertiary)',
-          whiteSpace: 'pre-line',
         }}>
           {text}
         </span>
@@ -97,17 +99,13 @@ function Bubble({
   }
 
   return (
-    <div style={{
-      display: 'flex', flexDirection: 'column',
-      alignItems: isMine ? 'flex-end' : 'flex-start',
-      margin: '3px 0',
-    }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: isMine ? 'flex-end' : 'flex-start', margin: '3px 0' }}>
       <div style={{
-        maxWidth: '75%',
+        maxWidth: '72%',
         background: isMine ? 'var(--color-text-primary)' : 'var(--color-background-secondary)',
         color: isMine ? 'var(--color-background-primary)' : 'var(--color-text-primary)',
-        borderRadius: isMine ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-        padding: '10px 14px', fontSize: 14, lineHeight: 1.6,
+        borderRadius: isMine ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
+        padding: '9px 13px', fontSize: 13, lineHeight: 1.65,
         border: isMine ? 'none' : '0.5px solid var(--color-border-tertiary)',
         wordBreak: 'break-word',
       }}>
@@ -116,21 +114,12 @@ function Bubble({
       {createdAt && (
         <div
           style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 3, padding: '0 4px', cursor: 'default' }}
-          onMouseEnter={() => setShowTime(true)}
-          onMouseLeave={() => setShowTime(false)}
+          onMouseEnter={() => setShowAbsolute(true)}
+          onMouseLeave={() => setShowAbsolute(false)}
         >
           <span style={{ fontSize: 10, color: 'var(--color-text-secondary)' }}>
-            {showTime ? timeLabel(createdAt) : relativeTime(createdAt)}
+            {showAbsolute ? timeLabel(createdAt) : relativeTime(createdAt)}
           </span>
-          {isMine && (
-            <span style={{
-              fontSize: 10,
-              color: isRead ? 'var(--color-text-info)' : 'var(--color-text-secondary)',
-              opacity: isRead ? 1 : 0.5,
-            }}>
-              {isRead ? '✓✓' : '✓'}
-            </span>
-          )}
         </div>
       )}
     </div>
@@ -140,7 +129,7 @@ function Bubble({
 // ─── Composer ─────────────────────────────────────────────────────────────────
 
 function Composer({ onSend, onTyping }: {
-  onSend:    (t: string) => Promise<void>
+  onSend:    (text: string) => Promise<void>
   onTyping?: () => void
 }) {
   const [input,   setInput]   = useState('')
@@ -154,55 +143,54 @@ function Composer({ onSend, onTyping }: {
     el.style.height = `${Math.min(el.scrollHeight, 120)}px`
   }, [input])
 
-  const send = useCallback(async () => {
+  async function send() {
     const text = input.trim()
     if (!text || sending) return
     setSending(true)
     try { await onSend(text); setInput('') } finally { setSending(false) }
-  }, [input, sending, onSend])
+  }
+
+  const canSend = !!input.trim() && !sending
 
   return (
-    <div style={{ padding: '10px 14px 14px', borderTop: '0.5px solid var(--color-border-tertiary)', flexShrink: 0 }}>
+    <div style={{ padding: '10px 14px 12px', borderTop: '0.5px solid var(--color-border-tertiary)', flexShrink: 0 }}>
       <div style={{
         display: 'flex', gap: 8, alignItems: 'flex-end',
         border: '0.5px solid var(--color-border-secondary)',
-        borderRadius: 14, padding: '8px 8px 8px 14px',
+        borderRadius: 13, padding: '7px 7px 7px 14px',
       }}>
         <textarea
           ref={ref}
           value={input}
           onChange={e => { setInput(e.target.value); onTyping?.() }}
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
-          placeholder="Message support…"
+          placeholder="Reply to customer…"
           rows={1}
           style={{
             flex: 1, resize: 'none', border: 'none', outline: 'none',
-            background: 'transparent', fontSize: 14, lineHeight: 1.6,
+            background: 'transparent', fontSize: 13, lineHeight: 1.6,
             color: 'var(--color-text-primary)', fontFamily: 'var(--font-sans)',
-            overflowY: 'hidden', padding: '2px 0',
+            overflowY: 'hidden', padding: '3px 0',
           }}
         />
         <button
           onClick={send}
-          disabled={!input.trim() || sending}
+          disabled={!canSend}
           aria-label="Send"
           style={{
-            width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-            background: input.trim() && !sending ? 'var(--color-text-primary)' : 'transparent',
+            width: 34, height: 34, borderRadius: 9, flexShrink: 0,
+            background: canSend ? 'var(--color-text-primary)' : 'transparent',
             border: '0.5px solid var(--color-border-secondary)',
-            color: input.trim() && !sending ? 'var(--color-background-primary)' : 'var(--color-text-secondary)',
-            cursor: input.trim() && !sending ? 'pointer' : 'not-allowed',
+            color: canSend ? 'var(--color-background-primary)' : 'var(--color-text-secondary)',
+            cursor: canSend ? 'pointer' : 'not-allowed',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 15, transition: 'all 0.15s',
+            fontSize: 14, transition: 'all 0.15s',
           }}
         >
-          {sending
-            ? <i className="ti ti-loader-2 ti-spin" />
-            : <i className="ti ti-send-2" aria-hidden="true" />
-          }
+          {sending ? <i className="ti ti-loader-2 ti-spin" /> : <i className="ti ti-send-2" />}
         </button>
       </div>
-      <p style={{ fontSize: 10, color: 'var(--color-text-secondary)', textAlign: 'center', margin: '5px 0 0', letterSpacing: '0.04em' }}>
+      <p style={{ fontSize: 10, letterSpacing: '0.06em', color: 'var(--color-text-secondary)', textAlign: 'center', margin: '6px 0 0' }}>
         Enter to send · Shift+Enter for new line
       </p>
     </div>
@@ -211,31 +199,49 @@ function Composer({ onSend, onTyping }: {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function SupportPage() {
-  const { conversation, isLoaded, load } = useSupportStore()
-  const { client, isReady }              = useStreamContext()
+export default function AdminConversationPage() {
+  const params         = useParams()
+  const conversationId = params.conversationId as string
+
+  const { client, isReady } = useStreamContext()
   const {
-    messages, isLoading, isTyping, readBy,
+    messages, isLoading, isTyping,
     openChannel, sendMessage, loadOlderMessages, sendTyping,
   } = useSupportChat(client, isReady)
+
+  const [convo,  setConvo]  = useState<AdminConversation | null>(null)
+  const [loaded, setLoaded] = useState(false)
 
   const bottomRef        = useRef<HTMLDivElement>(null)
   const listRef          = useRef<HTMLDivElement>(null)
   const wasNearBottomRef = useRef(true)
   const [showNew, setShowNew] = useState(false)
 
-  // Load (or create) the conversation once
-  useEffect(() => { load() }, [load])
-
-  // Open the Stream channel once we have the channel ID
+  // Fetch conversation meta
   useEffect(() => {
-    if (conversation?.streamChannelId) openChannel(conversation.streamChannelId)
-  }, [conversation?.streamChannelId, openChannel])
+    let cancelled = false
+    apiClient.support.admin.getConversation(conversationId)
+      .then(res => { if (!cancelled) setConvo(res.data?.data ?? null) })
+      .catch(() => { if (!cancelled) setConvo(null) })
+      .finally(() => { if (!cancelled) setLoaded(true) })
+    return () => { cancelled = true }
+  }, [conversationId])
+
+  // Open Stream channel
+  useEffect(() => {
+    if (convo?.streamChannelId) openChannel(convo.streamChannelId)
+  }, [convo?.streamChannelId, openChannel])
 
   const isNearBottom = useCallback(() => {
     const el = listRef.current
     if (!el) return true
     return el.scrollHeight - el.scrollTop - el.clientHeight < 120
+  }, [])
+
+  const scrollToBottom = useCallback(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    setShowNew(false)
+    wasNearBottomRef.current = true
   }, [])
 
   useEffect(() => {
@@ -258,11 +264,11 @@ export default function SupportPage() {
     else setShowNew(true)
   }, [messages.length, isTyping])
 
-  const scrollToBottom = useCallback(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-    setShowNew(false)
-    wasNearBottomRef.current = true
-  }, [])
+  const handleSend = useCallback(async (text: string) => {
+    await sendMessage(text)
+    // Fire-and-forget in-app notification to the customer
+    apiClient.support.admin.notifyReply(conversationId).catch(() => {})
+  }, [sendMessage, conversationId])
 
   const grouped = useMemo(() => {
     const result: { day: string; msgs: typeof messages }[] = []
@@ -275,87 +281,100 @@ export default function SupportPage() {
     return result
   }, [messages])
 
-  const lastMineRead = useMemo(() => {
-    const mine = [...messages].reverse().find(m => m.user?.id === client?.userID)
-    if (!mine?.created_at) return false
-    return Object.values(readBy).some(
-      ts => new Date(ts).getTime() >= new Date(mine.created_at as string).getTime()
-    )
-  }, [messages, readBy, client?.userID])
+  if (!loaded) return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
+      <i className="ti ti-loader-2 ti-spin" style={{ fontSize: 20, color: 'var(--color-text-secondary)' }} />
+    </div>
+  )
+
+  if (!convo) return (
+    <div style={{ maxWidth: 480, margin: '5rem auto', padding: '0 1.5rem', textAlign: 'center' }}>
+      <p style={{ ...DISPLAY, fontSize: 22, fontWeight: 300, margin: '0 0 16px' }}>Conversation not found</p>
+      <Link href="/admin/support" style={{ fontSize: 12, color: 'var(--color-text-primary)', textDecoration: 'underline' }}>
+        ← Back to inbox
+      </Link>
+    </div>
+  )
+
+  const user = convo.userId
 
   return (
     <div style={{
-      maxWidth: 640, margin: '0 auto',
+      maxWidth: 760, margin: '0 auto',
       display: 'flex', flexDirection: 'column',
       height: 'calc(100dvh - 64px)',
       position: 'relative',
     }}>
-      {/* Header */}
+      {/* Top bar */}
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 12,
-        padding: '10px 16px',
-        borderBottom: '0.5px solid var(--color-border-tertiary)',
-        flexShrink: 0,
+        display: 'flex', alignItems: 'center', gap: 12, padding: '11px 20px',
+        borderBottom: '0.5px solid var(--color-border-tertiary)', flexShrink: 0,
       }}>
+        <Link
+          href="/admin/support"
+          style={{ display: 'flex', alignItems: 'center', color: 'var(--color-text-secondary)', textDecoration: 'none', padding: 4, marginRight: 4 }}
+        >
+          <i className="ti ti-arrow-left" style={{ fontSize: 17 }} />
+        </Link>
+
+        {/* Customer avatar */}
         <div style={{
-          width: 38, height: 38, borderRadius: '50%',
-          background: 'var(--color-background-secondary)',
-          border: '0.5px solid var(--color-border-secondary)',
+          width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
+          border: '0.5px solid var(--color-border-tertiary)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 15, color: 'var(--color-text-secondary)',
-          flexShrink: 0, position: 'relative',
+          fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)',
+          overflow: 'hidden', background: 'var(--color-background-secondary)',
         }}>
-          <i className="ti ti-headset" aria-hidden="true" />
-          <span style={{
-            position: 'absolute', bottom: 1, right: 1,
-            width: 8, height: 8, borderRadius: '50%',
-            background: 'var(--color-text-success)',
-            border: '2px solid var(--color-background-primary)',
-          }} />
+          {user?.avatar
+            ? <img src={user.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            : (user?.displayName?.[0] ?? user?.username?.[0] ?? '?').toUpperCase()
+          }
         </div>
-        <div>
+
+        <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)', margin: 0, lineHeight: 1.2 }}>
-            Support Team
+            {user?.displayName ?? user?.username ?? 'Unknown user'}
           </p>
-          <p style={{ fontSize: 11, color: 'var(--color-text-secondary)', margin: '2px 0 0' }}>
-            Usually replies within a few hours
+          <p style={{ fontSize: 11, color: 'var(--color-text-secondary)', margin: '2px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {user?.email ?? '—'}
           </p>
         </div>
+
+        {user?.username && (
+          <Link
+            href={`/profile/${user.username}`}
+            style={{
+              fontSize: 11, fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase',
+              color: 'var(--color-text-secondary)', textDecoration: 'none',
+              padding: '5px 10px', border: '0.5px solid var(--color-border-tertiary)', borderRadius: 7,
+              flexShrink: 0, transition: 'all 0.15s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-border-secondary)'; e.currentTarget.style.color = 'var(--color-text-primary)' }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border-tertiary)'; e.currentTarget.style.color = 'var(--color-text-secondary)' }}
+          >
+            Profile
+          </Link>
+        )}
       </div>
 
       {/* Messages */}
       <div
         ref={listRef}
-        style={{ flex: 1, overflowY: 'auto', padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 2 }}
+        style={{ flex: 1, overflowY: 'auto', padding: '18px', display: 'flex', flexDirection: 'column', gap: 2 }}
       >
-        {(isLoading || !isLoaded) && (
+        {isLoading && (
           <div style={{ textAlign: 'center', padding: '2rem' }}>
             <i className="ti ti-loader-2 ti-spin" style={{ fontSize: 18, color: 'var(--color-text-secondary)' }} />
           </div>
         )}
 
-        {!isLoading && isLoaded && messages.length === 0 && (
-          <div style={{
-            flex: 1, display: 'flex', flexDirection: 'column',
-            alignItems: 'center', justifyContent: 'center',
-            gap: 10, padding: '3rem 1rem', textAlign: 'center',
-          }}>
-            <div style={{
-              width: 44, height: 44, borderRadius: 11,
-              border: '0.5px solid var(--color-border-tertiary)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 18, color: 'var(--color-text-secondary)',
-            }}>
-              <i className="ti ti-messages" aria-hidden="true" />
+        {!isLoading && messages.length === 0 && (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, padding: '3rem 1rem', textAlign: 'center' }}>
+            <div style={{ width: 44, height: 44, borderRadius: 11, border: '0.5px solid var(--color-border-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, color: 'var(--color-text-secondary)' }}>
+              <i className="ti ti-messages" />
             </div>
-            <div>
-              <p style={{ ...DISPLAY, fontSize: 19, fontWeight: 300, margin: '0 0 5px', color: 'var(--color-text-primary)' }}>
-                How can we help?
-              </p>
-              <p style={{ fontSize: 12, margin: 0, color: 'var(--color-text-secondary)', lineHeight: 1.7 }}>
-                Send a message and our team will get back to you shortly.
-              </p>
-            </div>
+            <p style={{ ...DISPLAY, fontSize: 18, fontWeight: 300, margin: 0, color: 'var(--color-text-primary)' }}>No messages yet</p>
+            <p style={{ fontSize: 12, margin: 0, color: 'var(--color-text-secondary)' }}>The customer hasn't sent anything yet.</p>
           </div>
         )}
 
@@ -363,7 +382,8 @@ export default function SupportPage() {
           <div key={day}>
             <div style={{ textAlign: 'center', margin: '14px 0 10px' }}>
               <span style={{
-                fontSize: 11, color: 'var(--color-text-secondary)',
+                fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase',
+                color: 'var(--color-text-secondary)',
                 background: 'var(--color-background-secondary)',
                 padding: '3px 12px', borderRadius: 20,
                 border: '0.5px solid var(--color-border-tertiary)',
@@ -371,29 +391,23 @@ export default function SupportPage() {
                 {day}
               </span>
             </div>
-            {msgs.map(msg => {
-              const isMine = msg.user?.id === client?.userID
-              const isLastMine = isMine && msg.id === [...messages].reverse().find(m => m.user?.id === client?.userID)?.id
-              return (
-                <Bubble
-                  key={msg.id}
-                  text={msg.text ?? ''}
-                  isMine={isMine}
-                  createdAt={msg.created_at}
-                  isSystem={msg.type === 'system'}
-                  isRead={isMine ? (isLastMine ? lastMineRead : true) : undefined}
-                />
-              )
-            })}
+            {msgs.map(msg => (
+              <Bubble
+                key={msg.id}
+                text={msg.text ?? ''}
+                isMine={msg.user?.id === client?.userID}
+                createdAt={msg.created_at}
+                isSystem={msg.type === 'system'}
+              />
+            ))}
           </div>
         ))}
 
-        {isTyping && <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', padding: '0 4px 4px' }}>Support is typing…</div>}
+        {isTyping && <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', padding: '0 4px 4px' }}>Customer is typing…</div>}
         {isTyping && <TypingDots />}
         <div ref={bottomRef} />
       </div>
 
-      {/* New messages pill */}
       {showNew && (
         <button
           onClick={scrollToBottom}
@@ -410,14 +424,7 @@ export default function SupportPage() {
         </button>
       )}
 
-      {/* Read receipt */}
-      {lastMineRead && (
-        <div style={{ textAlign: 'right', fontSize: 10, color: 'var(--color-text-secondary)', padding: '0 22px' }}>
-          Seen by Support
-        </div>
-      )}
-
-      <Composer onSend={sendMessage} onTyping={sendTyping} />
+      <Composer onSend={handleSend} onTyping={sendTyping} />
     </div>
   )
 }
