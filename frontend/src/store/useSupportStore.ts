@@ -13,10 +13,16 @@ export const useSupportStore = create<SupportState>((set, get) => ({
   isLoaded:     false,
 
   load: async () => {
-    if (get().conversation) return get().conversation!
-    const res  = await apiClient.support.getConversation()
-    const convo: Conversation = res.data?.data
-    set({ conversation: convo, isLoaded: true })
-    return convo
+    // Return cached conversation if already loaded
+    if (get().isLoaded && get().conversation) return get().conversation!
+    try {
+      const res  = await apiClient.support.getConversation()
+      const convo: Conversation = res.data?.data
+      set({ conversation: convo, isLoaded: true })
+      return convo
+    } catch (err) {
+      set({ isLoaded: true })
+      throw err
+    }
   },
 }))

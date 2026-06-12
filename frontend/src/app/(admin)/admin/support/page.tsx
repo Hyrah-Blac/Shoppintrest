@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import Link from 'next/link'
 import { useStreamContext } from '@/components/providers/StreamProvider'
 import { apiClient }        from '@/lib/api'
@@ -33,10 +33,10 @@ interface MergedConversation extends AdminConversation {
 function timeAgo(d: string) {
   const diff = Date.now() - new Date(d).getTime()
   const m    = Math.floor(diff / 60000)
-  if (m < 1)   return 'Just now'
-  if (m < 60)  return `${m}m ago`
+  if (m < 1)    return 'Just now'
+  if (m < 60)   return `${m}m ago`
   const h = Math.floor(m / 60)
-  if (h < 24)  return `${h}h ago`
+  if (h < 24)   return `${h}h ago`
   const days = Math.floor(h / 24)
   if (days < 7) return `${days}d ago`
   return new Date(d).toLocaleDateString([], { month: 'short', day: 'numeric' })
@@ -59,19 +59,13 @@ function Avatar({ user, size = 40 }: { user: AdminConversation['userId']; size?:
   )
 }
 
-function ConversationRow({
-  convo,
-  isSelected,
-  onSelect,
-}: {
+function ConversationRow({ convo, isSelected, onSelect }: {
   convo:      MergedConversation
   isSelected: boolean
   onSelect:   (c: MergedConversation) => void
 }) {
-  const hasUnread  = convo.unreadCount > 0
-  const displayTime = convo.lastMessageAt
-    ? timeAgo(convo.lastMessageAt)
-    : timeAgo(convo.updatedAt)
+  const hasUnread   = convo.unreadCount > 0
+  const displayTime = convo.lastMessageAt ? timeAgo(convo.lastMessageAt) : timeAgo(convo.updatedAt)
 
   return (
     <div
@@ -99,7 +93,6 @@ function ConversationRow({
         }} />
       )}
 
-      {/* Unread dot */}
       {hasUnread
         ? <span style={{ width: 7, height: 7, borderRadius: '50%', flexShrink: 0, background: 'var(--color-text-info)', boxShadow: '0 0 0 3px color-mix(in srgb, var(--color-text-info) 20%, transparent)' }} />
         : <span style={{ width: 7, flexShrink: 0 }} />
@@ -148,8 +141,6 @@ function ConversationRow({
   )
 }
 
-// ─── Preview / detail panel ───────────────────────────────────────────────────
-
 function PreviewPane({ convo, onClose }: { convo: MergedConversation; onClose: () => void }) {
   const user = convo.userId
   return (
@@ -167,7 +158,7 @@ function PreviewPane({ convo, onClose }: { convo: MergedConversation; onClose: (
           {user?.displayName ?? user?.username ?? 'Unknown'}
         </span>
         <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-secondary)', padding: 2, display: 'flex', alignItems: 'center' }}>
-          <i className="ti ti-x" style={{ fontSize: 15 }} />
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
         </button>
       </div>
 
@@ -207,14 +198,12 @@ function PreviewPane({ convo, onClose }: { convo: MergedConversation; onClose: (
           }}
         >
           Open chat
-          <i className="ti ti-arrow-right" style={{ fontSize: 12 }} />
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </Link>
       </div>
     </div>
   )
 }
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AdminSupportPage() {
   const [convos,   setConvos]   = useState<AdminConversation[]>([])
@@ -224,9 +213,9 @@ export default function AdminSupportPage() {
   const searchRef = useRef<HTMLInputElement>(null)
 
   const { client, isReady } = useStreamContext()
-  const { previews = [] }   = useSupportChat(client, isReady)
+  // ← use `previews` (not `tickets`)
+  const { previews } = useSupportChat(client, isReady)
 
-  // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === '/' && document.activeElement?.tagName !== 'INPUT') {
@@ -248,11 +237,17 @@ export default function AdminSupportPage() {
     return () => { cancelled = true }
   }, [])
 
+  // Merge REST conversations with live Stream preview data
   const merged = useMemo<MergedConversation[]>(() => {
     const map = new Map(previews.map(p => [p.streamChannelId, p]))
     return convos.map(c => {
       const p = map.get(c.streamChannelId)
-      return { ...c, lastMessage: p?.lastMessage, lastMessageAt: p?.lastMessageAt, unreadCount: p?.unreadCount ?? 0 }
+      return {
+        ...c,
+        lastMessage:   p?.lastMessage,
+        lastMessageAt: p?.lastMessageAt,
+        unreadCount:   p?.unreadCount ?? 0,
+      }
     }).sort((a, b) => {
       if ((a.unreadCount > 0) !== (b.unreadCount > 0)) return a.unreadCount > 0 ? -1 : 1
       const at = a.lastMessageAt ?? a.updatedAt
@@ -285,9 +280,12 @@ export default function AdminSupportPage() {
             Messages
           </h1>
           <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', margin: 0 }}>
-            {unreadTotal > 0
-              ? `${unreadTotal} ${unreadTotal === 1 ? 'conversation needs' : 'conversations need'} attention`
-              : 'All caught up.'}
+            {loading
+              ? 'Loading…'
+              : unreadTotal > 0
+                ? `${unreadTotal} ${unreadTotal === 1 ? 'conversation needs' : 'conversations need'} attention`
+                : 'All caught up.'
+            }
           </p>
         </div>
       )}
@@ -308,7 +306,9 @@ export default function AdminSupportPage() {
               borderRadius: 9, padding: '7px 12px',
               border: '0.5px solid var(--color-border-tertiary)',
             }}>
-              <i className="ti ti-search" style={{ fontSize: 14, color: 'var(--color-text-secondary)' }} />
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+              </svg>
               <input
                 ref={searchRef}
                 value={search}
@@ -319,24 +319,29 @@ export default function AdminSupportPage() {
                   fontSize: 12, color: 'var(--color-text-primary)', fontFamily: 'var(--font-sans)',
                 }}
               />
-              {search
-                ? <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-secondary)', padding: 0, display: 'flex' }}>
-                    <i className="ti ti-x" style={{ fontSize: 13 }} />
-                  </button>
-                : <span style={{ fontSize: 10, color: 'var(--color-text-secondary)', letterSpacing: '0.06em' }}>/</span>
-              }
+              {search ? (
+                <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-secondary)', padding: 0, display: 'flex' }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                </button>
+              ) : (
+                <span style={{ fontSize: 10, color: 'var(--color-text-secondary)', letterSpacing: '0.06em' }}>/</span>
+              )}
             </div>
           </div>
 
           {/* List */}
           {loading ? (
             <div style={{ padding: '3rem', textAlign: 'center' }}>
-              <i className="ti ti-loader-2 ti-spin" style={{ fontSize: 18, color: 'var(--color-text-secondary)' }} />
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-secondary)" strokeWidth="2.5" strokeLinecap="round" style={{ animation: 'spin 0.8s linear infinite' }}>
+                <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+              </svg>
             </div>
           ) : filtered.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '4rem 1.5rem' }}>
               <div style={{ width: 44, height: 44, borderRadius: 11, margin: '0 auto 1.25rem', border: '0.5px solid var(--color-border-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, color: 'var(--color-text-secondary)' }}>
-                <i className="ti ti-inbox" />
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                </svg>
               </div>
               <p style={{ ...DISPLAY, fontSize: 20, fontWeight: 300, color: 'var(--color-text-primary)', margin: '0 0 6px' }}>
                 {search ? 'No results' : 'No conversations yet'}
@@ -369,6 +374,7 @@ export default function AdminSupportPage() {
           {' '}to clear
         </p>
       )}
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   )
 }
