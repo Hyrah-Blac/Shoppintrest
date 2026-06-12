@@ -59,14 +59,14 @@ function TypingDots() {
     <div style={{ display: 'flex', alignItems: 'flex-end', padding: '4px 0' }}>
       <div style={{
         display: 'flex', alignItems: 'center', gap: 4,
-        background: 'var(--color-background-secondary)',
-        border: '0.5px solid var(--color-border-tertiary)',
+        background: '#262D36',
+        border: '0.5px solid rgba(255,255,255,0.08)',
         borderRadius: '14px 14px 14px 4px', padding: '10px 14px',
       }}>
         {[0, 0.2, 0.4].map((delay, i) => (
           <span key={i} style={{
             width: 5, height: 5, borderRadius: '50%',
-            background: 'var(--color-text-secondary)', display: 'block',
+            background: 'rgba(255,255,255,0.45)', display: 'block',
             animation: `bounce 1.2s ${delay}s infinite ease-in-out`,
           }} />
         ))}
@@ -78,8 +78,9 @@ function TypingDots() {
 
 // ─── Message bubble ───────────────────────────────────────────────────────────
 
-function Bubble({ text, isMine, createdAt, isSystem }: {
+function Bubble({ text, isMine, createdAt, isSystem, status, showTail }: {
   text: string; isMine: boolean; createdAt?: string | Date; isSystem?: boolean
+  status?: 'sending' | 'failed' | 'sent'; showTail?: boolean
 }) {
   const [showAbsolute, setShowAbsolute] = useState(false)
 
@@ -87,10 +88,10 @@ function Bubble({ text, isMine, createdAt, isSystem }: {
     return (
       <div style={{ textAlign: 'center', padding: '8px 0', margin: '8px 0' }}>
         <span style={{
-          fontSize: 11, color: 'var(--color-text-secondary)',
-          background: 'var(--color-background-secondary)',
+          fontSize: 11, color: 'rgba(255,255,255,0.55)',
+          background: '#232B36',
           padding: '4px 14px', borderRadius: 20,
-          border: '0.5px solid var(--color-border-tertiary)',
+          border: '0.5px solid rgba(255,255,255,0.08)',
         }}>
           {text}
         </span>
@@ -102,12 +103,16 @@ function Bubble({ text, isMine, createdAt, isSystem }: {
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: isMine ? 'flex-end' : 'flex-start', margin: '3px 0' }}>
       <div style={{
         maxWidth: '72%',
-        background: isMine ? 'var(--color-text-primary)' : 'var(--color-background-secondary)',
-        color: isMine ? 'var(--color-background-primary)' : 'var(--color-text-primary)',
-        borderRadius: isMine ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
+        background: isMine ? '#005C4B' : '#262D36',
+        color: isMine ? '#E9FBF5' : '#E8EAED',
+        borderRadius: isMine
+          ? showTail ? '12px 12px 2px 12px' : '12px'
+          : showTail ? '12px 12px 12px 2px' : '12px',
         padding: '9px 13px', fontSize: 13, lineHeight: 1.65,
-        border: isMine ? 'none' : '0.5px solid var(--color-border-tertiary)',
+        boxShadow: '0 1px 1px rgba(0,0,0,0.35)',
         wordBreak: 'break-word',
+        opacity: status === 'sending' ? 0.6 : 1,
+        transition: 'opacity 0.15s',
       }}>
         {text}
       </div>
@@ -117,9 +122,13 @@ function Bubble({ text, isMine, createdAt, isSystem }: {
           onMouseEnter={() => setShowAbsolute(true)}
           onMouseLeave={() => setShowAbsolute(false)}
         >
-          <span style={{ fontSize: 10, color: 'var(--color-text-secondary)' }}>
-            {showAbsolute ? timeLabel(createdAt) : relativeTime(createdAt)}
-          </span>
+          {status === 'failed' ? (
+            <span style={{ fontSize: 10, color: '#ef4444', fontWeight: 600 }}>Failed to send</span>
+          ) : (
+            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>
+              {showAbsolute ? timeLabel(createdAt) : relativeTime(createdAt)}
+            </span>
+          )}
         </div>
       )}
     </div>
@@ -153,11 +162,12 @@ function Composer({ onSend, onTyping }: {
   const canSend = !!input.trim() && !sending
 
   return (
-    <div style={{ padding: '10px 14px 12px', borderTop: '0.5px solid var(--color-border-tertiary)', flexShrink: 0 }}>
+    <div style={{ padding: '10px 14px 12px', background: '#1F242C', flexShrink: 0 }}>
       <div style={{
         display: 'flex', gap: 8, alignItems: 'flex-end',
-        border: '0.5px solid var(--color-border-secondary)',
+        background: '#2A313B',
         borderRadius: 13, padding: '7px 7px 7px 14px',
+        boxShadow: '0 1px 2px rgba(0,0,0,0.25)',
       }}>
         <textarea
           ref={ref}
@@ -169,7 +179,7 @@ function Composer({ onSend, onTyping }: {
           style={{
             flex: 1, resize: 'none', border: 'none', outline: 'none',
             background: 'transparent', fontSize: 13, lineHeight: 1.6,
-            color: 'var(--color-text-primary)', fontFamily: 'var(--font-sans)',
+            color: '#E8EAED', fontFamily: 'var(--font-sans)',
             overflowY: 'hidden', padding: '3px 0',
           }}
         />
@@ -179,9 +189,9 @@ function Composer({ onSend, onTyping }: {
           aria-label="Send"
           style={{
             width: 34, height: 34, borderRadius: 9, flexShrink: 0,
-            background: canSend ? 'var(--color-text-primary)' : 'transparent',
-            border: '0.5px solid var(--color-border-secondary)',
-            color: canSend ? 'var(--color-background-primary)' : 'var(--color-text-secondary)',
+            background: canSend ? '#00A884' : 'transparent',
+            border: canSend ? 'none' : '0.5px solid rgba(255,255,255,0.12)',
+            color: canSend ? '#fff' : 'rgba(255,255,255,0.4)',
             cursor: canSend ? 'pointer' : 'not-allowed',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 14, transition: 'all 0.15s',
@@ -190,7 +200,7 @@ function Composer({ onSend, onTyping }: {
           {sending ? <i className="ti ti-loader-2 ti-spin" /> : <i className="ti ti-send-2" />}
         </button>
       </div>
-      <p style={{ fontSize: 10, letterSpacing: '0.06em', color: 'var(--color-text-secondary)', textAlign: 'center', margin: '6px 0 0' }}>
+      <p style={{ fontSize: 10, letterSpacing: '0.06em', color: 'rgba(255,255,255,0.35)', textAlign: 'center', margin: '6px 0 0' }}>
         Enter to send · Shift+Enter for new line
       </p>
     </div>
@@ -211,10 +221,12 @@ export default function AdminConversationPage() {
 
   const [convo,  setConvo]  = useState<AdminConversation | null>(null)
   const [loaded, setLoaded] = useState(false)
+  const [optimistic, setOptimistic] = useState<{ id: string; text: string; created_at: string }[]>([])
 
   const bottomRef        = useRef<HTMLDivElement>(null)
   const listRef          = useRef<HTMLDivElement>(null)
   const wasNearBottomRef = useRef(true)
+  const hasMountedRef    = useRef(false)
   const [showNew, setShowNew] = useState(false)
 
   // Fetch conversation meta
@@ -260,15 +272,36 @@ export default function AdminConversationPage() {
   }, [loadOlderMessages, isNearBottom])
 
   useEffect(() => {
-    if (wasNearBottomRef.current) bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-    else setShowNew(true)
+    if (wasNearBottomRef.current) {
+      bottomRef.current?.scrollIntoView({ behavior: hasMountedRef.current ? 'smooth' : 'auto' })
+      hasMountedRef.current = true
+    } else setShowNew(true)
   }, [messages.length, isTyping])
 
   const handleSend = useCallback(async (text: string) => {
-    await sendMessage(text)
-    // Fire-and-forget in-app notification to the customer
-    apiClient.support.admin.notifyReply(conversationId).catch(() => {})
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    const sentAt = new Date().toISOString()
+    setOptimistic(prev => [...prev, { id: tempId, text, created_at: sentAt }])
+    try {
+      await sendMessage(text)
+      apiClient.support.admin.notifyReply(conversationId).catch(() => {})
+    } catch (err) {
+      setOptimistic(prev => prev.filter(m => m.id !== tempId))
+      throw err
+    }
   }, [sendMessage, conversationId])
+
+  // Drop optimistic copies once the real message syncs in
+  useEffect(() => {
+    if (optimistic.length === 0) return
+    setOptimistic(prev => prev.filter(opt =>
+      !messages.some(m =>
+        m.user?.id === client?.userID &&
+        m.text === opt.text &&
+        new Date(m.created_at as string).getTime() >= new Date(opt.created_at).getTime() - 5000
+      )
+    ))
+  }, [messages, optimistic.length, client?.userID])
 
   const grouped = useMemo(() => {
     const result: { day: string; msgs: typeof messages }[] = []
@@ -282,15 +315,15 @@ export default function AdminConversationPage() {
   }, [messages])
 
   if (!loaded) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
-      <i className="ti ti-loader-2 ti-spin" style={{ fontSize: 20, color: 'var(--color-text-secondary)' }} />
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', background: '#161B22' }}>
+      <i className="ti ti-loader-2 ti-spin" style={{ fontSize: 20, color: 'rgba(255,255,255,0.45)' }} />
     </div>
   )
 
   if (!convo) return (
-    <div style={{ maxWidth: 480, margin: '5rem auto', padding: '0 1.5rem', textAlign: 'center' }}>
+    <div style={{ maxWidth: 480, margin: '5rem auto', padding: '0 1.5rem', textAlign: 'center', background: '#161B22', color: '#E8EAED' }}>
       <p style={{ ...DISPLAY, fontSize: 22, fontWeight: 300, margin: '0 0 16px' }}>Conversation not found</p>
-      <Link href="/admin/support" style={{ fontSize: 12, color: 'var(--color-text-primary)', textDecoration: 'underline' }}>
+      <Link href="/admin/support" style={{ fontSize: 12, color: '#E8EAED', textDecoration: 'underline' }}>
         ← Back to inbox
       </Link>
     </div>
@@ -304,15 +337,16 @@ export default function AdminConversationPage() {
       display: 'flex', flexDirection: 'column',
       height: 'calc(100dvh - 64px)',
       position: 'relative',
+      background: '#161B22',
     }}>
       {/* Top bar */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 12, padding: '11px 20px',
-        borderBottom: '0.5px solid var(--color-border-tertiary)', flexShrink: 0,
+        background: '#075E54', flexShrink: 0,
       }}>
         <Link
           href="/admin/support"
-          style={{ display: 'flex', alignItems: 'center', color: 'var(--color-text-secondary)', textDecoration: 'none', padding: 4, marginRight: 4 }}
+          style={{ display: 'flex', alignItems: 'center', color: '#fff', textDecoration: 'none', padding: 4, marginRight: 4 }}
         >
           <i className="ti ti-arrow-left" style={{ fontSize: 17 }} />
         </Link>
@@ -320,10 +354,9 @@ export default function AdminConversationPage() {
         {/* Customer avatar */}
         <div style={{
           width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
-          border: '0.5px solid var(--color-border-tertiary)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)',
-          overflow: 'hidden', background: 'var(--color-background-secondary)',
+          fontSize: 13, fontWeight: 600, color: '#fff',
+          overflow: 'hidden', background: 'rgba(255,255,255,0.15)',
         }}>
           {user?.avatar
             ? <img src={user.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -332,10 +365,10 @@ export default function AdminConversationPage() {
         </div>
 
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)', margin: 0, lineHeight: 1.2 }}>
+          <p style={{ fontSize: 14, fontWeight: 600, color: '#fff', margin: 0, lineHeight: 1.2 }}>
             {user?.displayName ?? user?.username ?? 'Unknown user'}
           </p>
-          <p style={{ fontSize: 11, color: 'var(--color-text-secondary)', margin: '2px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.75)', margin: '2px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {user?.email ?? '—'}
           </p>
         </div>
@@ -345,12 +378,12 @@ export default function AdminConversationPage() {
             href={`/profile/${user.username}`}
             style={{
               fontSize: 11, fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase',
-              color: 'var(--color-text-secondary)', textDecoration: 'none',
-              padding: '5px 10px', border: '0.5px solid var(--color-border-tertiary)', borderRadius: 7,
+              color: '#fff', textDecoration: 'none',
+              padding: '5px 10px', border: '0.5px solid rgba(255,255,255,0.3)', borderRadius: 7,
               flexShrink: 0, transition: 'all 0.15s',
             }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-border-secondary)'; e.currentTarget.style.color = 'var(--color-text-primary)' }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border-tertiary)'; e.currentTarget.style.color = 'var(--color-text-secondary)' }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
           >
             Profile
           </Link>
@@ -360,21 +393,27 @@ export default function AdminConversationPage() {
       {/* Messages */}
       <div
         ref={listRef}
-        style={{ flex: 1, overflowY: 'auto', padding: '18px', display: 'flex', flexDirection: 'column', gap: 2 }}
+        style={{
+          flex: 1, overflowY: 'auto', padding: '18px',
+          display: 'flex', flexDirection: 'column', gap: 2,
+          backgroundColor: '#161B22',
+          backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'120\' height=\'120\' viewBox=\'0 0 120 120\'%3E%3Cg fill=\'none\' stroke=\'%23232B36\' stroke-width=\'1.5\'%3E%3Cpath d=\'M30 18c0-4 3-7 7-7s7 3 7 7M37 18v6M27 26h20l6 16-8 3v32H29V45l-8-3z\'/%3E%3Ccircle cx=\'90\' cy=\'30\' r=\'9\'/%3E%3Cpath d=\'M84 30a6 6 0 0112 0M81 36h18M85 36l-4 30h18l-4-30\'/%3E%3Cpath d=\'M15 80c0-3 2.5-5.5 5.5-5.5S26 77 26 80M20.5 80v4.5M13 86h15l4 12-6 2v18H15V100l-6-2z\'/%3E%3Cpath d=\'M70 75l4 6h12l4-6M74 81v28h12V81\'/%3E%3C/g%3E%3C/svg%3E")',
+          backgroundSize: '180px 180px',
+        }}
       >
         {isLoading && (
           <div style={{ textAlign: 'center', padding: '2rem' }}>
-            <i className="ti ti-loader-2 ti-spin" style={{ fontSize: 18, color: 'var(--color-text-secondary)' }} />
+            <i className="ti ti-loader-2 ti-spin" style={{ fontSize: 18, color: 'rgba(255,255,255,0.45)' }} />
           </div>
         )}
 
         {!isLoading && messages.length === 0 && (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, padding: '3rem 1rem', textAlign: 'center' }}>
-            <div style={{ width: 44, height: 44, borderRadius: 11, border: '0.5px solid var(--color-border-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, color: 'var(--color-text-secondary)' }}>
+            <div style={{ width: 44, height: 44, borderRadius: 11, border: '0.5px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, color: 'rgba(255,255,255,0.45)' }}>
               <i className="ti ti-messages" />
             </div>
-            <p style={{ ...DISPLAY, fontSize: 18, fontWeight: 300, margin: 0, color: 'var(--color-text-primary)' }}>No messages yet</p>
-            <p style={{ fontSize: 12, margin: 0, color: 'var(--color-text-secondary)' }}>The customer hasn't sent anything yet.</p>
+            <p style={{ ...DISPLAY, fontSize: 18, fontWeight: 300, margin: 0, color: '#E8EAED' }}>No messages yet</p>
+            <p style={{ fontSize: 12, margin: 0, color: 'rgba(255,255,255,0.45)' }}>The customer hasn't sent anything yet.</p>
           </div>
         )}
 
@@ -383,27 +422,45 @@ export default function AdminConversationPage() {
             <div style={{ textAlign: 'center', margin: '14px 0 10px' }}>
               <span style={{
                 fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase',
-                color: 'var(--color-text-secondary)',
-                background: 'var(--color-background-secondary)',
+                color: 'rgba(255,255,255,0.5)',
+                background: '#232B36',
                 padding: '3px 12px', borderRadius: 20,
-                border: '0.5px solid var(--color-border-tertiary)',
+                border: '0.5px solid rgba(255,255,255,0.08)',
               }}>
                 {day}
               </span>
             </div>
-            {msgs.map(msg => (
-              <Bubble
-                key={msg.id}
-                text={msg.text ?? ''}
-                isMine={msg.user?.id === client?.userID}
-                createdAt={msg.created_at}
-                isSystem={msg.type === 'system'}
-              />
-            ))}
+            {msgs.map((msg, idx) => {
+              const isMine  = msg.user?.id === client?.userID
+              const nextMsg = msgs[idx + 1]
+              const isLast  = !nextMsg || nextMsg.user?.id !== msg.user?.id
+              return (
+                <Bubble
+                  key={msg.id}
+                  text={msg.text ?? ''}
+                  isMine={isMine}
+                  createdAt={msg.created_at}
+                  isSystem={msg.type === 'system'}
+                  showTail={isLast}
+                />
+              )
+            })}
           </div>
         ))}
 
-        {isTyping && <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', padding: '0 4px 4px' }}>Customer is typing…</div>}
+        {/* Optimistic admin replies, shown instantly while sending */}
+        {optimistic.map(m => (
+          <Bubble
+            key={m.id}
+            text={m.text}
+            isMine
+            createdAt={m.created_at}
+            status="sending"
+            showTail
+          />
+        ))}
+
+        {isTyping && <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', padding: '0 4px 4px' }}>Customer is typing…</div>}
         {isTyping && <TypingDots />}
         <div ref={bottomRef} />
       </div>
@@ -414,9 +471,9 @@ export default function AdminConversationPage() {
           style={{
             position: 'absolute', bottom: 80, left: '50%', transform: 'translateX(-50%)',
             padding: '6px 16px', borderRadius: 20, fontSize: 12, fontWeight: 500,
-            background: 'var(--color-text-primary)', color: 'var(--color-background-primary)',
+            background: '#00A884', color: '#fff',
             border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
-            boxShadow: '0 4px 12px rgba(0,0,0,0.15)', zIndex: 5,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.3)', zIndex: 5,
           }}
         >
           <i className="ti ti-arrow-down" style={{ fontSize: 12 }} />

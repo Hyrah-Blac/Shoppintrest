@@ -13,27 +13,25 @@ export interface ChannelPreview {
 }
 
 export function useSupportChat(client: StreamChat | null, isReady: boolean) {
-  const [previews,      setPreviews]      = useState<ChannelPreview[]>([])
-  const [messages,      setMessages]      = useState<FormatMessageResponse[]>([])
-  const [isLoading,     setIsLoading]     = useState(false)
-  const [isTyping,      setIsTyping]      = useState(false)
-  const [readBy,        setReadBy]        = useState<Record<string, string>>({})
+  const [previews,  setPreviews]  = useState<ChannelPreview[]>([])
+  const [messages,  setMessages]  = useState<FormatMessageResponse[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [isTyping,  setIsTyping]  = useState(false)
+  const [readBy,    setReadBy]    = useState<Record<string, string>>({})
 
   const activeChannelRef = useRef<Channel | null>(null)
   const cleanupFnsRef    = useRef<(() => void)[]>([])
 
-  // ── Build preview from a channel ─────────────────────────────────────────
   const previewFromChannel = useCallback((ch: Channel): ChannelPreview => {
-    const last    = ch.lastMessage()
-    const members = Object.values(ch.state.members)
-    // For admin: find the non-admin customer. For customer: find themselves.
+    const last     = ch.lastMessage()
+    const members  = Object.values(ch.state.members)
     const customer = members.find(m => m.user?.id && !(m.user as any)?.role?.includes('admin'))
                   ?? members[0]
     return {
       streamChannelId: ch.id!,
       userId:          customer?.user?.id,
-      displayName:     (customer?.user?.name as string) ?? (customer?.user?.username as string),
-      email:           (customer?.user?.email as string),
+      displayName:     (customer?.user?.name as string) ?? (customer?.user as any)?.username,
+      email:           (customer?.user as any)?.email,
       avatar:          (customer?.user?.image as string),
       lastMessage:     last?.text,
       lastMessageAt:   last?.created_at?.toString(),
@@ -58,14 +56,14 @@ export function useSupportChat(client: StreamChat | null, isReady: boolean) {
 
     ;(async () => {
       try {
-        // Query all messaging channels this user is a member of
-        // For admins this returns all support channels; for users, just theirs
+        // Filter by the custom `support: true` field set at channel creation.
+        // This works for both admins (sees all) and users (sees only theirs)
+        // because Stream enforces member-level access automatically.
         const channels = await client.queryChannels(
           {
             type:    'messaging',
             members: { $in: [client.userID!] },
-            // Only support channels (id starts with "support_")
-            id: { $autocomplete: 'support_' },
+            support: { $eq: true },
           },
           { last_message_at: -1 },
           { watch: true, state: true, presence: true, limit: 30 }
@@ -77,7 +75,6 @@ export function useSupportChat(client: StreamChat | null, isReady: boolean) {
       }
     })()
 
-    // Global listeners to keep the preview list live
     const updatePreview = (event: Event) => {
       const channelId = event.channel_id ?? (event as any).channel?.id
       if (!channelId) return
@@ -108,7 +105,6 @@ export function useSupportChat(client: StreamChat | null, isReady: boolean) {
   const openChannel = useCallback(async (channelId: string) => {
     if (!client) return
 
-    // Tear down previous listeners
     cleanupFnsRef.current.forEach(fn => fn())
     cleanupFnsRef.current = []
 
@@ -124,17 +120,16 @@ export function useSupportChat(client: StreamChat | null, isReady: boolean) {
       const channel = client.channel('messaging', channelId)
       await channel.watch({ state: true, presence: true })
 
-      // Admins may not be members yet — add them so they can receive events
+      // Fallback: add admin as member if not already present.
+      // In practice this shouldn't fire if getOrCreateSupportChannel
+      // includes all admins at creation time.
       if (!channel.state.members[client.userID!]) {
         await channel.addMembers([client.userID!])
       }
 
       activeChannelRef.current = channel
-
-      // Seed messages from local state (already populated by watch())
       setMessages([...channel.state.messages])
 
-      // Seed read state
       const rb: Record<string, string> = {}
       Object.entries(channel.state.read || {}).forEach(([uid, r]) => {
         if (uid !== client.userID && r.last_read)
@@ -144,7 +139,6 @@ export function useSupportChat(client: StreamChat | null, isReady: boolean) {
 
       channel.markRead().catch(() => {})
 
-      // ── message.new — append + dedup ───────────────────────────────────
       const onNew = (e: Event) => {
         const msg = e.message as FormatMessageResponse | undefined
         if (!msg) return
@@ -155,7 +149,6 @@ export function useSupportChat(client: StreamChat | null, isReady: boolean) {
         channel.markRead().catch(() => {})
       }
 
-      // ── message.updated — replace in list ──────────────────────────────
       const onUpdated = (e: Event) => {
         const msg = e.message as FormatMessageResponse | undefined
         if (!msg) return
@@ -192,27 +185,25 @@ export function useSupportChat(client: StreamChat | null, isReady: boolean) {
     }
   }, [client])
 
-  // ── Cleanup on unmount ────────────────────────────────────────────────────
   useEffect(() => () => {
     cleanupFnsRef.current.forEach(fn => fn())
     activeChannelRef.current?.stopWatching().catch(() => {})
   }, [])
 
-  // ── Send — optimistic append so the message shows instantly ──────────────
+  // ── Send ─────────────────────────────────────────────────────────────────
   const sendMessage = useCallback(async (text: string) => {
     const ch = activeChannelRef.current
     if (!ch || !text.trim()) return
 
-    // Optimistic message so UI updates immediately
     const tempId  = `temp_${Date.now()}`
     const tempMsg: FormatMessageResponse = {
-      id:         tempId,
-      text:       text.trim(),
-      type:       'regular',
-      created_at: new Date().toISOString() as any,
-      updated_at: new Date().toISOString() as any,
-      user:       { id: ch.getClient().userID! } as any,
-      attachments: [],
+      id:              tempId,
+      text:            text.trim(),
+      type:            'regular',
+      created_at:      new Date().toISOString() as any,
+      updated_at:      new Date().toISOString() as any,
+      user:            { id: ch.getClient().userID! } as any,
+      attachments:     [],
       mentioned_users: [],
       reaction_counts: {},
       reaction_scores: {},
@@ -223,27 +214,27 @@ export function useSupportChat(client: StreamChat | null, isReady: boolean) {
 
     try {
       const { message } = await ch.sendMessage({ text: text.trim() })
-      // Replace temp with the real message from Stream
       setMessages(prev =>
         prev.map(m => m.id === tempId ? (message as unknown as FormatMessageResponse) : m)
       )
     } catch (err) {
-      // Remove the optimistic message on failure
       setMessages(prev => prev.filter(m => m.id !== tempId))
       throw err
     }
   }, [])
 
+  // ── Load older (pagination) ───────────────────────────────────────────────
   const loadOlderMessages = useCallback(async () => {
     const ch = activeChannelRef.current
     if (!ch) return
+    // Read the oldest message id from current state via a ref-safe approach
     setMessages(prev => {
       const oldest = prev[0]
       if (!oldest) return prev
       ch.query({ messages: { limit: 25, id_lt: oldest.id } })
         .then(({ messages: older }) => {
           setMessages(cur => {
-            const ids = new Set(cur.map(m => m.id))
+            const ids      = new Set(cur.map(m => m.id))
             const filtered = (older as FormatMessageResponse[]).filter(m => !ids.has(m.id))
             return [...filtered, ...cur]
           })

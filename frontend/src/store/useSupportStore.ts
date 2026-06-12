@@ -1,3 +1,5 @@
+'use client'
+
 import { create } from 'zustand'
 import { apiClient } from '@/lib/api'
 import { Conversation } from '@/types/support.types'
@@ -13,10 +15,9 @@ export const useSupportStore = create<SupportState>((set, get) => ({
   isLoaded:     false,
 
   load: async () => {
-    // Return cached conversation if already loaded
     if (get().isLoaded && get().conversation) return get().conversation!
     try {
-      const res  = await apiClient.support.getConversation()
+      const res   = await apiClient.support.getConversation()
       const convo: Conversation = res.data?.data
       set({ conversation: convo, isLoaded: true })
       return convo

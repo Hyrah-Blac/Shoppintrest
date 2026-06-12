@@ -13,10 +13,6 @@ export function getStreamServer(): StreamChat {
   return instance
 }
 
-/**
- * Gets or creates the single support channel for a user.
- * Channel ID is deterministic: support_{userId} — so it's always the same one.
- */
 export async function getOrCreateSupportChannel(userId: string): Promise<string> {
   const server   = getStreamServer()
   const memberId = String(userId)
@@ -36,6 +32,9 @@ export async function getOrCreateSupportChannel(userId: string): Promise<string>
   const channel = server.channel('messaging', channelId, {
     members,
     created_by_id: memberId,
+    // This custom field lets useSupportChat query only support channels
+    // without relying on fragile $autocomplete ID prefix matching.
+    support: true,
   } as any)
 
   await channel.create()
