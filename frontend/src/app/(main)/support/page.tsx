@@ -34,6 +34,8 @@ function dayLabel(d?: string | Date) {
   return date.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })
 }
 
+// ─── Typing dots ──────────────────────────────────────────────────────────────
+
 function TypingDots() {
   return (
     <div style={{ display: 'flex', alignItems: 'flex-end', padding: '2px 0 4px' }}>
@@ -63,8 +65,10 @@ function TypingDots() {
   )
 }
 
+// ─── Message bubble ───────────────────────────────────────────────────────────
+
 function Bubble({
-  text, isMine, createdAt, isSystem, isRead, showTail, status, onRetry, onDelete, deleted,
+  text, isMine, createdAt, isSystem, isRead, showTail, status, onRetry, deleted,
 }: {
   text: string
   isMine: boolean
@@ -74,33 +78,26 @@ function Bubble({
   showTail?: boolean
   status?: 'sending' | 'failed' | 'sent'
   onRetry?: () => void
-  onDelete?: () => void
   deleted?: boolean
 }) {
   const [showTime, setShowTime] = useState(false)
-  const [confirming, setConfirming] = useState(false)
 
   if (deleted) {
     return (
       <div style={{
         display: 'flex',
         flexDirection: isMine ? 'row-reverse' : 'row',
-        alignItems: 'flex-end',
-        gap: 6,
-        margin: '1px 0',
+        margin: '1px 0', gap: 6,
       }}>
         <div style={{ width: 28, flexShrink: 0 }} />
         <div style={{
-          maxWidth: '78%',
-          borderRadius: 8,
+          fontSize: 13, fontStyle: 'italic',
+          color: 'var(--color-text-secondary)',
           padding: '8px 12px',
-          fontSize: 13,
-          fontStyle: 'italic',
-          color: 'rgba(255,255,255,0.5)',
-          background: '#232B36',
-          border: '0.5px dashed rgba(255,255,255,0.15)',
+          border: '0.5px dashed var(--color-border-secondary)',
+          borderRadius: 8,
         }}>
-          🚫 You deleted this message
+          🚫 This message was deleted
         </div>
       </div>
     )
@@ -110,10 +107,10 @@ function Bubble({
     return (
       <div style={{ textAlign: 'center', padding: '8px 0', margin: '4px 0' }}>
         <span style={{
-          fontSize: 11, color: 'rgba(255,255,255,0.55)',
-          background: '#232B36',
+          fontSize: 11, color: 'var(--color-text-secondary)',
+          background: 'var(--color-background-secondary)',
           padding: '4px 16px', borderRadius: 20,
-          border: '0.5px solid rgba(255,255,255,0.08)',
+          border: '0.5px solid var(--color-border-tertiary)',
           display: 'inline-block', lineHeight: 1.6,
         }}>
           {text}
@@ -127,92 +124,62 @@ function Bubble({
       display: 'flex',
       flexDirection: isMine ? 'row-reverse' : 'row',
       alignItems: 'flex-end',
-      gap: 6,
-      margin: '1px 0',
+      gap: 6, margin: '1px 0',
     }}>
       <div style={{ width: 28, flexShrink: 0 }} />
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: isMine ? 'flex-end' : 'flex-start', maxWidth: '78%' }}>
         <div
           onClick={() => setShowTime(v => !v)}
           style={{
-            background: isMine ? '#005C4B' : '#262D36',
-            color: isMine ? '#E9FBF5' : '#E8EAED',
+            background: isMine ? 'var(--color-text-primary)' : 'var(--color-background-secondary)',
+            color: isMine ? 'var(--color-background-primary)' : 'var(--color-text-primary)',
             borderRadius: isMine
-              ? showTail ? '8px 8px 0px 8px' : '8px'
-              : showTail ? '8px 8px 8px 0px' : '8px',
-            padding: '6px 9px 8px',
-            fontSize: 14.5,
-            lineHeight: 1.4,
-            boxShadow: '0 1px 1px rgba(0,0,0,0.35)',
+              ? showTail ? '18px 18px 4px 18px' : '18px'
+              : showTail ? '18px 18px 18px 4px' : '18px',
+            padding: '10px 14px',
+            fontSize: 15, lineHeight: 1.5,
+            border: isMine ? 'none' : '0.5px solid var(--color-border-tertiary)',
             wordBreak: 'break-word',
             cursor: 'default',
             userSelect: 'text' as const,
-            opacity: status === 'sending' ? 0.6 : 1,
+            opacity: status === 'sending' ? 0.55 : 1,
             transition: 'opacity 0.15s',
           }}
         >
           {text}
         </div>
+
+        {/* Time / status row — shown on tap */}
         <div style={{
-          display: 'flex', alignItems: 'center', gap: 4,
+          display: 'flex', alignItems: 'center', gap: 5,
           marginTop: 3, padding: '0 2px',
-          opacity: (showTime || status === 'failed') ? 1 : 0,
-          transition: 'opacity 0.15s',
           height: (showTime || status === 'failed') ? 'auto' : 0,
-          overflow: 'hidden',
+          opacity: (showTime || status === 'failed') ? 1 : 0,
+          overflow: 'hidden', transition: 'opacity 0.15s',
         }}>
           {status === 'failed' ? (
             <button
               onClick={onRetry}
               style={{
-                fontSize: 11, fontWeight: 600, color: '#ef4444',
-                background: 'none', border: 'none', cursor: 'pointer',
-                padding: 0, display: 'flex', alignItems: 'center', gap: 4,
+                fontSize: 11, fontWeight: 600, color: 'var(--color-text-danger)',
+                background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                display: 'flex', alignItems: 'center', gap: 4,
               }}
             >
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 12a9 9 0 1 1-2.64-6.36" />
-                <path d="M21 3v6h-6" />
+                <path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/>
               </svg>
               Failed · Tap to retry
             </button>
           ) : (
             <>
-              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)' }}>
+              <span style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>
                 {timeLabel(createdAt)}
               </span>
               {isMine && status !== 'sending' && (
-                <span style={{ fontSize: 13, color: isRead ? '#53bdeb' : 'rgba(255,255,255,0.45)', lineHeight: 1 }}>
+                <span style={{ fontSize: 13, color: isRead ? 'var(--color-text-info)' : 'var(--color-text-secondary)', lineHeight: 1 }}>
                   {isRead ? '✓✓' : '✓'}
                 </span>
-              )}
-              {isMine && status !== 'sending' && onDelete && (
-                confirming ? (
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 4 }}>
-                    <button
-                      onClick={() => { setConfirming(false); onDelete() }}
-                      style={{ fontSize: 11, fontWeight: 600, color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-                    >
-                      Delete
-                    </button>
-                    <button
-                      onClick={() => setConfirming(false)}
-                      style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-                    >
-                      Cancel
-                    </button>
-                  </span>
-                ) : (
-                  <button
-                    onClick={() => setConfirming(true)}
-                    aria-label="Delete message"
-                    style={{ display: 'flex', alignItems: 'center', marginLeft: 4, background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'rgba(255,255,255,0.45)' }}
-                  >
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
-                    </svg>
-                  </button>
-                )
               )}
             </>
           )}
@@ -221,6 +188,8 @@ function Bubble({
     </div>
   )
 }
+
+// ─── Composer ─────────────────────────────────────────────────────────────────
 
 function Composer({ onSend, onTyping }: {
   onSend:    (t: string) => Promise<void>
@@ -245,70 +214,37 @@ function Composer({ onSend, onTyping }: {
     finally { setSending(false) }
   }, [input, sending, onSend])
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      send()
-    }
-  }, [send])
-
   const canSend = !!input.trim() && !sending
 
   return (
     <div style={{
       padding: '8px 12px 12px',
-      background: '#1F242C',
+      background: 'var(--color-background-primary)',
+      borderTop: '0.5px solid var(--color-border-tertiary)',
       flexShrink: 0,
     }}>
       <div
         style={{
-          display: 'flex',
-          alignItems: 'flex-end',
-          gap: 8,
-          background: '#2A313B',
-          borderRadius: 24,
-          padding: '6px 6px 6px 10px',
-          boxShadow: '0 1px 2px rgba(0,0,0,0.25)',
-          transition: 'box-shadow 0.15s',
+          display: 'flex', alignItems: 'flex-end', gap: 8,
+          background: 'var(--color-background-secondary)',
+          border: '0.5px solid var(--color-border-secondary)',
+          borderRadius: 26, padding: '6px 6px 6px 16px',
+          transition: 'border-color 0.15s',
         }}
-        onFocusCapture={e => (e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.4)')}
-        onBlurCapture={e  => (e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,0.25)')}
+        onFocusCapture={e => (e.currentTarget.style.borderColor = 'var(--color-border-primary)')}
+        onBlurCapture={e  => (e.currentTarget.style.borderColor = 'var(--color-border-secondary)')}
       >
-        <button
-          aria-label="Attach a file"
-          style={{
-            width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
-            border: 'none', background: 'transparent',
-            color: 'rgba(255,255,255,0.5)',
-            cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}
-        >
-          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
-          </svg>
-        </button>
         <textarea
           ref={ref}
           value={input}
           onChange={e => { setInput(e.target.value); onTyping?.() }}
-          onKeyDown={handleKeyDown}
           placeholder="Message…"
-          aria-label="Message"
           rows={1}
           style={{
-            flex: 1,
-            resize: 'none',
-            border: 'none',
-            outline: 'none',
-            background: 'transparent',
-            fontSize: 15,
-            lineHeight: 1.5,
-            color: '#E8EAED',
-            fontFamily: 'var(--font-sans)',
-            overflowY: 'hidden',
-            padding: '4px 0',
-            maxHeight: 130,
+            flex: 1, resize: 'none', border: 'none', outline: 'none',
+            background: 'transparent', fontSize: 15, lineHeight: 1.5,
+            color: 'var(--color-text-primary)', fontFamily: 'var(--font-sans)',
+            overflowY: 'hidden', padding: '5px 0', maxHeight: 130,
           }}
         />
         <button
@@ -316,14 +252,14 @@ function Composer({ onSend, onTyping }: {
           disabled={!canSend}
           aria-label="Send message"
           style={{
-            width: 38, height: 38, borderRadius: '50%', flexShrink: 0,
+            width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
             border: 'none',
-            background: canSend ? '#00A884' : '#E0E0E0',
-            color: canSend ? '#fff' : '#9CA3AF',
+            background: canSend ? 'var(--color-text-primary)' : 'var(--color-background-secondary)',
+            color: canSend ? 'var(--color-background-primary)' : 'var(--color-text-secondary)',
             cursor: canSend ? 'pointer' : 'default',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             transition: 'all 0.18s',
-            transform: canSend ? 'scale(1)' : 'scale(0.92)',
+            transform: canSend ? 'scale(1)' : 'scale(0.88)',
           }}
         >
           {sending ? (
@@ -341,6 +277,8 @@ function Composer({ onSend, onTyping }: {
   )
 }
 
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
 export default function SupportPage() {
   const { conversation, isLoaded, load } = useSupportStore()
   const { client, isReady }              = useStreamContext()
@@ -353,25 +291,10 @@ export default function SupportPage() {
   const listRef          = useRef<HTMLDivElement>(null)
   const wasNearBottomRef = useRef(true)
   const hasMountedRef    = useRef(false)
-  const [showNew, setShowNew] = useState(false)
-  const [failedMsgs, setFailedMsgs] = useState<Record<string, string>>({}) // tempId -> text
-  const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set())
-  const [optimistic, setOptimistic] = useState<{ id: string; text: string; created_at: string }[]>([])
-
-  const handleDelete = useCallback(async (messageId: string) => {
-    // optimistic UI
-    setDeletedIds(prev => new Set(prev).add(messageId))
-    try {
-      await client?.deleteMessage(messageId)
-    } catch (err) {
-      // revert on failure
-      setDeletedIds(prev => {
-        const next = new Set(prev)
-        next.delete(messageId)
-        return next
-      })
-    }
-  }, [client])
+  const [showNew,     setShowNew]     = useState(false)
+  const [optimistic,  setOptimistic]  = useState<{ id: string; text: string; created_at: string }[]>([])
+  const [failedMsgs,  setFailedMsgs]  = useState<Record<string, string>>({})
+  const [deletedIds,  setDeletedIds]  = useState<Set<string>>(new Set())
 
   useEffect(() => { load() }, [load])
 
@@ -405,13 +328,54 @@ export default function SupportPage() {
       bottomRef.current?.scrollIntoView({ behavior: hasMountedRef.current ? 'smooth' : 'auto' })
       hasMountedRef.current = true
     } else setShowNew(true)
-  }, [messages.length, isTyping])
+  }, [messages.length, isTyping, optimistic.length])
 
   const scrollToBottom = useCallback(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
     setShowNew(false)
     wasNearBottomRef.current = true
   }, [])
+
+  // Optimistic send — shows message instantly, replaces when real one arrives
+  const handleSend = useCallback(async (text: string) => {
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    const sentAt = new Date().toISOString()
+    setOptimistic(prev => [...prev, { id: tempId, text, created_at: sentAt }])
+    try {
+      await sendMessage(text)
+    } catch {
+      setOptimistic(prev => prev.filter(m => m.id !== tempId))
+      setFailedMsgs(prev => ({ ...prev, [tempId]: text }))
+    }
+  }, [sendMessage])
+
+  // Drop optimistic copy once real message syncs
+  useEffect(() => {
+    if (optimistic.length === 0) return
+    setOptimistic(prev => prev.filter(opt =>
+      !messages.some(m =>
+        m.user?.id === client?.userID &&
+        m.text === opt.text &&
+        new Date(m.created_at as string).getTime() >= new Date(opt.created_at).getTime() - 5000
+      )
+    ))
+  }, [messages, optimistic.length, client?.userID])
+
+  const retryFailed = useCallback(async (tempId: string) => {
+    const text = failedMsgs[tempId]
+    if (!text) return
+    setFailedMsgs(prev => { const n = { ...prev }; delete n[tempId]; return n })
+    await handleSend(text)
+  }, [failedMsgs, handleSend])
+
+  const handleDelete = useCallback(async (messageId: string) => {
+    setDeletedIds(prev => new Set(prev).add(messageId))
+    try {
+      await client?.deleteMessage(messageId)
+    } catch {
+      setDeletedIds(prev => { const n = new Set(prev); n.delete(messageId); return n })
+    }
+  }, [client])
 
   const grouped = useMemo(() => {
     const result: { day: string; msgs: typeof messages }[] = []
@@ -436,109 +400,63 @@ export default function SupportPage() {
     [...messages].reverse().find(m => m.user?.id === client?.userID)?.id
   , [messages, client?.userID])
 
-  // Wrapped send with retry/failure tracking
-  const handleSend = useCallback(async (text: string) => {
-    const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`
-    const sentAt = new Date().toISOString()
-    setOptimistic(prev => [...prev, { id: tempId, text, created_at: sentAt }])
-    try {
-      await sendMessage(text)
-    } catch (err) {
-      setOptimistic(prev => prev.filter(m => m.id !== tempId))
-      setFailedMsgs(prev => ({ ...prev, [tempId]: text }))
-      throw err
-    }
-  }, [sendMessage])
-
-  // Once the real message shows up in the synced list, drop the optimistic copy
-  useEffect(() => {
-    if (optimistic.length === 0) return
-    setOptimistic(prev => prev.filter(opt =>
-      !messages.some(m =>
-        m.user?.id === client?.userID &&
-        m.text === opt.text &&
-        new Date(m.created_at as string).getTime() >= new Date(opt.created_at).getTime() - 5000
-      )
-    ))
-  }, [messages, optimistic.length, client?.userID])
-
-  const retryFailed = useCallback(async (tempId: string) => {
-    const text = failedMsgs[tempId]
-    if (!text) return
-    try {
-      await sendMessage(text)
-      setFailedMsgs(prev => {
-        const next = { ...prev }
-        delete next[tempId]
-        return next
-      })
-    } catch {
-      // keep as failed
-    }
-  }, [failedMsgs, sendMessage])
-
-  const headerStatus = { label: 'Online · usually replies in minutes', color: '#22c55e', dot: '#22c55e' }
-
   return (
     <div style={{
       maxWidth: 680, margin: '0 auto',
       display: 'flex', flexDirection: 'column',
       height: 'calc(100dvh - 64px)',
       position: 'relative',
-      background: '#161B22',
+      background: 'var(--color-background-primary)',
     }}>
 
-      {/* Header */}
+      {/* ── Header ── */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 12,
         padding: '10px 16px',
+        borderBottom: '0.5px solid var(--color-border-tertiary)',
         flexShrink: 0,
-        background: '#075E54',
-        color: '#fff',
+        background: 'var(--color-background-primary)',
       }}>
         <div style={{ position: 'relative', flexShrink: 0 }}>
           <div style={{
-            width: 42, height: 42, borderRadius: '50%',
-            background: 'rgba(255,255,255,0.15)',
+            width: 44, height: 44, borderRadius: '50%',
+            background: 'var(--color-background-secondary)',
+            border: '0.5px solid var(--color-border-secondary)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: '#fff',
+            color: 'var(--color-text-secondary)',
           }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 18v-6a9 9 0 0 1 18 0v6" />
-              <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z" />
+              <path d="M3 18v-6a9 9 0 0 1 18 0v6"/>
+              <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/>
             </svg>
           </div>
           <span style={{
             position: 'absolute', bottom: 1, right: 1,
-            width: 10, height: 10, borderRadius: '50%',
-            background: headerStatus.dot,
-            border: '2px solid #075E54',
-            transition: 'background 0.2s',
+            width: 11, height: 11, borderRadius: '50%',
+            background: '#22c55e',
+            border: '2px solid var(--color-background-primary)',
           }} />
         </div>
-        <div style={{ flex: 1 }}>
-          <p style={{ fontSize: 16, fontWeight: 600, color: '#fff', margin: 0, lineHeight: 1.2 }}>
+        <div>
+          <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)', margin: 0, lineHeight: 1.25 }}>
             Support Team
           </p>
-          <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', margin: '2px 0 0', fontWeight: 400, transition: 'color 0.2s' }}>
-            {headerStatus.label}
+          <p style={{ fontSize: 12, color: '#22c55e', margin: '2px 0 0', fontWeight: 500 }}>
+            Online · usually replies in minutes
           </p>
         </div>
       </div>
 
-      {/* Messages */}
+      {/* ── Messages ── */}
       <div
         ref={listRef}
         role="log"
         aria-live="polite"
-        aria-relevant="additions"
         style={{
           flex: 1, overflowY: 'auto',
           padding: '12px 16px 8px',
           display: 'flex', flexDirection: 'column', gap: 2,
-          backgroundColor: '#161B22',
-          backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'120\' height=\'120\' viewBox=\'0 0 120 120\'%3E%3Cg fill=\'none\' stroke=\'%23232B36\' stroke-width=\'1.5\'%3E%3Cpath d=\'M30 18c0-4 3-7 7-7s7 3 7 7M37 18v6M27 26h20l6 16-8 3v32H29V45l-8-3z\'/%3E%3Ccircle cx=\'90\' cy=\'30\' r=\'9\'/%3E%3Cpath d=\'M84 30a6 6 0 0112 0M81 36h18M85 36l-4 30h18l-4-30\'/%3E%3Cpath d=\'M15 80c0-3 2.5-5.5 5.5-5.5S26 77 26 80M20.5 80v4.5M13 86h15l4 12-6 2v18H15V100l-6-2z\'/%3E%3Cpath d=\'M70 75l4 6h12l4-6M74 81v28h12V81\'/%3E%3C/g%3E%3C/svg%3E")',
-          backgroundSize: '180px 180px',
+          background: 'var(--color-background-primary)',
         }}
       >
         {(isLoading || !isLoaded) && (
@@ -549,26 +467,26 @@ export default function SupportPage() {
           </div>
         )}
 
-        {!isLoading && isLoaded && messages.length === 0 && (
+        {!isLoading && isLoaded && messages.length === 0 && optimistic.length === 0 && (
           <div style={{
             flex: 1, display: 'flex', flexDirection: 'column',
             alignItems: 'center', justifyContent: 'center',
-            gap: 16, padding: '3rem 2rem', textAlign: 'center',
+            gap: 14, padding: '3rem 2rem', textAlign: 'center',
           }}>
             <div style={{
               width: 64, height: 64, borderRadius: '50%',
-              background: '#232B36',
-              border: '0.5px solid rgba(255,255,255,0.08)',
+              background: 'var(--color-background-secondary)',
+              border: '0.5px solid var(--color-border-tertiary)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: 28,
             }}>
               👋
             </div>
             <div>
-              <p style={{ ...DISPLAY, fontSize: 22, fontWeight: 300, margin: '0 0 6px', color: '#E8EAED' }}>
+              <p style={{ ...DISPLAY, fontSize: 22, fontWeight: 300, margin: '0 0 6px', color: 'var(--color-text-primary)' }}>
                 Hi there!
               </p>
-              <p style={{ fontSize: 13, margin: 0, color: 'rgba(255,255,255,0.55)', lineHeight: 1.7, maxWidth: 260 }}>
+              <p style={{ fontSize: 13, margin: 0, color: 'var(--color-text-secondary)', lineHeight: 1.7, maxWidth: 260 }}>
                 Got a question or need help with an order? Send us a message — we're here.
               </p>
             </div>
@@ -577,19 +495,18 @@ export default function SupportPage() {
 
         {grouped.map(({ day, msgs }) => (
           <div key={day}>
-            {/* Day divider */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '16px 0 10px' }}>
-              <div style={{ flex: 1, height: '0.5px', background: 'rgba(255,255,255,0.08)' }} />
+              <div style={{ flex: 1, height: '0.5px', background: 'var(--color-border-tertiary)' }} />
               <span style={{
-                fontSize: 11, color: 'rgba(255,255,255,0.5)',
-                background: '#232B36',
+                fontSize: 11, color: 'var(--color-text-secondary)',
+                background: 'var(--color-background-secondary)',
                 padding: '3px 12px', borderRadius: 20,
-                border: '0.5px solid rgba(255,255,255,0.08)',
+                border: '0.5px solid var(--color-border-tertiary)',
                 whiteSpace: 'nowrap', fontWeight: 500,
               }}>
                 {day}
               </span>
-              <div style={{ flex: 1, height: '0.5px', background: 'rgba(255,255,255,0.08)' }} />
+              <div style={{ flex: 1, height: '0.5px', background: 'var(--color-border-tertiary)' }} />
             </div>
 
             {msgs.map((msg, idx) => {
@@ -607,35 +524,20 @@ export default function SupportPage() {
                   isRead={isMine ? (isLastMineOverall ? lastMineRead : true) : undefined}
                   showTail={isLast}
                   deleted={deletedIds.has(msg.id) || msg.deleted_at != null}
-                  onDelete={isMine ? () => handleDelete(msg.id) : undefined}
                 />
               )
             })}
           </div>
         ))}
 
-        {/* Optimistic messages: shown instantly while sending */}
+        {/* Optimistic messages */}
         {optimistic.map(m => (
-          <Bubble
-            key={m.id}
-            text={m.text}
-            isMine
-            createdAt={m.created_at}
-            status="sending"
-            showTail
-          />
+          <Bubble key={m.id} text={m.text} isMine createdAt={m.created_at} status="sending" showTail />
         ))}
 
-        {/* Failed messages, shown locally until retried */}
+        {/* Failed messages */}
         {Object.entries(failedMsgs).map(([tempId, text]) => (
-          <Bubble
-            key={tempId}
-            text={text}
-            isMine
-            status="failed"
-            showTail
-            onRetry={() => retryFailed(tempId)}
-          />
+          <Bubble key={tempId} text={text} isMine status="failed" showTail onRetry={() => retryFailed(tempId)} />
         ))}
 
         {isTyping && (
@@ -644,12 +546,11 @@ export default function SupportPage() {
               width: 28, height: 28, borderRadius: '50%',
               background: 'var(--color-background-secondary)',
               border: '0.5px solid var(--color-border-tertiary)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
             }}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M3 18v-6a9 9 0 0 1 18 0v6" />
-                <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z" />
+                <path d="M3 18v-6a9 9 0 0 1 18 0v6"/>
+                <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/>
               </svg>
             </div>
             <TypingDots />
@@ -663,7 +564,7 @@ export default function SupportPage() {
       {lastMineRead && !isTyping && (
         <div style={{
           textAlign: 'right', fontSize: 11, fontWeight: 500,
-          color: 'rgba(255,255,255,0.45)',
+          color: 'var(--color-text-secondary)',
           padding: '2px 20px 0', flexShrink: 0,
         }}>
           Seen ✓✓
@@ -684,7 +585,7 @@ export default function SupportPage() {
           }}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 5v14M5 12l7 7 7-7" />
+            <path d="M12 5v14M5 12l7 7 7-7"/>
           </svg>
           New messages
         </button>
