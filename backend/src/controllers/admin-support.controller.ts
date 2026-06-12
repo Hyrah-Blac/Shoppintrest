@@ -4,7 +4,6 @@ import Notification from '../models/Notification'
 import asyncHandler from '../utils/asyncHandler'
 import AppError     from '../utils/AppError'
 import { sendSuccess } from '../utils/apiResponse'
-import { getStreamServer } from '../lib/stream'
 
 export const getAllConversations = asyncHandler(async (req: Request, res: Response) => {
   const conversations = await Conversation.find()
@@ -35,24 +34,4 @@ export const notifyReply = asyncHandler(async (req: Request, res: Response) => {
     read:    false,
   })
   sendSuccess(res, null, 'Notification sent')
-})
-
-// Run once to patch all existing channels with support: true
-// Delete this after running
-export const migrateChannels = asyncHandler(async (req: Request, res: Response) => {
-  const server = getStreamServer()
-  const convos = await Conversation.find().lean()
-
-  const results = []
-  for (const convo of convos) {
-    try {
-      const channel = server.channel('messaging', convo.streamChannelId)
-     await channel.updatePartial({ set: { support: true } as any })
-      results.push({ id: convo.streamChannelId, ok: true })
-    } catch (err: any) {
-      results.push({ id: convo.streamChannelId, error: err.message })
-    }
-  }
-
-  sendSuccess(res, results, 'Migration done')
 })
