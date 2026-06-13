@@ -3,11 +3,11 @@
 import express, { Request, Response, NextFunction } from 'express'
 import { Webhook } from 'svix'
 import User from '../models/User'
-
 import Order from '../models/Order'
 import Review from '../models/Review'
 import Notification from '../models/Notification'
 import Cart from '../models/Cart'
+import Saved from '../models/Saved'
 import AppError from '../utils/AppError'
 import asyncHandler from '../utils/asyncHandler'
 import { createNotification } from '../controllers/notification.controller'
@@ -61,6 +61,7 @@ router.post(
           Review.deleteMany({ user: user._id }),
           Order.deleteMany({ user: user._id }),
           Cart.deleteMany({ user: user._id }),
+          Saved.deleteMany({ userId: user._id }),
           Notification.deleteMany({
             $or: [{ recipient: user._id }, { sender: user._id }],
           }),

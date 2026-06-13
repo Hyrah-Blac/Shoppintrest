@@ -1,7 +1,14 @@
 'use client'
 
 /**
- * ProductDetail — v2 · Shoppin
+ * ProductDetail — v3 · Shoppin
+ *
+ * v2 → v3:
+ *  - Removed the "save to collection" feature entirely (collections picker,
+ *    BookmarkPlus button, Collection interface, apiClient.collections calls,
+ *    showCollectionPicker state)
+ *  - CLOTHING_CATEGORIES now matches the actual Product category enum
+ *    (womenswear, menswear) — size guide only renders for those
  *
  * v1 → v2:
  *  - Full TypeScript — no any types
@@ -16,7 +23,6 @@
  *  - Trust badge icons: muted (decorative, not actionable)
  *  - Featured badge: glass pill (matches ProductCard v2)
  *  - Size guide: only shown for clothing categories (hassizing allowlist)
- *  - Collection picker hover: background-secondary (was accent-muted)
  *  - Seller link hover: foreground (was accent)
  *  - Size guide: accent stripped throughout, table size column → foreground bold
  */
@@ -27,7 +33,7 @@ import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Heart, ShoppingBag, ArrowUpRight, ChevronLeft, ChevronRight,
-  BookmarkPlus, Package, RotateCcw, Zap, X, Ruler,
+  Package, RotateCcw, Zap, X, Ruler,
 } from 'lucide-react'
 import { useAuth } from '@clerk/nextjs'
 import { toast } from 'sonner'
@@ -76,22 +82,15 @@ interface Product {
   seller?:      Seller
 }
 
-interface Collection {
-  _id:   string
-  title: string
-}
-
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 /**
  * Categories for which a size guide is relevant.
- * Bags, shoes, jewelry, beauty, accessories have no standard garment sizing.
+ * Matches the Product schema's category enum — only apparel categories
+ * (womenswear, menswear) use garment sizing. Accessories, shoes, bags,
+ * jewelry, beauty, and home goods don't.
  */
-const CLOTHING_CATEGORIES = new Set([
-  'womenswear', 'women', 'menswear', 'men',
-  'clothing', 'tops', 'bottoms', 'dresses',
-  'outerwear', 'activewear', 'swimwear', 'lingerie',
-])
+const CLOTHING_CATEGORIES = new Set(['womenswear', 'menswear'])
 
 const hassizing = (category?: string) =>
   category ? CLOTHING_CATEGORIES.has(category.toLowerCase()) : false
@@ -106,17 +105,15 @@ export function ProductDetail({ id }: Props) {
   const isSaved           = useUserStore((s) => s.isSaved(id))
   const toggleSaveProduct = useUserStore((s) => s.toggleSaveProduct)
 
-  const [product,              setProduct]              = useState<Product | null>(null)
-  const [isLoading,            setIsLoading]            = useState(true)
-  const [selectedSize,         setSelectedSize]         = useState<string>('')
-  const [selectedImage,        setSelectedImage]        = useState(0)
-  const [isAddingToCart,       setIsAddingToCart]       = useState(false)
-  const [isSaving,             setIsSaving]             = useState(false)
-  const [isZoomed,             setIsZoomed]             = useState(false)
-  const [zoomPos,              setZoomPos]              = useState({ x: 50, y: 50 })
-  const [collections,          setCollections]          = useState<Collection[]>([])
-  const [showCollectionPicker, setShowCollectionPicker] = useState(false)
-  const [showSizeGuide,        setShowSizeGuide]        = useState(false)
+  const [product,        setProduct]        = useState<Product | null>(null)
+  const [isLoading,      setIsLoading]      = useState(true)
+  const [selectedSize,   setSelectedSize]   = useState<string>('')
+  const [selectedImage,  setSelectedImage]  = useState(0)
+  const [isAddingToCart, setIsAddingToCart] = useState(false)
+  const [isSaving,       setIsSaving]       = useState(false)
+  const [isZoomed,       setIsZoomed]       = useState(false)
+  const [zoomPos,        setZoomPos]        = useState({ x: 50, y: 50 })
+  const [showSizeGuide,  setShowSizeGuide]  = useState(false)
 
   useEffect(() => {
     setIsLoading(true)
@@ -132,14 +129,6 @@ export function ProductDetail({ id }: Props) {
       .catch(() => toast.error('Product not found'))
       .finally(() => setIsLoading(false))
   }, [id])
-
-  useEffect(() => {
-    if (isSignedIn) {
-      apiClient.collections.getAll()
-        .then(({ data }) => setCollections(data.data ?? []))
-        .catch(() => {})
-    }
-  }, [isSignedIn])
 
   const handleAddToCart = async () => {
     if (!isSignedIn)   { toast.error('Sign in to add to cart'); return }
@@ -162,14 +151,6 @@ export function ProductDetail({ id }: Props) {
       toast.success(isSaved ? 'Removed from saved' : 'Saved!')
     } catch { toast.error('Something went wrong') }
     finally { setIsSaving(false) }
-  }
-
-  const handleAddToCollection = async (collectionId: string) => {
-    try {
-      await apiClient.collections.toggleProduct(collectionId, id)
-      toast.success('Collection updated')
-      setShowCollectionPicker(false)
-    } catch { toast.error('Could not update collection') }
   }
 
   const handleShare = async () => {
@@ -451,80 +432,6 @@ export function ProductDetail({ id }: Props) {
               >
                 <ArrowUpRight size={16} />
               </motion.button>
-
-              {/* Collection picker */}
-              {isSignedIn && (
-                <div className="relative">
-                  <motion.button
-                    whileTap={{ scale: 0.88 }}
-                    onClick={() => setShowCollectionPicker(!showCollectionPicker)}
-                    aria-label="Add to collection"
-                    aria-expanded={showCollectionPicker}
-                    className="w-10 h-10 flex items-center justify-center rounded-full
-                               transition-all duration-[var(--duration-hover)]"
-                    style={{
-                      background: showCollectionPicker ? 'hsl(var(--foreground))' : 'hsl(var(--background-secondary))',
-                      border:     '1px solid hsl(var(--border))',
-                      color:      showCollectionPicker ? 'hsl(var(--background))' : 'hsl(var(--muted))',
-                    }}
-                  >
-                    <BookmarkPlus size={16} />
-                  </motion.button>
-
-                  <AnimatePresence>
-                    {showCollectionPicker && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 8, scale: 0.96 }}
-                        animate={{ opacity: 1, y: 0, scale: 1    }}
-                        exit={{   opacity: 0, y: 8, scale: 0.96  }}
-                        transition={{ duration: 0.15, ease: [0.22, 1, 0.36, 1] }}
-                        className="absolute right-0 top-12 z-30 w-56 overflow-hidden"
-                        style={{
-                          background:   'hsl(var(--surface-elevated))',
-                          border:       '1px solid hsl(var(--border))',
-                          borderRadius: 'var(--radius-lg)',
-                          boxShadow:    'var(--shadow-float)',
-                        }}
-                      >
-                        <div className="p-2">
-                          <p
-                            className="text-[10px] font-semibold uppercase tracking-widest px-3 py-2"
-                            style={{ color: 'hsl(var(--muted))' }}
-                          >
-                            Save to collection
-                          </p>
-                          {collections.length === 0 ? (
-                            <Link
-                              href="/collections/new"
-                              className="flex items-center gap-2 px-3 py-2.5 text-sm
-                                         rounded-[var(--radius-sm)]
-                                         hover:bg-[hsl(var(--background-secondary))]
-                                         transition-colors duration-[var(--duration-fast)]"
-                              style={{ color: 'hsl(var(--foreground))' }}
-                            >
-                              + Create collection
-                            </Link>
-                          ) : (
-                            collections.map((col) => (
-                              <button
-                                key={col._id}
-                                onClick={() => handleAddToCollection(col._id)}
-                                className="w-full text-left px-3 py-2.5 text-sm truncate
-                                           rounded-[var(--radius-sm)]
-                                           hover:bg-[hsl(var(--background-secondary))]
-                                           transition-colors duration-[var(--duration-fast)]"
-                                style={{ color: 'hsl(var(--foreground))' }}
-                              >
-                                {col.title}
-                              </button>
-                            ))
-                          )}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              )}
             </div>
           </div>
 
