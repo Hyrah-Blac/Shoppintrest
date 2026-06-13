@@ -119,12 +119,18 @@ export function useSupportChat(client: StreamChat | null, isReady: boolean) {
     setReadBy({})
 
     try {
-      await channel.watch({ state: true, presence: true })
+      // Do a lightweight query first to check membership without a full watch.
+      // This avoids the race where watch() returns empty state because the admin
+      // isn't a member yet, and messages only get set from that empty snapshot.
+      const { channel: channelData } = await channel.query({ state: true })
+      const isMember = !!channelData.members?.find((m: any) => m.user_id === client.userID)
 
-      // Fallback: add admin as member if not already present.
-      if (!channel.state.members[client.userID!]) {
+      if (!isMember) {
+        // Add admin as member BEFORE watching so watch() returns full message state.
         await channel.addMembers([client.userID!])
       }
+
+      await channel.watch({ state: true, presence: true })
 
       // Confirm the channel hasn't been swapped out while we were awaiting
       // (e.g. user navigated away and openChannel fired for a different channel).
