@@ -2,67 +2,8 @@
 
 import { useEffect } from 'react'
 import Link from 'next/link'
-import { motion, AnimatePresence } from 'framer-motion'
 import { useSavedStore } from '@/store/useSavedStore'
 import { ProductCard } from '@/components/product/ProductCard'
-import { toast } from 'sonner'
-import { useState } from 'react'
-
-const ease = [0.16, 1, 0.3, 1] as const
-
-function SavedCard({ product }: { product: any }) {
-  const { unsaveProduct } = useSavedStore()
-  const [hovered,  setHovered]  = useState(false)
-  const [removing, setRemoving] = useState(false)
-
-  async function handleRemove(e: React.MouseEvent) {
-    e.preventDefault(); e.stopPropagation()
-    setRemoving(true)
-    try {
-      await unsaveProduct(product._id)
-      toast.success('Removed')
-    } catch {
-      toast.error('Could not remove')
-      setRemoving(false)
-    }
-  }
-
-  return (
-    <motion.div
-      animate={{ opacity: removing ? 0 : 1, y: removing ? 8 : 0 }}
-      transition={{ duration: 0.3, ease }}
-      style={{ position: 'relative' }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-    >
-      <ProductCard product={product} />
-
-      <AnimatePresence>
-        {hovered && (
-          <motion.button
-            initial={{ opacity: 0, scale: 0.88 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.88 }}
-            transition={{ duration: 0.15, ease }}
-            onClick={handleRemove}
-            disabled={removing}
-            aria-label={`Remove ${product.title}`}
-            style={{
-              position: 'absolute', top: 10, right: 10, zIndex: 30,
-              width: 30, height: 30, borderRadius: '50%',
-              background: 'rgba(255,255,255,0.96)',
-              border: 'none', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.18)',
-            }}
-          >
-            <i className="ti ti-x" style={{ fontSize: 13, color: 'rgba(0,0,0,0.8)' }} aria-hidden="true" />
-          </motion.button>
-        )}
-      </AnimatePresence>
-    </motion.div>
-  )
-}
 
 export default function SavedPage() {
   const { savedProducts, isLoaded, loadSaved } = useSavedStore()
@@ -130,7 +71,7 @@ export default function SavedPage() {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '2.5rem 1.5rem' }}>
           {savedProducts.map(product => (
-            <SavedCard key={product._id} product={product} />
+            <ProductCard key={product._id} product={product} />
           ))}
         </div>
       )}
