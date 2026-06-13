@@ -3,8 +3,7 @@
 import express, { Request, Response, NextFunction } from 'express'
 import { Webhook } from 'svix'
 import User from '../models/User'
-import SavedFolder from '../models/SavedFolder'
-import Product from '../models/Product'
+
 import Order from '../models/Order'
 import Review from '../models/Review'
 import Notification from '../models/Notification'
@@ -59,7 +58,6 @@ router.post(
         const streamClient = getStreamServer()
 
         await Promise.all([
-          SavedFolder.deleteMany({ userId: user._id }),
           Review.deleteMany({ user: user._id }),
           Order.deleteMany({ user: user._id }),
           Cart.deleteMany({ user: user._id }),
