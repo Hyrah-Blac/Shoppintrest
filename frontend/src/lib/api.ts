@@ -225,20 +225,19 @@ export const apiClient = {
       api.delete(`/api/saved/folders/${slug}`),
   },
 
-  // Support
-  support: {
-    getConversation: () =>
-      api.get('/api/support/conversation'),
-    getStreamToken: () =>
-      api.get('/api/support/stream-token'),
+// Support
+support: {
+  getConversation: () =>
+    api.get('/api/support/conversation'),
+  getStreamToken: () =>
+    api.get('/api/support/stream-token'),
 
-    admin: {
-      getAllConversations: () =>
-        api.get('/api/admin/support/conversations'),
-      getConversation: (id: string) =>
-        api.get(`/api/admin/support/conversations/${id}`),
-      notifyReply: (id: string) =>
-        api.post(`/api/admin/support/conversations/${id}/notify`),
-    },
+  admin: {
+    getAllConversations: () =>
+      api.get('/api/support/admin/conversations'),
+    getConversation: (id: string) =>
+      api.get(`/api/support/admin/conversations/${id}`),
+    notifyReply: (id: string) =>
+      api.post(`/api/support/admin/conversations/${id}/notify`),
   },
-}
+},
