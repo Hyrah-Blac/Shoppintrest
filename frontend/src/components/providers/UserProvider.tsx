@@ -23,45 +23,35 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     localStorage.removeItem('shoppintrest-cart')
   }, [])
+useEffect(() => {
+  if (!isLoaded) return
 
-  useEffect(() => {
-    if (!isLoaded) return
+  if (isSignedIn && clerkUser) {
+    const syncAndFetch = async () => {
+      try {
+        const token = await getToken({ template: 'backend' })
+        if (!token) return
 
-    if (isSignedIn && clerkUser) {
-      const syncAndFetch = async () => {
         try {
-          const token = await getToken({ template: 'backend' })
-          if (!token) return
+          await api.post('/api/users/clerk/sync', {})
+        } catch {}
 
-          // never send client-supplied identity in the body.
-          // The backend must derive who the user is from the Bearer token,
-          // not from anything the client POSTs. Empty body; token does the work.
-          try {
-            await api.post('/api/users/clerk/sync', {})
-          } catch {
-           
-          }
+        try {
+          await api.post('/api/notifications/sync-subscriber')
+        } catch {}
 
-          // Upsert Novu subscriber so realtime delivery works for this user
-          try {
-            await api.post('/api/notifications/sync-subscriber')
-          } catch {
-     
-          }
-
-          await fetchUser()
-          await fetchCart()
-        } catch (err) {
-          console.error('UserProvider sync failed:', err)
-        }
+        await fetchUser()
+        await fetchCart()
+      } catch (err) {
+        console.error('UserProvider sync failed:', err)
       }
-
-      syncAndFetch()
-    } else if (isLoaded && !isSignedIn) {
-      clearUser()
-      resetCart()
     }
-  }, [isSignedIn, isLoaded, clerkUser])
 
+    syncAndFetch()
+  } else if (isLoaded && !isSignedIn) {
+    clearUser()
+    resetCart()
+  }
+}, [isSignedIn, isLoaded, clerkUser?.id])
   return <>{children}</>
 }
