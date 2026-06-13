@@ -239,5 +239,6 @@ support: {
       api.get(`/api/support/admin/conversations/${id}`),
     notifyReply: (id: string) =>
       api.post(`/api/support/admin/conversations/${id}/notify`),
+     },
   },
-},
+}
