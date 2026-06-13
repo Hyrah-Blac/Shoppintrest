@@ -101,7 +101,6 @@ app.use('/api/reviews',       reviewRoutes)
 app.use('/api/notifications', notificationRoutes)
 app.use('/api/upload',        uploadRoutes)
 app.use('/api/admin',         adminRoutes)
-app.use('/api/saved',         savedRoutes)
 app.use('/api/support',       supportRoutes)
 app.use('/api/support/admin', adminSupportRoutes)
 
