@@ -56,9 +56,6 @@ export function useSupportChat(client: StreamChat | null, isReady: boolean) {
 
     ;(async () => {
       try {
-        // Filter by the custom `support: true` field set at channel creation.
-        // This works for both admins (sees all) and users (sees only theirs)
-        // because Stream enforces member-level access automatically.
         const channels = await client.queryChannels(
           {
             type:    'messaging',
@@ -111,23 +108,28 @@ export function useSupportChat(client: StreamChat | null, isReady: boolean) {
     const prev = activeChannelRef.current
     if (prev && prev.id !== channelId) prev.stopWatching().catch(() => {})
 
+    // ✅ Point activeChannelRef at the target channel BEFORE any await so that
+    // sendMessage() calls during the watch/load phase go to the right channel.
+    const channel = client.channel('messaging', channelId)
+    activeChannelRef.current = channel
+
     setIsLoading(true)
     setIsTyping(false)
     setMessages([])
     setReadBy({})
 
     try {
-      const channel = client.channel('messaging', channelId)
       await channel.watch({ state: true, presence: true })
 
       // Fallback: add admin as member if not already present.
-      // In practice this shouldn't fire if getOrCreateSupportChannel
-      // includes all admins at creation time.
       if (!channel.state.members[client.userID!]) {
         await channel.addMembers([client.userID!])
       }
 
-      activeChannelRef.current = channel
+      // Confirm the channel hasn't been swapped out while we were awaiting
+      // (e.g. user navigated away and openChannel fired for a different channel).
+      if (activeChannelRef.current?.id !== channelId) return
+
       setMessages([...channel.state.messages])
 
       const rb: Record<string, string> = {}
@@ -190,9 +192,10 @@ export function useSupportChat(client: StreamChat | null, isReady: boolean) {
     activeChannelRef.current?.stopWatching().catch(() => {})
   }, [])
 
-  // ── Send ─────────────────────────────────────────────────────────────────
+  // ── Send ──────────────────────────────────────────────────────────────────
   const sendMessage = useCallback(async (text: string) => {
     const ch = activeChannelRef.current
+    console.log('[sendMessage] sending to channel:', ch?.id)
     if (!ch || !text.trim()) return
 
     const tempId  = `temp_${Date.now()}`
@@ -227,7 +230,6 @@ export function useSupportChat(client: StreamChat | null, isReady: boolean) {
   const loadOlderMessages = useCallback(async () => {
     const ch = activeChannelRef.current
     if (!ch) return
-    // Read the oldest message id from current state via a ref-safe approach
     setMessages(prev => {
       const oldest = prev[0]
       if (!oldest) return prev
