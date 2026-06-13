@@ -119,13 +119,10 @@ export function useSupportChat(client: StreamChat | null, isReady: boolean) {
     setReadBy({})
 
     try {
-      // Ensure admin is a member BEFORE watching so Stream returns full message state.
-      const { channel: channelData } = await channel.query({ state: true })
-      const isMember = !!channelData.members?.find((m: any) => m.user_id === client.userID)
-      if (!isMember) {
-        await channel.addMembers([client.userID!])
-      }
-
+      // The backend's getConversation endpoint already added the admin as a member
+      // server-side before this runs, so we go straight to watch().
+      // Client-side addMembers / query would fail if Stream hasn't propagated
+      // the membership yet, so we skip it here.
       await channel.watch({ state: true, presence: true })
 
       // Bail if the channel was swapped out while we were awaiting.
