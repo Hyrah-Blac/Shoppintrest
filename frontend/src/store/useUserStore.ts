@@ -19,17 +19,19 @@ export const useUserStore = create<UserStore>((set, get) => ({
   isAuthenticated: false,
 
   fetchUser: async () => {
-    try {
-      set({ isLoading: true })
-      const { data } = await apiClient.users.getMe()
-      set({ user: data.data, isAuthenticated: true })
-    } catch {
-      set({ user: null, isAuthenticated: false })
-    } finally {
-      set({ isLoading: false })
-    }
-  },
+  const { user, isLoading } = get()
+  if (user || isLoading) return // already loaded or in flight — skip duplicate fetch
 
+  try {
+    set({ isLoading: true })
+    const { data } = await apiClient.users.getMe()
+    set({ user: data.data, isAuthenticated: true })
+  } catch {
+    set({ user: null, isAuthenticated: false })
+  } finally {
+    set({ isLoading: false })
+  }
+},
   updateUser: async (userData) => {
     const { data } = await apiClient.users.updateMe(userData)
     set({ user: data.data })
