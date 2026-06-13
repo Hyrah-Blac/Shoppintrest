@@ -290,10 +290,12 @@ export default function AdminConversationPage() {
     return () => { cancelled = true }
   }, [conversationId])
 
-  // Open Stream channel
+  // Open Stream channel — wait for BOTH convo meta AND Stream client to be ready.
+  // Without isReady, openChannel fires before connectUser completes and
+  // client.userID is undefined, causing watch() to fail silently.
   useEffect(() => {
-    if (convo?.streamChannelId) openChannel(convo.streamChannelId)
-  }, [convo?.streamChannelId, openChannel])
+    if (convo?.streamChannelId && isReady) openChannel(convo.streamChannelId)
+  }, [convo?.streamChannelId, isReady, openChannel])
 
   const isNearBottom = useCallback(() => {
     const el = listRef.current
