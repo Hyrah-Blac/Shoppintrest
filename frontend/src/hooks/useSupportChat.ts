@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { StreamChat, Channel, FormatMessageResponse, Event } from 'stream-chat'
+import { StreamChat, Channel, LocalMessage, Event } from 'stream-chat'
 
 export interface ChannelPreview {
   streamChannelId: string
@@ -14,7 +14,7 @@ export interface ChannelPreview {
 
 export function useSupportChat(client: StreamChat | null, isReady: boolean) {
   const [previews,  setPreviews]  = useState<ChannelPreview[]>([])
-  const [messages,  setMessages]  = useState<FormatMessageResponse[]>([])
+  const [messages,  setMessages]  = useState<LocalMessage[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isTyping,  setIsTyping]  = useState(false)
   const [readBy,    setReadBy]    = useState<Record<string, string>>({})
@@ -119,24 +119,28 @@ export function useSupportChat(client: StreamChat | null, isReady: boolean) {
     setReadBy({})
 
     try {
-      // Do a lightweight query first to check membership without a full watch.
-      // This avoids the race where watch() returns empty state because the admin
-      // isn't a member yet, and messages only get set from that empty snapshot.
+      // Ensure admin is a member BEFORE watching so Stream returns full message state.
+      // We use a raw query to check membership without triggering a full watch/cache.
       const { channel: channelData } = await channel.query({ state: true })
       const isMember = !!channelData.members?.find((m: any) => m.user_id === client.userID)
-
       if (!isMember) {
-        // Add admin as member BEFORE watching so watch() returns full message state.
         await channel.addMembers([client.userID!])
       }
 
       await channel.watch({ state: true, presence: true })
 
-      // Confirm the channel hasn't been swapped out while we were awaiting
-      // (e.g. user navigated away and openChannel fired for a different channel).
+      // Confirm the channel hasn't been swapped out while we were awaiting.
       if (activeChannelRef.current?.id !== channelId) return
 
-      setMessages([...channel.state.messages])
+      // Force a fresh message fetch — don't rely on channel.state.messages which
+      // may be empty/stale when the StreamChat client had this channel cached
+      // from the initial queryChannels() call with no messages pre-loaded.
+      const { messages: freshMessages } = await channel.query({
+        messages: { limit: 50 },
+      })
+      if (activeChannelRef.current?.id !== channelId) return
+
+      setMessages(freshMessages as LocalMessage[])
 
       const rb: Record<string, string> = {}
       Object.entries(channel.state.read || {}).forEach(([uid, r]) => {
@@ -148,7 +152,7 @@ export function useSupportChat(client: StreamChat | null, isReady: boolean) {
       channel.markRead().catch(() => {})
 
       const onNew = (e: Event) => {
-        const msg = e.message as FormatMessageResponse | undefined
+        const msg = e.message as LocalMessage | undefined
         if (!msg) return
         setMessages(prev => {
           if (prev.some(m => m.id === msg.id)) return prev
@@ -158,7 +162,7 @@ export function useSupportChat(client: StreamChat | null, isReady: boolean) {
       }
 
       const onUpdated = (e: Event) => {
-        const msg = e.message as FormatMessageResponse | undefined
+        const msg = e.message as LocalMessage | undefined
         if (!msg) return
         setMessages(prev => prev.map(m => m.id === msg.id ? msg : m))
       }
@@ -205,12 +209,12 @@ export function useSupportChat(client: StreamChat | null, isReady: boolean) {
     if (!ch || !text.trim()) return
 
     const tempId  = `temp_${Date.now()}`
-    const tempMsg: FormatMessageResponse = {
+    const tempMsg: LocalMessage = {
       id:              tempId,
       text:            text.trim(),
       type:            'regular',
-      created_at:      new Date().toISOString() as any,
-      updated_at:      new Date().toISOString() as any,
+      created_at:      new Date(),
+      updated_at:      new Date(),
       user:            { id: ch.getClient().userID! } as any,
       attachments:     [],
       mentioned_users: [],
@@ -224,7 +228,7 @@ export function useSupportChat(client: StreamChat | null, isReady: boolean) {
     try {
       const { message } = await ch.sendMessage({ text: text.trim() })
       setMessages(prev =>
-        prev.map(m => m.id === tempId ? (message as unknown as FormatMessageResponse) : m)
+        prev.map(m => m.id === tempId ? message as unknown as LocalMessage : m)
       )
     } catch (err) {
       setMessages(prev => prev.filter(m => m.id !== tempId))
@@ -243,7 +247,7 @@ export function useSupportChat(client: StreamChat | null, isReady: boolean) {
         .then(({ messages: older }) => {
           setMessages(cur => {
             const ids      = new Set(cur.map(m => m.id))
-            const filtered = (older as FormatMessageResponse[]).filter(m => !ids.has(m.id))
+            const filtered = (older as LocalMessage[]).filter(m => !ids.has(m.id))
             return [...filtered, ...cur]
           })
         })
