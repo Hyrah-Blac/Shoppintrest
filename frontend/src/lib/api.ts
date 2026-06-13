@@ -11,14 +11,12 @@ const api = axios.create({
   },
 })
 
-// ─── TOKEN GETTER ─────────────────────────────────────────────────────────────
 let _getToken: (() => Promise<string | null>) | null = null
 
 export function setTokenGetter(fn: () => Promise<string | null>) {
   _getToken = fn
 }
 
-// ─── REQUEST INTERCEPTOR ─────────────────────────────────────────────────────
 api.interceptors.request.use(
   async (config) => {
     try {
@@ -36,7 +34,6 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 )
 
-// ─── RESPONSE INTERCEPTOR ────────────────────────────────────────────────────
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -54,10 +51,7 @@ api.interceptors.response.use(
 
 export default api
 
-// ─── API HELPERS ─────────────────────────────────────────────────────────────
-
 export const apiClient = {
-  // Products
   products: {
     getAll: (params?: Record<string, any>) =>
       api.get('/api/products', { params }),
@@ -79,7 +73,6 @@ export const apiClient = {
       api.delete(`/api/products/${id}`),
   },
 
-  // Users
   users: {
     getMe: () => api.get('/api/users/me'),
     updateMe: (data: any) => api.patch('/api/users/me', data),
@@ -92,7 +85,6 @@ export const apiClient = {
     getFollowing: (username: string) => api.get(`/api/users/${username}/following`),
   },
 
-  // Cart
   cart: {
     get: () =>
       api.get('/api/cart'),
@@ -106,7 +98,6 @@ export const apiClient = {
       api.delete('/api/cart'),
   },
 
-  // Orders
   orders: {
     initiateMpesa: (data: { shippingAddress: any; phone: string }) =>
       api.post('/api/orders/mpesa/initiate', data),
@@ -118,7 +109,6 @@ export const apiClient = {
       api.get(`/api/orders/my-orders/${id}`),
   },
 
-  // Collections
   collections: {
     getAll: (params?: any) =>
       api.get('/api/collections', { params }),
@@ -134,7 +124,6 @@ export const apiClient = {
       api.post(`/api/collections/${id}/products`, { productId }),
   },
 
-  // Reviews
   reviews: {
     getForProduct: (productId: string, params?: any) =>
       api.get(`/api/reviews/product/${productId}`, { params }),
@@ -146,12 +135,10 @@ export const apiClient = {
       api.patch(`/api/reviews/${id}/helpful`),
   },
 
-  // Chat
   chat: {
     getToken: () => api.get<{ data: { token: string } }>('/api/support/stream-token'),
   },
 
-  // Notifications
   notifications: {
     getAll: () =>
       api.get('/api/notifications'),
@@ -163,7 +150,6 @@ export const apiClient = {
       api.patch(`/api/notifications/${id}/read`),
   },
 
-  // Upload
   upload: {
     image: (file: File, folder?: string) => {
       const form = new FormData()
@@ -187,7 +173,6 @@ export const apiClient = {
       api.delete('/api/upload/image', { data: { publicId } }),
   },
 
-  // Admin
   admin: {
     getStats: () =>
       api.get('/api/admin/stats'),
@@ -203,42 +188,27 @@ export const apiClient = {
       api.patch(`/api/orders/${id}/status`, data),
   },
 
-  // Saved
   saved: {
     getAll: () =>
       api.get('/api/saved'),
-    getFolders: () =>
-      api.get('/api/saved/folders'),
-    getFolder: (slug: string) =>
-      api.get(`/api/saved/folders/${slug}`),
-    save: (productId: string, folderId?: string) =>
-      api.post(`/api/saved/${productId}`, { folderId }),
+    save: (productId: string) =>
+      api.post(`/api/saved/${productId}`),
     unsave: (productId: string) =>
       api.delete(`/api/saved/${productId}`),
-    move: (productId: string, from: string, to: string) =>
-      api.post(`/api/saved/${productId}/move`, { fromSlug: from, toSlug: to }),
-    createFolder: (name: string) =>
-      api.post('/api/saved/folders', { name }),
-    renameFolder: (slug: string, name: string) =>
-      api.patch(`/api/saved/folders/${slug}`, { name }),
-    deleteFolder: (slug: string) =>
-      api.delete(`/api/saved/folders/${slug}`),
   },
 
-// Support
-support: {
-  getConversation: () =>
-    api.get('/api/support/conversation'),
-  getStreamToken: () =>
-    api.get('/api/support/stream-token'),
-
-  admin: {
-    getAllConversations: () =>
-      api.get('/api/support/admin/conversations'),
-    getConversation: (id: string) =>
-      api.get(`/api/support/admin/conversations/${id}`),
-    notifyReply: (id: string) =>
-      api.post(`/api/support/admin/conversations/${id}/notify`),
-     },
+  support: {
+    getConversation: () =>
+      api.get('/api/support/conversation'),
+    getStreamToken: () =>
+      api.get('/api/support/stream-token'),
+    admin: {
+      getAllConversations: () =>
+        api.get('/api/support/admin/conversations'),
+      getConversation: (id: string) =>
+        api.get(`/api/support/admin/conversations/${id}`),
+      notifyReply: (id: string) =>
+        api.post(`/api/support/admin/conversations/${id}/notify`),
+    },
   },
 }

@@ -20,7 +20,7 @@ import uploadRoutes       from './routes/upload.routes'
 import stripeRoutes       from './routes/stripe.routes'
 import adminRoutes        from './routes/admin.routes'
 import webhookRoutes      from './routes/webhookRoutes'
-import savedFolderRoutes  from './routes/savedFolder.routes'
+import savedRoutes        from './routes/saved.routes'
 import supportRoutes      from './routes/support.routes'
 import adminSupportRoutes from './routes/admin-support.routes'
 
@@ -89,14 +89,11 @@ app.get('/health', (_req, res) => {
 })
 app.head('/health', (_req, res) => res.sendStatus(200))
 
-// Webhook routes — before clerkMiddleware
 app.use('/api/webhooks', webhookRoutes)
 app.use('/api/stripe',   stripeRoutes)
 
-// Clerk — after webhooks
 app.use(clerkMiddleware())
 
-// API routes
 app.use('/api/users',         userRoutes)
 app.use('/api/products',      productRoutes)
 app.use('/api/orders',        orderRoutes)
@@ -105,7 +102,7 @@ app.use('/api/reviews',       reviewRoutes)
 app.use('/api/notifications', notificationRoutes)
 app.use('/api/upload',        uploadRoutes)
 app.use('/api/admin',         adminRoutes)
-app.use('/api/saved',         savedFolderRoutes)
+app.use('/api/saved',         savedRoutes)
 app.use('/api/support',       supportRoutes)
 app.use('/api/support/admin', adminSupportRoutes)
 
