@@ -4,6 +4,7 @@ import Notification from '../models/Notification'
 import asyncHandler from '../utils/asyncHandler'
 import AppError     from '../utils/AppError'
 import { sendSuccess } from '../utils/apiResponse'
+import { getStreamServer } from '../lib/stream'
 
 export const getAllConversations = asyncHandler(async (req: Request, res: Response) => {
   const conversations = await Conversation.find()
@@ -19,6 +20,15 @@ export const getConversation = asyncHandler(async (req: Request, res: Response) 
     .populate('userId', 'username email displayName avatar')
     .lean()
   if (!convo) throw new AppError('Conversation not found', 404)
+
+  // Ensure this admin is a member of the channel (handles admins promoted after channel creation)
+  const server  = getStreamServer()
+  const channel = server.channel('messaging', convo.streamChannelId)
+  const adminId = req.user._id.toString()
+
+  await server.upsertUser({ id: adminId })
+  await channel.addMembers([adminId]).catch(() => {})
+
   sendSuccess(res, convo, 'Conversation fetched')
 })
 
@@ -27,7 +37,7 @@ export const notifyReply = asyncHandler(async (req: Request, res: Response) => {
   const convo = await Conversation.findById(conversationId)
   if (!convo) throw new AppError('Conversation not found', 404)
   await Notification.create({
-    userId:  convo.userId,
+    recipient: convo.userId,
     type:    'message',
     message: 'New message from Support',
     link:    `/support`,
