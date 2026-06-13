@@ -21,13 +21,20 @@ export const getConversation = asyncHandler(async (req: Request, res: Response) 
     .lean()
   if (!convo) throw new AppError('Conversation not found', 404)
 
-  // Ensure this admin is a member of the channel (handles admins promoted after channel creation)
+  // Ensure this admin is a member of the channel (handles admins promoted
+  // after channel creation, or channels created before this admin existed).
   const server  = getStreamServer()
   const channel = server.channel('messaging', convo.streamChannelId)
   const adminId = req.user._id.toString()
 
   await server.upsertUser({ id: adminId })
-  await channel.addMembers([adminId]).catch(() => {})
+
+  try {
+    await channel.addMembers([adminId])
+    console.log(`[getConversation] added ${adminId} to ${convo.streamChannelId}`)
+  } catch (err) {
+    console.error(`[getConversation] addMembers failed for ${convo.streamChannelId}:`, err)
+  }
 
   sendSuccess(res, convo, 'Conversation fetched')
 })
