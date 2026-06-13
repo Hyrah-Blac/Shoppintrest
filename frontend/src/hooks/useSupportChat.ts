@@ -108,7 +108,7 @@ export function useSupportChat(client: StreamChat | null, isReady: boolean) {
     const prev = activeChannelRef.current
     if (prev && prev.id !== channelId) prev.stopWatching().catch(() => {})
 
-    // ✅ Point activeChannelRef at the target channel BEFORE any await so that
+    // Point activeChannelRef at the target channel BEFORE any await so that
     // sendMessage() calls during the watch/load phase go to the right channel.
     const channel = client.channel('messaging', channelId)
     activeChannelRef.current = channel
@@ -120,7 +120,6 @@ export function useSupportChat(client: StreamChat | null, isReady: boolean) {
 
     try {
       // Ensure admin is a member BEFORE watching so Stream returns full message state.
-      // We use a raw query to check membership without triggering a full watch/cache.
       const { channel: channelData } = await channel.query({ state: true })
       const isMember = !!channelData.members?.find((m: any) => m.user_id === client.userID)
       if (!isMember) {
@@ -129,7 +128,7 @@ export function useSupportChat(client: StreamChat | null, isReady: boolean) {
 
       await channel.watch({ state: true, presence: true })
 
-      // Confirm the channel hasn't been swapped out while we were awaiting.
+      // Bail if the channel was swapped out while we were awaiting.
       if (activeChannelRef.current?.id !== channelId) return
 
       // Force a fresh message fetch — don't rely on channel.state.messages which
@@ -205,7 +204,7 @@ export function useSupportChat(client: StreamChat | null, isReady: boolean) {
   // ── Send ──────────────────────────────────────────────────────────────────
   const sendMessage = useCallback(async (text: string) => {
     const ch = activeChannelRef.current
-    console.log('[sendMessage] sending to channel:', ch?.id)
+    console.log('[sendMessage] channel:', ch?.id, 'clientID:', ch?.getClient().userID)
     if (!ch || !text.trim()) return
 
     const tempId  = `temp_${Date.now()}`
@@ -247,7 +246,7 @@ export function useSupportChat(client: StreamChat | null, isReady: boolean) {
         .then(({ messages: older }) => {
           setMessages(cur => {
             const ids      = new Set(cur.map(m => m.id))
-            const filtered = (older as LocalMessage[]).filter(m => !ids.has(m.id))
+            const filtered = (older as unknown as LocalMessage[]).filter(m => !ids.has(m.id))
             return [...filtered, ...cur]
           })
         })

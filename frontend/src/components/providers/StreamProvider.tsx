@@ -1,5 +1,3 @@
-// PATH: src/components/providers/StreamProvider.tsx
-
 'use client'
 
 import {
@@ -35,15 +33,12 @@ export function StreamProvider({ children }: { children: ReactNode }) {
   const [isReady, setIsReady] = useState(false)
 
   useEffect(() => {
-    // Wait until the user store has loaded the user profile
     if (!currentUser?._id) return
 
     let cancelled = false
 
     async function init() {
       try {
-        // Uses the shared axios instance which auto-attaches the Clerk JWT
-        // via the request interceptor — this is what getAuth(req) expects
         const { data: body } = await apiClient.chat.getToken()
         const token: string = body.data.token
 
@@ -58,6 +53,7 @@ export function StreamProvider({ children }: { children: ReactNode }) {
         })
 
         if (!cancelled) {
+          console.log('[Stream] connected as:', sc.userID)
           setClient(sc)
           setIsReady(true)
         }
