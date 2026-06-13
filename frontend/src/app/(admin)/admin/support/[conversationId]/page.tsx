@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { apiClient }        from '@/lib/api'
 import { useSupportChat }   from '@/hooks/useSupportChat'
@@ -32,17 +32,6 @@ function timeLabel(d?: string | Date) {
   return new Date(d as string).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
-function relativeTime(d?: string | Date) {
-  if (!d) return ''
-  const diff = Date.now() - new Date(d as string).getTime()
-  const m    = Math.floor(diff / 60000)
-  if (m < 1)  return 'Just now'
-  if (m < 60) return `${m}m ago`
-  const h = Math.floor(m / 60)
-  if (h < 24) return `${h}h ago`
-  return new Date(d as string).toLocaleDateString([], { month: 'short', day: 'numeric' })
-}
-
 function dayLabel(d?: string | Date) {
   if (!d) return ''
   const date = new Date(d as string)
@@ -56,42 +45,57 @@ function dayLabel(d?: string | Date) {
 
 function TypingDots() {
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-end', padding: '4px 0' }}>
+    <div style={{ display: 'flex', alignItems: 'flex-end', padding: '2px 0 4px' }}>
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 4,
-        background: '#262D36',
-        border: '0.5px solid rgba(255,255,255,0.08)',
-        borderRadius: '14px 14px 14px 4px', padding: '10px 14px',
+        display: 'flex', alignItems: 'center', gap: 5,
+        background: 'var(--color-background-secondary)',
+        border: '0.5px solid var(--color-border-tertiary)',
+        borderRadius: '18px 18px 18px 4px',
+        padding: '10px 16px',
       }}>
-        {[0, 0.2, 0.4].map((delay, i) => (
+        {[0, 0.18, 0.36].map((delay, i) => (
           <span key={i} style={{
-            width: 5, height: 5, borderRadius: '50%',
-            background: 'rgba(255,255,255,0.45)', display: 'block',
-            animation: `bounce 1.2s ${delay}s infinite ease-in-out`,
+            width: 6, height: 6, borderRadius: '50%',
+            background: 'var(--color-text-secondary)',
+            display: 'block',
+            animation: `typingBounce 1.2s ${delay}s infinite ease-in-out`,
           }} />
         ))}
       </div>
-      <style>{`@keyframes bounce{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-5px);opacity:1}}`}</style>
+      <style>{`
+        @keyframes typingBounce {
+          0%,60%,100%{transform:translateY(0);opacity:.35}
+          30%{transform:translateY(-6px);opacity:1}
+        }
+      `}</style>
     </div>
   )
 }
 
 // ─── Message bubble ───────────────────────────────────────────────────────────
 
-function Bubble({ text, isMine, createdAt, isSystem, status, showTail }: {
-  text: string; isMine: boolean; createdAt?: string | Date; isSystem?: boolean
-  status?: 'sending' | 'failed' | 'sent'; showTail?: boolean
+function Bubble({
+  text, isMine, createdAt, isSystem, showTail, status, onRetry,
+}: {
+  text: string
+  isMine: boolean
+  createdAt?: string | Date
+  isSystem?: boolean
+  showTail?: boolean
+  status?: 'sending' | 'failed' | 'sent'
+  onRetry?: () => void
 }) {
-  const [showAbsolute, setShowAbsolute] = useState(false)
+  const [showTime, setShowTime] = useState(false)
 
   if (isSystem) {
     return (
-      <div style={{ textAlign: 'center', padding: '8px 0', margin: '8px 0' }}>
+      <div style={{ textAlign: 'center', padding: '8px 0', margin: '4px 0' }}>
         <span style={{
-          fontSize: 11, color: 'rgba(255,255,255,0.55)',
-          background: '#232B36',
-          padding: '4px 14px', borderRadius: 20,
-          border: '0.5px solid rgba(255,255,255,0.08)',
+          fontSize: 11, color: 'var(--color-text-secondary)',
+          background: 'var(--color-background-secondary)',
+          padding: '4px 16px', borderRadius: 20,
+          border: '0.5px solid var(--color-border-tertiary)',
+          display: 'inline-block', lineHeight: 1.6,
         }}>
           {text}
         </span>
@@ -100,37 +104,63 @@ function Bubble({ text, isMine, createdAt, isSystem, status, showTail }: {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: isMine ? 'flex-end' : 'flex-start', margin: '3px 0' }}>
-      <div style={{
-        maxWidth: '72%',
-        background: isMine ? '#005C4B' : '#262D36',
-        color: isMine ? '#E9FBF5' : '#E8EAED',
-        borderRadius: isMine
-          ? showTail ? '12px 12px 2px 12px' : '12px'
-          : showTail ? '12px 12px 12px 2px' : '12px',
-        padding: '9px 13px', fontSize: 13, lineHeight: 1.65,
-        boxShadow: '0 1px 1px rgba(0,0,0,0.35)',
-        wordBreak: 'break-word',
-        opacity: status === 'sending' ? 0.6 : 1,
-        transition: 'opacity 0.15s',
-      }}>
-        {text}
-      </div>
-      {createdAt && (
+    <div style={{
+      display: 'flex',
+      flexDirection: isMine ? 'row-reverse' : 'row',
+      alignItems: 'flex-end',
+      gap: 6, margin: '1px 0',
+    }}>
+      <div style={{ width: 28, flexShrink: 0 }} />
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: isMine ? 'flex-end' : 'flex-start', maxWidth: '78%' }}>
         <div
-          style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 3, padding: '0 4px', cursor: 'default' }}
-          onMouseEnter={() => setShowAbsolute(true)}
-          onMouseLeave={() => setShowAbsolute(false)}
+          onClick={() => setShowTime(v => !v)}
+          style={{
+            background: isMine ? 'var(--color-text-primary)' : 'var(--color-background-secondary)',
+            color: isMine ? 'var(--color-background-primary)' : 'var(--color-text-primary)',
+            borderRadius: isMine
+              ? showTail ? '18px 18px 4px 18px' : '18px'
+              : showTail ? '18px 18px 18px 4px' : '18px',
+            padding: '10px 14px',
+            fontSize: 15, lineHeight: 1.5,
+            border: isMine ? 'none' : '0.5px solid var(--color-border-tertiary)',
+            wordBreak: 'break-word',
+            cursor: 'default',
+            userSelect: 'text' as const,
+            opacity: status === 'sending' ? 0.55 : 1,
+            transition: 'opacity 0.15s',
+          }}
         >
+          {text}
+        </div>
+
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 5,
+          marginTop: 3, padding: '0 2px',
+          height: (showTime || status === 'failed') ? 'auto' : 0,
+          opacity: (showTime || status === 'failed') ? 1 : 0,
+          overflow: 'hidden', transition: 'opacity 0.15s',
+        }}>
           {status === 'failed' ? (
-            <span style={{ fontSize: 10, color: '#ef4444', fontWeight: 600 }}>Failed to send</span>
+            <button
+              onClick={onRetry}
+              style={{
+                fontSize: 11, fontWeight: 600, color: 'var(--color-text-danger)',
+                background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                display: 'flex', alignItems: 'center', gap: 4,
+              }}
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/>
+              </svg>
+              Failed · Tap to retry
+            </button>
           ) : (
-            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>
-              {showAbsolute ? timeLabel(createdAt) : relativeTime(createdAt)}
+            <span style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>
+              {timeLabel(createdAt)}
             </span>
           )}
         </div>
-      )}
+      </div>
     </div>
   )
 }
@@ -138,7 +168,7 @@ function Bubble({ text, isMine, createdAt, isSystem, status, showTail }: {
 // ─── Composer ─────────────────────────────────────────────────────────────────
 
 function Composer({ onSend, onTyping }: {
-  onSend:    (text: string) => Promise<void>
+  onSend:    (t: string) => Promise<void>
   onTyping?: () => void
 }) {
   const [input,   setInput]   = useState('')
@@ -149,26 +179,37 @@ function Composer({ onSend, onTyping }: {
     const el = ref.current
     if (!el) return
     el.style.height = 'auto'
-    el.style.height = `${Math.min(el.scrollHeight, 120)}px`
+    el.style.height = `${Math.min(el.scrollHeight, 130)}px`
   }, [input])
 
-  async function send() {
+  const send = useCallback(async () => {
     const text = input.trim()
     if (!text || sending) return
     setSending(true)
-    try { await onSend(text); setInput('') } finally { setSending(false) }
-  }
+    try { await onSend(text); setInput('') }
+    finally { setSending(false) }
+  }, [input, sending, onSend])
 
   const canSend = !!input.trim() && !sending
 
   return (
-    <div style={{ padding: '10px 14px 12px', background: '#1F242C', flexShrink: 0 }}>
-      <div style={{
-        display: 'flex', gap: 8, alignItems: 'flex-end',
-        background: '#2A313B',
-        borderRadius: 13, padding: '7px 7px 7px 14px',
-        boxShadow: '0 1px 2px rgba(0,0,0,0.25)',
-      }}>
+    <div style={{
+      padding: '8px 12px 12px',
+      background: 'var(--color-background-primary)',
+      borderTop: '0.5px solid var(--color-border-tertiary)',
+      flexShrink: 0,
+    }}>
+      <div
+        style={{
+          display: 'flex', alignItems: 'flex-end', gap: 8,
+          background: 'var(--color-background-secondary)',
+          border: '0.5px solid var(--color-border-secondary)',
+          borderRadius: 26, padding: '6px 6px 6px 16px',
+          transition: 'border-color 0.15s',
+        }}
+        onFocusCapture={e => (e.currentTarget.style.borderColor = 'var(--color-border-primary)')}
+        onBlurCapture={e  => (e.currentTarget.style.borderColor = 'var(--color-border-secondary)')}
+      >
         <textarea
           ref={ref}
           value={input}
@@ -178,29 +219,38 @@ function Composer({ onSend, onTyping }: {
           rows={1}
           style={{
             flex: 1, resize: 'none', border: 'none', outline: 'none',
-            background: 'transparent', fontSize: 13, lineHeight: 1.6,
-            color: '#E8EAED', fontFamily: 'var(--font-sans)',
-            overflowY: 'hidden', padding: '3px 0',
+            background: 'transparent', fontSize: 15, lineHeight: 1.5,
+            color: 'var(--color-text-primary)', fontFamily: 'var(--font-sans)',
+            overflowY: 'hidden', padding: '5px 0', maxHeight: 130,
           }}
         />
         <button
           onClick={send}
           disabled={!canSend}
-          aria-label="Send"
+          aria-label="Send message"
           style={{
-            width: 34, height: 34, borderRadius: 9, flexShrink: 0,
-            background: canSend ? '#00A884' : 'transparent',
-            border: canSend ? 'none' : '0.5px solid rgba(255,255,255,0.12)',
-            color: canSend ? '#fff' : 'rgba(255,255,255,0.4)',
-            cursor: canSend ? 'pointer' : 'not-allowed',
+            width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
+            border: 'none',
+            background: canSend ? 'var(--color-text-primary)' : 'var(--color-background-secondary)',
+            color: canSend ? 'var(--color-background-primary)' : 'var(--color-text-secondary)',
+            cursor: canSend ? 'pointer' : 'default',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 14, transition: 'all 0.15s',
+            transition: 'all 0.18s',
+            transform: canSend ? 'scale(1)' : 'scale(0.88)',
           }}
         >
-          {sending ? <i className="ti ti-loader-2 ti-spin" /> : <i className="ti ti-send-2" />}
+          {sending ? (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ animation: 'spin 0.8s linear infinite' }}>
+              <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+            </svg>
+          ) : (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M3.478 2.405a.75.75 0 0 0-.926.94l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.405Z" />
+            </svg>
+          )}
         </button>
       </div>
-      <p style={{ fontSize: 10, letterSpacing: '0.06em', color: 'rgba(255,255,255,0.35)', textAlign: 'center', margin: '6px 0 0' }}>
+      <p style={{ fontSize: 10, letterSpacing: '0.06em', color: 'var(--color-text-secondary)', textAlign: 'center', margin: '6px 0 0' }}>
         Enter to send · Shift+Enter for new line
       </p>
     </div>
@@ -222,6 +272,7 @@ export default function AdminConversationPage() {
   const [convo,  setConvo]  = useState<AdminConversation | null>(null)
   const [loaded, setLoaded] = useState(false)
   const [optimistic, setOptimistic] = useState<{ id: string; text: string; created_at: string }[]>([])
+  const [failedMsgs, setFailedMsgs] = useState<Record<string, string>>({})
 
   const bottomRef        = useRef<HTMLDivElement>(null)
   const listRef          = useRef<HTMLDivElement>(null)
@@ -276,8 +327,9 @@ export default function AdminConversationPage() {
       bottomRef.current?.scrollIntoView({ behavior: hasMountedRef.current ? 'smooth' : 'auto' })
       hasMountedRef.current = true
     } else setShowNew(true)
-  }, [messages.length, isTyping])
+  }, [messages.length, isTyping, optimistic.length])
 
+  // Optimistic send — shows reply instantly, replaces when real one arrives
   const handleSend = useCallback(async (text: string) => {
     const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`
     const sentAt = new Date().toISOString()
@@ -285,9 +337,9 @@ export default function AdminConversationPage() {
     try {
       await sendMessage(text)
       apiClient.support.admin.notifyReply(conversationId).catch(() => {})
-    } catch (err) {
+    } catch {
       setOptimistic(prev => prev.filter(m => m.id !== tempId))
-      throw err
+      setFailedMsgs(prev => ({ ...prev, [tempId]: text }))
     }
   }, [sendMessage, conversationId])
 
@@ -303,6 +355,13 @@ export default function AdminConversationPage() {
     ))
   }, [messages, optimistic.length, client?.userID])
 
+  const retryFailed = useCallback(async (tempId: string) => {
+    const text = failedMsgs[tempId]
+    if (!text) return
+    setFailedMsgs(prev => { const n = { ...prev }; delete n[tempId]; return n })
+    await handleSend(text)
+  }, [failedMsgs, handleSend])
+
   const grouped = useMemo(() => {
     const result: { day: string; msgs: typeof messages }[] = []
     for (const msg of messages) {
@@ -315,15 +374,24 @@ export default function AdminConversationPage() {
   }, [messages])
 
   if (!loaded) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', background: '#161B22' }}>
-      <i className="ti ti-loader-2 ti-spin" style={{ fontSize: 20, color: 'rgba(255,255,255,0.45)' }} />
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh',
+      background: 'var(--color-background-primary)',
+    }}>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-secondary)" strokeWidth="2.5" strokeLinecap="round" style={{ animation: 'spin 0.8s linear infinite' }}>
+        <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+      </svg>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   )
 
   if (!convo) return (
-    <div style={{ maxWidth: 480, margin: '5rem auto', padding: '0 1.5rem', textAlign: 'center', background: '#161B22', color: '#E8EAED' }}>
+    <div style={{
+      maxWidth: 480, margin: '5rem auto', padding: '0 1.5rem', textAlign: 'center',
+      background: 'var(--color-background-primary)', color: 'var(--color-text-primary)',
+    }}>
       <p style={{ ...DISPLAY, fontSize: 22, fontWeight: 300, margin: '0 0 16px' }}>Conversation not found</p>
-      <Link href="/admin/support" style={{ fontSize: 12, color: '#E8EAED', textDecoration: 'underline' }}>
+      <Link href="/admin/support" style={{ fontSize: 12, color: 'var(--color-text-primary)', textDecoration: 'underline' }}>
         ← Back to inbox
       </Link>
     </div>
@@ -337,38 +405,52 @@ export default function AdminConversationPage() {
       display: 'flex', flexDirection: 'column',
       height: 'calc(100dvh - 64px)',
       position: 'relative',
-      background: '#161B22',
+      background: 'var(--color-background-primary)',
     }}>
-      {/* Top bar */}
+      {/* ── Header ── */}
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 12, padding: '11px 20px',
-        background: '#075E54', flexShrink: 0,
+        display: 'flex', alignItems: 'center', gap: 12,
+        padding: '10px 16px',
+        borderBottom: '0.5px solid var(--color-border-tertiary)',
+        flexShrink: 0,
+        background: 'var(--color-background-primary)',
       }}>
         <Link
           href="/admin/support"
-          style={{ display: 'flex', alignItems: 'center', color: '#fff', textDecoration: 'none', padding: 4, marginRight: 4 }}
+          style={{ display: 'flex', alignItems: 'center', color: 'var(--color-text-secondary)', textDecoration: 'none', padding: 4 }}
         >
-          <i className="ti ti-arrow-left" style={{ fontSize: 17 }} />
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+          </svg>
         </Link>
 
-        {/* Customer avatar */}
-        <div style={{
-          width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 13, fontWeight: 600, color: '#fff',
-          overflow: 'hidden', background: 'rgba(255,255,255,0.15)',
-        }}>
-          {user?.avatar
-            ? <img src={user.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            : (user?.displayName?.[0] ?? user?.username?.[0] ?? '?').toUpperCase()
-          }
+        <div style={{ position: 'relative', flexShrink: 0 }}>
+          <div style={{
+            width: 44, height: 44, borderRadius: '50%',
+            background: 'var(--color-background-secondary)',
+            border: '0.5px solid var(--color-border-secondary)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 15, fontWeight: 600, color: 'var(--color-text-secondary)',
+            overflow: 'hidden',
+          }}>
+            {user?.avatar
+              ? <img src={user.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              : (user?.displayName?.[0] ?? user?.username?.[0] ?? '?').toUpperCase()
+            }
+          </div>
+          <span style={{
+            position: 'absolute', bottom: 1, right: 1,
+            width: 11, height: 11, borderRadius: '50%',
+            background: '#22c55e',
+            border: '2px solid var(--color-background-primary)',
+          }} />
         </div>
 
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ fontSize: 14, fontWeight: 600, color: '#fff', margin: 0, lineHeight: 1.2 }}>
+          <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)', margin: 0, lineHeight: 1.25, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {user?.displayName ?? user?.username ?? 'Unknown user'}
           </p>
-          <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.75)', margin: '2px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '2px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {user?.email ?? '—'}
           </p>
         </div>
@@ -378,58 +460,80 @@ export default function AdminConversationPage() {
             href={`/profile/${user.username}`}
             style={{
               fontSize: 11, fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase',
-              color: '#fff', textDecoration: 'none',
-              padding: '5px 10px', border: '0.5px solid rgba(255,255,255,0.3)', borderRadius: 7,
+              color: 'var(--color-text-secondary)', textDecoration: 'none',
+              padding: '5px 10px', border: '0.5px solid var(--color-border-tertiary)', borderRadius: 7,
               flexShrink: 0, transition: 'all 0.15s',
             }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)' }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-border-secondary)'; e.currentTarget.style.color = 'var(--color-text-primary)' }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border-tertiary)'; e.currentTarget.style.color = 'var(--color-text-secondary)' }}
           >
             Profile
           </Link>
         )}
       </div>
 
-      {/* Messages */}
+      {/* ── Messages ── */}
       <div
         ref={listRef}
+        role="log"
+        aria-live="polite"
         style={{
-          flex: 1, overflowY: 'auto', padding: '18px',
+          flex: 1, overflowY: 'auto',
+          padding: '12px 16px 8px',
           display: 'flex', flexDirection: 'column', gap: 2,
-          backgroundColor: '#161B22',
-          backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'120\' height=\'120\' viewBox=\'0 0 120 120\'%3E%3Cg fill=\'none\' stroke=\'%23232B36\' stroke-width=\'1.5\'%3E%3Cpath d=\'M30 18c0-4 3-7 7-7s7 3 7 7M37 18v6M27 26h20l6 16-8 3v32H29V45l-8-3z\'/%3E%3Ccircle cx=\'90\' cy=\'30\' r=\'9\'/%3E%3Cpath d=\'M84 30a6 6 0 0112 0M81 36h18M85 36l-4 30h18l-4-30\'/%3E%3Cpath d=\'M15 80c0-3 2.5-5.5 5.5-5.5S26 77 26 80M20.5 80v4.5M13 86h15l4 12-6 2v18H15V100l-6-2z\'/%3E%3Cpath d=\'M70 75l4 6h12l4-6M74 81v28h12V81\'/%3E%3C/g%3E%3C/svg%3E")',
-          backgroundSize: '180px 180px',
+          background: 'var(--color-background-primary)',
         }}
       >
         {isLoading && (
-          <div style={{ textAlign: 'center', padding: '2rem' }}>
-            <i className="ti ti-loader-2 ti-spin" style={{ fontSize: 18, color: 'rgba(255,255,255,0.45)' }} />
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-secondary)" strokeWidth="2.5" strokeLinecap="round" style={{ animation: 'spin 0.8s linear infinite' }}>
+              <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+            </svg>
           </div>
         )}
 
-        {!isLoading && messages.length === 0 && (
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, padding: '3rem 1rem', textAlign: 'center' }}>
-            <div style={{ width: 44, height: 44, borderRadius: 11, border: '0.5px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, color: 'rgba(255,255,255,0.45)' }}>
-              <i className="ti ti-messages" />
+        {!isLoading && messages.length === 0 && optimistic.length === 0 && (
+          <div style={{
+            flex: 1, display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center',
+            gap: 14, padding: '3rem 2rem', textAlign: 'center',
+          }}>
+            <div style={{
+              width: 64, height: 64, borderRadius: '50%',
+              background: 'var(--color-background-secondary)',
+              border: '0.5px solid var(--color-border-tertiary)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 28,
+            }}>
+              💬
             </div>
-            <p style={{ ...DISPLAY, fontSize: 18, fontWeight: 300, margin: 0, color: '#E8EAED' }}>No messages yet</p>
-            <p style={{ fontSize: 12, margin: 0, color: 'rgba(255,255,255,0.45)' }}>The customer hasn't sent anything yet.</p>
+            <div>
+              <p style={{ ...DISPLAY, fontSize: 22, fontWeight: 300, margin: '0 0 6px', color: 'var(--color-text-primary)' }}>
+                No messages yet
+              </p>
+              <p style={{ fontSize: 13, margin: 0, color: 'var(--color-text-secondary)', lineHeight: 1.7, maxWidth: 260 }}>
+                The customer hasn't sent anything yet.
+              </p>
+            </div>
           </div>
         )}
 
         {grouped.map(({ day, msgs }) => (
           <div key={day}>
-            <div style={{ textAlign: 'center', margin: '14px 0 10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '16px 0 10px' }}>
+              <div style={{ flex: 1, height: '0.5px', background: 'var(--color-border-tertiary)' }} />
               <span style={{
-                fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase',
-                color: 'rgba(255,255,255,0.5)',
-                background: '#232B36',
+                fontSize: 11, color: 'var(--color-text-secondary)',
+                background: 'var(--color-background-secondary)',
                 padding: '3px 12px', borderRadius: 20,
-                border: '0.5px solid rgba(255,255,255,0.08)',
+                border: '0.5px solid var(--color-border-tertiary)',
+                whiteSpace: 'nowrap', fontWeight: 500,
               }}>
                 {day}
               </span>
+              <div style={{ flex: 1, height: '0.5px', background: 'var(--color-border-tertiary)' }} />
             </div>
+
             {msgs.map((msg, idx) => {
               const isMine  = msg.user?.id === client?.userID
               const nextMsg = msgs[idx + 1]
@@ -448,35 +552,62 @@ export default function AdminConversationPage() {
           </div>
         ))}
 
-        {/* Optimistic admin replies, shown instantly while sending */}
+        {/* Optimistic admin replies */}
         {optimistic.map(m => (
-          <Bubble
-            key={m.id}
-            text={m.text}
-            isMine
-            createdAt={m.created_at}
-            status="sending"
-            showTail
-          />
+          <Bubble key={m.id} text={m.text} isMine createdAt={m.created_at} status="sending" showTail />
         ))}
 
-        {isTyping && <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', padding: '0 4px 4px' }}>Customer is typing…</div>}
-        {isTyping && <TypingDots />}
+        {/* Failed sends */}
+        {Object.entries(failedMsgs).map(([tempId, text]) => (
+          <Bubble key={tempId} text={text} isMine status="failed" showTail onRetry={() => retryFailed(tempId)} />
+        ))}
+
+        {isTyping && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '2px 0' }}>
+            <div style={{
+              width: 28, height: 28, borderRadius: '50%',
+              background: 'var(--color-background-secondary)',
+              border: '0.5px solid var(--color-border-tertiary)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 18v-6a9 9 0 0 1 18 0v6"/>
+                <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/>
+              </svg>
+            </div>
+            <TypingDots />
+          </div>
+        )}
+
         <div ref={bottomRef} />
       </div>
 
+      {/* Customer typing label */}
+      {isTyping && (
+        <div style={{
+          fontSize: 11, fontWeight: 500, color: 'var(--color-text-secondary)',
+          padding: '2px 20px 0', flexShrink: 0,
+        }}>
+          {user?.displayName ?? user?.username ?? 'Customer'} is typing…
+        </div>
+      )}
+
+      {/* New messages pill */}
       {showNew && (
         <button
           onClick={scrollToBottom}
           style={{
             position: 'absolute', bottom: 80, left: '50%', transform: 'translateX(-50%)',
-            padding: '6px 16px', borderRadius: 20, fontSize: 12, fontWeight: 500,
-            background: '#00A884', color: '#fff',
-            border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
-            boxShadow: '0 4px 12px rgba(0,0,0,0.3)', zIndex: 5,
+            padding: '7px 18px', borderRadius: 20, fontSize: 13, fontWeight: 600,
+            background: 'var(--color-text-primary)', color: 'var(--color-background-primary)',
+            border: 'none', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: 6,
+            boxShadow: '0 4px 16px rgba(0,0,0,0.18)', zIndex: 5,
           }}
         >
-          <i className="ti ti-arrow-down" style={{ fontSize: 12 }} />
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 5v14M5 12l7 7 7-7"/>
+          </svg>
           New messages
         </button>
       )}
