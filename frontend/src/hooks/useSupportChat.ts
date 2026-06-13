@@ -100,6 +100,7 @@ export function useSupportChat(client: StreamChat | null, isReady: boolean) {
 
   // ── Open a specific channel and attach listeners ──────────────────────────
   const openChannel = useCallback(async (channelId: string) => {
+    console.log('[openChannel] called with:', channelId, 'client.userID:', client?.userID)
     if (!client) return
 
     cleanupFnsRef.current.forEach(fn => fn())
@@ -108,8 +109,6 @@ export function useSupportChat(client: StreamChat | null, isReady: boolean) {
     const prev = activeChannelRef.current
     if (prev && prev.id !== channelId) prev.stopWatching().catch(() => {})
 
-    // Point activeChannelRef at the target channel BEFORE any await so that
-    // sendMessage() calls during the watch/load phase go to the right channel.
     const channel = client.channel('messaging', channelId)
     activeChannelRef.current = channel
 
@@ -119,21 +118,21 @@ export function useSupportChat(client: StreamChat | null, isReady: boolean) {
     setReadBy({})
 
     try {
-      // The backend's getConversation endpoint already added the admin as a member
-      // server-side before this runs, so we go straight to watch().
-      // Client-side addMembers / query would fail if Stream hasn't propagated
-      // the membership yet, so we skip it here.
+      // The backend getConversation endpoint adds the admin as a member server-side
+      // before this runs, so we go straight to watch().
       await channel.watch({ state: true, presence: true })
+      console.log('[openChannel] watch() succeeded, messages in state:', channel.state.messages.length)
 
-      // Bail if the channel was swapped out while we were awaiting.
       if (activeChannelRef.current?.id !== channelId) return
 
-      // Force a fresh message fetch — don't rely on channel.state.messages which
-      // may be empty/stale when the StreamChat client had this channel cached
-      // from the initial queryChannels() call with no messages pre-loaded.
+      // Force a fresh message fetch — channel.state.messages may be stale/empty
+      // if the StreamChat client cached this channel from queryChannels with no
+      // messages pre-loaded.
       const { messages: freshMessages } = await channel.query({
         messages: { limit: 50 },
       })
+      console.log('[openChannel] query() fetched:', freshMessages.length, 'messages')
+
       if (activeChannelRef.current?.id !== channelId) return
 
       setMessages(freshMessages as LocalMessage[])
@@ -186,8 +185,8 @@ export function useSupportChat(client: StreamChat | null, isReady: boolean) {
       ]
       cleanupFnsRef.current = subs.map(s => () => s.unsubscribe())
 
-    } catch (err) {
-      console.error('[useSupportChat] openChannel error:', err)
+    } catch (err: any) {
+      console.error('[useSupportChat] openChannel error:', err?.message, err)
     } finally {
       setIsLoading(false)
     }
