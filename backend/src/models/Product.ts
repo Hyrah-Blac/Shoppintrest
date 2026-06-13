@@ -78,10 +78,40 @@ ProductSchema.index({ isFeatured: 1, isPublished: 1 })
 ProductSchema.index({ price: 1 })
 ProductSchema.index({ createdAt: -1 })
 
+// Recompute totalInventory whenever variants change via .save()
 ProductSchema.pre('save', function (next) {
   if (this.variants && this.variants.length > 0) {
     this.totalInventory = this.variants.reduce((sum, v) => sum + v.inventory, 0)
+  } else if (this.isModified('variants')) {
+    // variants explicitly cleared to an empty array
+    this.totalInventory = 0
   }
+  next()
+})
+
+// Recompute totalInventory whenever variants change via findByIdAndUpdate,
+// findOneAndUpdate, updateOne, or updateMany. pre('save') does not fire for
+// these query-based updates, so without this hook totalInventory goes stale
+// (e.g. admin edits to a product's stock not reflecting on product cards).
+ProductSchema.pre(['findOneAndUpdate', 'updateOne', 'updateMany'], function (next) {
+  const update = this.getUpdate() as any
+  if (!update) return next()
+
+  // variants may be set directly or via $set
+  const variants = update.variants ?? update.$set?.variants
+
+  if (Array.isArray(variants)) {
+    const totalInventory = variants.reduce(
+      (sum: number, v: { inventory: number }) => sum + (v.inventory || 0),
+      0
+    )
+    if (update.$set) {
+      update.$set.totalInventory = totalInventory
+    } else {
+      update.totalInventory = totalInventory
+    }
+  }
+
   next()
 })
 
