@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { useSupportStore } from '@/store/useSupportStore'
 import { useSupportChat }  from '@/hooks/useSupportChat'
 import { useStreamContext } from '@/components/providers/StreamProvider'
@@ -12,17 +12,6 @@ const DISPLAY: React.CSSProperties = {
 function timeLabel(d?: string | Date) {
   if (!d) return ''
   return new Date(d as string).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-}
-
-function relativeTime(d?: string | Date) {
-  if (!d) return ''
-  const diff = Date.now() - new Date(d as string).getTime()
-  const m = Math.floor(diff / 60000)
-  if (m < 1)  return 'Just now'
-  if (m < 60) return `${m}m ago`
-  const h = Math.floor(m / 60)
-  if (h < 24) return `${h}h ago`
-  return new Date(d as string).toLocaleDateString([], { month: 'short', day: 'numeric' })
 }
 
 function dayLabel(d?: string | Date) {
@@ -238,6 +227,7 @@ function Composer({ onSend, onTyping }: {
           ref={ref}
           value={input}
           onChange={e => { setInput(e.target.value); onTyping?.() }}
+          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
           placeholder="Message…"
           rows={1}
           style={{
@@ -290,7 +280,13 @@ export default function SupportPage() {
   const bottomRef        = useRef<HTMLDivElement>(null)
   const listRef          = useRef<HTMLDivElement>(null)
   const wasNearBottomRef = useRef(true)
-  const hasMountedRef    = useRef(false)
+
+  // Scroll bookkeeping
+  const channelIdRef         = useRef<string | null>(null)
+  const initialScrollDoneRef = useRef(false)
+  const prevScrollHeightRef  = useRef(0)
+  const loadingOlderRef      = useRef(false)
+
   const [showNew,     setShowNew]     = useState(false)
   const [optimistic,  setOptimistic]  = useState<{ id: string; text: string; created_at: string }[]>([])
   const [failedMsgs,  setFailedMsgs]  = useState<Record<string, string>>({})
@@ -302,12 +298,62 @@ export default function SupportPage() {
     if (conversation?.streamChannelId) openChannel(conversation.streamChannelId)
   }, [conversation?.streamChannelId, openChannel])
 
+  // Reset scroll bookkeeping whenever we switch to a different channel
+  useEffect(() => {
+    if (conversation?.streamChannelId !== channelIdRef.current) {
+      channelIdRef.current        = conversation?.streamChannelId ?? null
+      initialScrollDoneRef.current = false
+      prevScrollHeightRef.current  = 0
+      loadingOlderRef.current      = false
+      wasNearBottomRef.current     = true
+      setShowNew(false)
+    }
+  }, [conversation?.streamChannelId])
+
   const isNearBottom = useCallback(() => {
     const el = listRef.current
     if (!el) return true
     return el.scrollHeight - el.scrollTop - el.clientHeight < 100
   }, [])
 
+  // ── Scroll handling ───────────────────────────────────────────────────────
+  // Runs BEFORE paint (useLayoutEffect) so the initial jump-to-bottom is
+  // invisible — no flash of the top of the conversation, no visible "scroll
+  // all the way down" animation, and no need to manually scroll afterwards.
+  useLayoutEffect(() => {
+    const el = listRef.current
+    if (!el) return
+
+    // 1. Older messages were just prepended via pagination — keep the
+    //    viewport visually anchored on the same message the user was reading.
+    if (prevScrollHeightRef.current > 0) {
+      const diff = el.scrollHeight - prevScrollHeightRef.current
+      if (diff > 0) el.scrollTop += diff
+      prevScrollHeightRef.current = 0
+      loadingOlderRef.current = false
+      return
+    }
+
+    // 2. First time messages are available for this channel — jump straight
+    //    to the bottom instantly (no animation), like every chat app does.
+    if (!initialScrollDoneRef.current) {
+      if (isLoading) return
+      el.scrollTop = el.scrollHeight
+      initialScrollDoneRef.current = true
+      setShowNew(false)
+      return
+    }
+
+    // 3. A new message arrived after the initial load.
+    if (wasNearBottomRef.current) {
+      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
+      setShowNew(false)
+    } else {
+      setShowNew(true)
+    }
+  }, [messages.length, isTyping, optimistic.length, isLoading])
+
+  // Track scroll position + trigger pagination near the top
   useEffect(() => {
     const el = listRef.current
     if (!el) return
@@ -317,21 +363,32 @@ export default function SupportPage() {
       if (wasNearBottomRef.current) setShowNew(false)
       if (ticking) return
       ticking = true
-      requestAnimationFrame(() => { if (el.scrollTop < 60) loadOlderMessages(); ticking = false })
+      requestAnimationFrame(() => {
+        if (
+          el.scrollTop < 60 &&
+          initialScrollDoneRef.current &&
+          !loadingOlderRef.current
+        ) {
+          loadingOlderRef.current = true
+          prevScrollHeightRef.current = el.scrollHeight
+          loadOlderMessages()
+          // Safety net: clear the flag even if no new messages arrive
+          // (e.g. we've reached the start of the conversation).
+          setTimeout(() => {
+            loadingOlderRef.current = false
+            prevScrollHeightRef.current = 0
+          }, 1200)
+        }
+        ticking = false
+      })
     }
     el.addEventListener('scroll', handler, { passive: true })
     return () => el.removeEventListener('scroll', handler)
   }, [loadOlderMessages, isNearBottom])
 
-  useEffect(() => {
-    if (wasNearBottomRef.current) {
-      bottomRef.current?.scrollIntoView({ behavior: hasMountedRef.current ? 'smooth' : 'auto' })
-      hasMountedRef.current = true
-    } else setShowNew(true)
-  }, [messages.length, isTyping, optimistic.length])
-
   const scrollToBottom = useCallback(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    const el = listRef.current
+    el?.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
     setShowNew(false)
     wasNearBottomRef.current = true
   }, [])
@@ -341,6 +398,7 @@ export default function SupportPage() {
     const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`
     const sentAt = new Date().toISOString()
     setOptimistic(prev => [...prev, { id: tempId, text, created_at: sentAt }])
+    wasNearBottomRef.current = true
     try {
       await sendMessage(text)
     } catch {
@@ -457,6 +515,7 @@ export default function SupportPage() {
           padding: '12px 16px 8px',
           display: 'flex', flexDirection: 'column', gap: 2,
           background: 'var(--color-background-primary)',
+          overflowAnchor: 'none',
         }}
       >
         {(isLoading || !isLoaded) && (
