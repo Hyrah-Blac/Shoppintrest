@@ -100,7 +100,6 @@ export function useSupportChat(client: StreamChat | null, isReady: boolean) {
 
   // ── Open a specific channel and attach listeners ──────────────────────────
   const openChannel = useCallback(async (channelId: string) => {
-    console.log('[openChannel] called with:', channelId, 'client.userID:', client?.userID)
     if (!client) return
 
     cleanupFnsRef.current.forEach(fn => fn())
@@ -121,7 +120,6 @@ export function useSupportChat(client: StreamChat | null, isReady: boolean) {
       // The backend getConversation endpoint adds the admin as a member server-side
       // before this runs, so we go straight to watch().
       await channel.watch({ state: true, presence: true })
-      console.log('[openChannel] watch() succeeded, messages in state:', channel.state.messages.length)
 
       if (activeChannelRef.current?.id !== channelId) return
 
@@ -131,7 +129,6 @@ export function useSupportChat(client: StreamChat | null, isReady: boolean) {
       const { messages: freshMessages } = await channel.query({
         messages: { limit: 50 },
       })
-      console.log('[openChannel] query() fetched:', freshMessages.length, 'messages')
 
       if (activeChannelRef.current?.id !== channelId) return
 
@@ -185,8 +182,8 @@ export function useSupportChat(client: StreamChat | null, isReady: boolean) {
       ]
       cleanupFnsRef.current = subs.map(s => () => s.unsubscribe())
 
-    } catch (err: any) {
-      console.error('[useSupportChat] openChannel error:', err?.message, err)
+    } catch (err) {
+      console.error('[useSupportChat] openChannel error:', err)
     } finally {
       setIsLoading(false)
     }
@@ -200,7 +197,6 @@ export function useSupportChat(client: StreamChat | null, isReady: boolean) {
   // ── Send ──────────────────────────────────────────────────────────────────
   const sendMessage = useCallback(async (text: string) => {
     const ch = activeChannelRef.current
-    console.log('[sendMessage] channel:', ch?.id, 'clientID:', ch?.getClient().userID)
     if (!ch || !text.trim()) return
 
     const tempId  = `temp_${Date.now()}`

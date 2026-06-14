@@ -53,7 +53,6 @@ export function StreamProvider({ children }: { children: ReactNode }) {
         })
 
         if (!cancelled) {
-          console.log('[Stream] connected as:', sc.userID)
           setClient(sc)
           setIsReady(true)
         }

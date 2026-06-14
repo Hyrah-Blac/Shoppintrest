@@ -260,7 +260,6 @@ function Composer({ onSend, onTyping }: {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AdminConversationPage() {
-  console.log('[AdminConversationPage] mounted')
   const params         = useParams()
   const conversationId = params.conversationId as string
 
@@ -285,16 +284,12 @@ export default function AdminConversationPage() {
   useEffect(() => {
     let cancelled = false
     apiClient.support.admin.getConversation(conversationId)
-      .then(res => {
-        console.log('[AdminConversationPage] convo fetched:', res.data?.data)
-        if (!cancelled) setConvo(res.data?.data ?? null)
-      })
+      .then(res => { if (!cancelled) setConvo(res.data?.data ?? null) })
       .catch(() => { if (!cancelled) setConvo(null) })
       .finally(() => { if (!cancelled) setLoaded(true) })
     return () => { cancelled = true }
   }, [conversationId])
 
-  console.log('[AdminConversationPage] isReady:', isReady, 'convo:', convo?.streamChannelId)
   // Open Stream channel — wait for BOTH convo meta AND Stream client to be ready.
   // Without isReady, openChannel fires before connectUser completes and
   // client.userID is undefined, causing watch() to fail silently.
