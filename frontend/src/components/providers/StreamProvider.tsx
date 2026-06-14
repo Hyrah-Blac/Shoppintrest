@@ -52,9 +52,16 @@ export function StreamProvider({ children }: { children: ReactNode }) {
           token,
         })
 
-        if (!cancelled) {
+        if (cancelled) return
+
+        // FIX — confirm connectUser fully resolved before telling the app
+        // the client is ready. sc.userID is only set after connectUser
+        // completes, so this is the most reliable signal available.
+        if (sc.userID) {
           setClient(sc)
           setIsReady(true)
+        } else {
+          console.error('[StreamProvider] connectUser resolved but userID is missing')
         }
       } catch (err) {
         console.error('[StreamProvider] connection error:', err)

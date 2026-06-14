@@ -51,7 +51,9 @@ export function useSupportChat(client: StreamChat | null, isReady: boolean) {
 
   // ── Load all support channels for this user ───────────────────────────────
   useEffect(() => {
-    if (!client || !isReady) return
+    // FIX — also guard on client.userID so we never call queryChannels
+    // before connectUser() has fully resolved, even if isReady flips early.
+    if (!client || !isReady || !client.userID) return
     let cancelled = false
 
     ;(async () => {
@@ -100,7 +102,9 @@ export function useSupportChat(client: StreamChat | null, isReady: boolean) {
 
   // ── Open a specific channel and attach listeners ──────────────────────────
   const openChannel = useCallback(async (channelId: string) => {
-    if (!client) return
+    // FIX — guard on client.userID here too so openChannel called before
+    // connectUser resolves fails silently rather than throwing.
+    if (!client || !client.userID) return
 
     cleanupFnsRef.current.forEach(fn => fn())
     cleanupFnsRef.current = []
@@ -117,15 +121,10 @@ export function useSupportChat(client: StreamChat | null, isReady: boolean) {
     setReadBy({})
 
     try {
-      // The backend getConversation endpoint adds the admin as a member server-side
-      // before this runs, so we go straight to watch().
       await channel.watch({ state: true, presence: true })
 
       if (activeChannelRef.current?.id !== channelId) return
 
-      // Force a fresh message fetch — channel.state.messages may be stale/empty
-      // if the StreamChat client cached this channel from queryChannels with no
-      // messages pre-loaded.
       const { messages: freshMessages } = await channel.query({
         messages: { limit: 50 },
       })
