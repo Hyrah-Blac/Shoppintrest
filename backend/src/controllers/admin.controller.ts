@@ -1,9 +1,17 @@
-import { Request, Response } from 'express'
+import { Request, Response, NextFunction } from 'express'
 import User from '../models/User'
 import Product from '../models/Product'
 import Order from '../models/Order'
 import asyncHandler from '../utils/asyncHandler'
-import { sendSuccess } from '../utils/apiResponse'
+import AppError from '../utils/AppError'
+import { sendSuccess, sendPaginated } from '../utils/apiResponse'
+
+// FIX 1 — whitelist of valid roles so updateUserRole can't set arbitrary values
+const VALID_ROLES = new Set(['user', 'admin'])
+
+// FIX 2 — explicit field allowlist for user listings so internal fields
+// (clerkId, raw tokens, etc.) are never returned even if the model changes
+const USER_SAFE_FIELDS = 'username email displayName avatar role isActive isVerified createdAt'
 
 // ─── DASHBOARD STATS ─────────────────────────────────────────────────────────
 export const getDashboardStats = asyncHandler(async (req: Request, res: Response) => {
@@ -38,7 +46,6 @@ export const getDashboardStats = asyncHandler(async (req: Request, res: Response
 
   const totalRevenue = revenueData[0]?.total || 0
 
-  // Monthly revenue (last 6 months)
   const sixMonthsAgo = new Date()
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
 
@@ -83,7 +90,9 @@ export const getAllUsers = asyncHandler(async (req: Request, res: Response) => {
 
   const [users, total] = await Promise.all([
     User.find()
-      .select('-__v')
+      // FIX 2 — explicit allowlist instead of .select('-__v')
+      // clerkId and any internal fields are excluded by default
+      .select(USER_SAFE_FIELDS)
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
@@ -91,19 +100,13 @@ export const getAllUsers = asyncHandler(async (req: Request, res: Response) => {
     User.countDocuments(),
   ])
 
-  res.status(200).json({
-    success: true,
-    data: users,
-    total,
-    page,
-    totalPages: Math.ceil(total / limit),
-  })
+  sendPaginated(res, users, total, page, limit)
 })
 
 // ─── ADMIN — TOGGLE USER ACTIVE ───────────────────────────────────────────────
-export const toggleUserActive = asyncHandler(async (req: Request, res: Response) => {
-  const user = await User.findById(req.params.id)
-  if (!user) return res.status(404).json({ success: false, message: 'User not found' })
+export const toggleUserActive = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+  const user = await User.findById(req.params.id).select(USER_SAFE_FIELDS)
+  if (!user) return next(new AppError('User not found', 404))
 
   user.isActive = !user.isActive
   await user.save()
@@ -116,12 +119,21 @@ export const toggleUserActive = asyncHandler(async (req: Request, res: Response)
 })
 
 // ─── ADMIN — UPDATE USER ROLE ─────────────────────────────────────────────────
-export const updateUserRole = asyncHandler(async (req: Request, res: Response) => {
+export const updateUserRole = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
   const { role } = req.body
+
+  // FIX 1 — validate role against whitelist before writing to DB
+  if (!role || !VALID_ROLES.has(role)) {
+    return next(new AppError(`Invalid role. Must be one of: ${[...VALID_ROLES].join(', ')}`, 400))
+  }
+
   const user = await User.findByIdAndUpdate(
     req.params.id,
     { role },
     { new: true }
-  )
+  ).select(USER_SAFE_FIELDS)
+
+  if (!user) return next(new AppError('User not found', 404))
+
   sendSuccess(res, user, 'User role updated')
 })

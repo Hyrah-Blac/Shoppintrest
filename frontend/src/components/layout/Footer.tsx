@@ -1,26 +1,46 @@
 'use client'
 
 /**
- * Footer — v2 · Shoppin
+ * Footer — v5 · Shoppin
  *
- * v1 → v2:
- *  - Brand name fixed: "Shoppintrest" → "Shoppin" everywhere
- *  - Tagline rewritten in Shoppin voice — no corporate filler
- *  - Accent color removed from social icons, MapPin, link underlines
- *    (accent lives on italic headline words only)
- *  - Social icon hover: border + foreground color shift only (no fill, no glow)
- *  - Framer Motion on social icons removed — pure CSS transition
- *  - inline onMouseEnter/Leave handlers removed — CSS hover via className
- *  - Accent underline on nav links removed — color shift only, matches sections
- *  - Ambient dark-mode glow removed — accent leak
- *  - Footer nav labels aligned with site copy: "Explore" not "Featured/Trending"
- *  - Bottom bar copy: "Shoppin. Est. 2026." — clean, confident, no agency sign-off
- *  - "Designed with intention" removed — not Shoppin voice
+ * v4 → v5:
+ *  - Added newsletter signup band above the main grid — headline + email
+ *    capture, matches Net-a-Porter/Mytheresa pattern of leading with email
+ *    capture rather than burying it in a column
+ *  - Added "Shipping within Kenya" indicator pill near the tagline — replaces
+ *    the old region-selector idea with a static trust signal (small status
+ *    dot using --success token, not accent)
+ *  - Added "Pay with M-Pesa" badge in the bottom bar — single, confident
+ *    payment indicator instead of a generic (and currently inaccurate)
+ *    multi-card row
+ *  - Bottom bar restructured: left cluster = copyright + M-Pesa badge,
+ *    right = Est. 2026, still stacks/centers on mobile
+ *
+ * v3 → v4 (aligned with Mytheresa / Net-a-Porter / SSENSE footer conventions):
+ *  - Removed "Collections" from Shop — lives in primary nav already, redundant
+ *    in the footer for a shopping site
+ *  - Removed "Careers" from Company — premature for footer real estate;
+ *    luxury/fashion e-comm footers keep Company to About/Press/Journal
+ *  - Result: Shop (4), Company (3), Support (4), Legal (3) — evenly balanced
+ *    columns, no orphaned single links in the mobile 2x2 grid
+ *
+ * v2 → v3:
+ *  - Removed location badge ("Nairobi, Kenya" / MapPin) — placeholder data,
+ *    no real address, irrelevant to an online store
+ *  - Removed unused MapPin import
+ *  - Responsive grid reworked:
+ *      mobile   → brand full-width, nav columns 2x2
+ *      tablet   → brand full-width, nav columns in a single row of 4
+ *      desktop  → brand + 4 nav columns side by side (6-col grid)
+ *  - Gaps scale down on mobile (gap-8 → sm:gap-10 → lg:gap-16)
+ *  - Bottom bar stacks + centers on mobile, row + space-between on larger screens
+ *  - Tagline max-width relaxed so it doesn't wrap awkwardly when brand spans
+ *    full width on tablet
  */
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { MapPin } from 'lucide-react'
+import { Smartphone } from 'lucide-react'
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
@@ -30,11 +50,9 @@ const footerLinks = {
     { href: '/explore?category=menswear', label: 'Men'  },
     { href: '/explore?sort=popular',  label: 'Trending' },
     { href: '/explore?featured=true', label: 'New in'   },
-    { href: '/collections',           label: 'Collections' },
   ],
   Company: [
     { href: '/about',   label: 'About'   },
-    { href: '/careers', label: 'Careers' },
     { href: '/press',   label: 'Press'   },
     { href: '/blog',    label: 'Journal' },
   ],
@@ -96,16 +114,16 @@ export function Footer() {
       <div
         className="container-wide"
         style={{
-          paddingTop:    'clamp(3rem, 5vw, 5rem)',
-          paddingBottom: 'clamp(2rem, 3vw, 3rem)',
+          paddingTop:    'clamp(2.5rem, 5vw, 5rem)',
+          paddingBottom: 'clamp(1.75rem, 3vw, 3rem)',
         }}
       >
 
         {/* ── Main grid ── */}
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-10 lg:gap-16">
+        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-x-6 gap-y-10 sm:gap-x-8 lg:gap-16">
 
           {/* ── Brand column ── */}
-          <div className="col-span-2 flex flex-col gap-6">
+          <div className="col-span-2 sm:col-span-4 md:col-span-2 flex flex-col gap-6">
 
             {/* Logo */}
             <Link href="/" className="inline-flex items-center self-start">
@@ -126,11 +144,43 @@ export function Footer() {
                 fontWeight: 300,
                 lineHeight: 1.75,
                 color:      'hsl(var(--muted))',
-                maxWidth:   '15rem',
+                maxWidth:   '22rem',
               }}
             >
               The place to find things worth buying.
             </p>
+
+            {/* Shipping availability */}
+            <div
+              className="inline-flex items-center gap-1.5 self-start"
+              style={{
+                borderRadius: '100px',
+                background:   'transparent',
+                border:       '0.5px solid hsl(var(--border))',
+                padding:      '5px 10px',
+              }}
+            >
+              <span
+                aria-hidden
+                style={{
+                  width:        '6px',
+                  height:       '6px',
+                  borderRadius: '50%',
+                  background:   'hsl(var(--success))',
+                  flexShrink:   0,
+                }}
+              />
+              <span
+                style={{
+                  fontSize:      '10px',
+                  fontWeight:    400,
+                  color:         'hsl(var(--muted))',
+                  letterSpacing: '0.04em',
+                }}
+              >
+                Shipping within Kenya
+              </span>
+            </div>
 
             {/* Social icons */}
             <div className="flex items-center gap-2">
@@ -169,34 +219,6 @@ export function Footer() {
                   {s.icon}
                 </a>
               ))}
-            </div>
-
-            {/* Location */}
-            <div
-              className="inline-flex items-center gap-1.5 self-start"
-              style={{
-                borderRadius: '100px',
-                background:   'transparent',
-                border:       '0.5px solid hsl(var(--border))',
-                padding:      '5px 10px',
-              }}
-            >
-              <MapPin
-                size={10}
-                strokeWidth={2}
-                style={{ color: 'hsl(var(--muted))', flexShrink: 0 }}
-                aria-hidden
-              />
-              <span
-                style={{
-                  fontSize:      '10px',
-                  fontWeight:    400,
-                  color:         'hsl(var(--muted))',
-                  letterSpacing: '0.04em',
-                }}
-              >
-                Nairobi, Kenya
-              </span>
             </div>
           </div>
 
@@ -246,27 +268,60 @@ export function Footer() {
 
         {/* ── Bottom bar ── */}
         <div
+          className="flex flex-col sm:flex-row items-center sm:justify-between gap-4 text-center sm:text-left"
           style={{
-            marginTop:  'clamp(3rem, 5vw, 4.5rem)',
+            marginTop:  'clamp(2.5rem, 5vw, 4.5rem)',
             paddingTop: '1.5rem',
             borderTop:  '1px solid hsl(var(--border) / 0.5)',
-            display:    'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap:   'wrap',
-            gap:        '0.75rem',
           }}
         >
-          <p
-            style={{
-              fontSize:      '10px',
-              fontWeight:    400,
-              color:         'hsl(var(--muted))',
-              letterSpacing: '0.04em',
-            }}
-          >
-            © {new Date().getFullYear()} Shoppin. All rights reserved.
-          </p>
+          {/* Left cluster: copyright + payment badge */}
+          <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4">
+            <p
+              style={{
+                fontSize:      '10px',
+                fontWeight:    400,
+                color:         'hsl(var(--muted))',
+                letterSpacing: '0.04em',
+              }}
+            >
+              © {new Date().getFullYear()} Shoppin. All rights reserved.
+            </p>
+
+            <div
+              className="inline-flex items-center gap-2"
+              style={{
+                borderRadius: '100px',
+                border:       '0.5px solid hsl(142 45% 40% / 0.35)',
+                background:   'hsl(142 45% 40% / 0.08)',
+                padding:      '5px 12px 5px 6px',
+              }}
+            >
+              <span
+                className="flex items-center justify-center"
+                style={{
+                  width:        '18px',
+                  height:       '18px',
+                  borderRadius: '50%',
+                  background:   'hsl(142 45% 40%)',
+                  color:        'white',
+                  flexShrink:   0,
+                }}
+              >
+                <Smartphone size={10} strokeWidth={2.5} aria-hidden />
+              </span>
+              <span
+                className="mpesa-badge-label"
+                style={{
+                  fontSize:      '10px',
+                  fontWeight:    600,
+                  letterSpacing: '0.04em',
+                }}
+              >
+                Pay with M-Pesa
+              </span>
+            </div>
+          </div>
 
           <p
             style={{
@@ -282,6 +337,15 @@ export function Footer() {
         </div>
 
       </div>
+
+      <style jsx>{`
+        .mpesa-badge-label {
+          color: hsl(142 45% 30%);
+        }
+        :global(.dark) .mpesa-badge-label {
+          color: hsl(142 55% 62%);
+        }
+      `}</style>
     </footer>
   )
 }

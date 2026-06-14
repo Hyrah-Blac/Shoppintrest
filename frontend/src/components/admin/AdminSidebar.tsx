@@ -38,30 +38,21 @@ export function AdminSidebar() {
         className="px-5 py-5"
         style={{ borderBottom: '0.5px solid hsl(var(--border))' }}
       >
-        <Link href="/admin" className="flex items-center gap-2.5">
-          <div
-            className="w-7 h-7 rounded-[9px] flex items-center justify-center shrink-0"
-            style={{ background: 'hsl(var(--foreground))' }}
+        <Link href="/admin" className="flex flex-col gap-1.5">
+          <div className="relative w-24 h-7">
+            <Image
+              src="/logo.png"
+              alt="Shoppin"
+              fill
+              className="object-contain object-left"
+            />
+          </div>
+          <p
+            className="text-[10px]"
+            style={{ color: 'hsl(var(--muted))' }}
           >
-            <span
-              className="text-[11px] font-bold"
-              style={{ color: 'hsl(var(--background))' }}
-            >S</span>
-          </div>
-          <div>
-            <p
-              className="text-[13px] font-semibold leading-none"
-              style={{ color: 'hsl(var(--foreground))' }}
-            >
-              Shoppintrest
-            </p>
-            <p
-              className="text-[10px] mt-0.5"
-              style={{ color: 'hsl(var(--muted))' }}
-            >
-              Admin Panel
-            </p>
-          </div>
+            Admin Panel
+          </p>
         </Link>
       </div>
 

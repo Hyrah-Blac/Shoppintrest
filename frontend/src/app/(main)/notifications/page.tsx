@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, useMotionValue, useMotionTemplate, useSpring } from 'framer-motion'
 import {
   Bell, Check, RefreshCw, ChevronRight,
   UserPlus, Heart, Package, MessageCircle, Star, Bookmark,
@@ -108,8 +108,30 @@ export default function NotificationsPage() {
     api.patch(`/api/notifications/${id}/read`).catch(console.error)
   }
 
+  // ── Cursor spotlight — subtle ambient light following the pointer ──
+  const spotlightX = useMotionValue(-500)
+  const spotlightY = useMotionValue(-500)
+  const spotlightXSpring = useSpring(spotlightX, { damping: 30, stiffness: 120, mass: 0.5 })
+  const spotlightYSpring = useSpring(spotlightY, { damping: 30, stiffness: 120, mass: 0.5 })
+  const spotlightBackground = useMotionTemplate`radial-gradient(600px circle at ${spotlightXSpring}px ${spotlightYSpring}px, hsl(var(--foreground) / 0.045), transparent 60%)`
+
+  const handlePointerMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    spotlightX.set(e.clientX)
+    spotlightY.set(e.clientY)
+  }
+
   return (
-    <div className="min-h-screen" style={{ background: 'hsl(var(--background))' }}>
+    <div
+      className="min-h-screen relative"
+      style={{ background: 'hsl(var(--background))' }}
+      onMouseMove={handlePointerMove}
+    >
+      {/* ── Ambient cursor spotlight ── */}
+      <motion.div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 z-30 hidden sm:block"
+        style={{ background: spotlightBackground }}
+      />
 
       {/* ── HEADER ── */}
       <header
@@ -471,6 +493,24 @@ function NotificationRow({
 
   const hasIdentity = Boolean(notif.sender?.avatar || notif.sender?.displayName)
 
+  // ── Magnetic tilt — subtle 3D rotation toward cursor on hover ──
+  const rotateX = useMotionValue(0)
+  const rotateY = useMotionValue(0)
+  const tiltX = useSpring(rotateX, { damping: 18, stiffness: 220, mass: 0.4 })
+  const tiltY = useSpring(rotateY, { damping: 18, stiffness: 220, mass: 0.4 })
+
+  const handleTiltMove = (e: React.MouseEvent<HTMLElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const px = (e.clientX - rect.left) / rect.width  - 0.5
+    const py = (e.clientY - rect.top)  / rect.height - 0.5
+    rotateY.set(px * 4)
+    rotateX.set(py * -4)
+  }
+  const resetTilt = () => {
+    rotateX.set(0)
+    rotateY.set(0)
+  }
+
   const content = (
     <>
       {/* Avatar (only if we have one) or a plain icon tile */}
@@ -589,6 +629,7 @@ function NotificationRow({
   const rowStyle: React.CSSProperties = {
     padding:    '0.875rem 1rem',
     background: notif.isRead ? 'transparent' : 'hsl(var(--surface-elevated))',
+    transformStyle: 'preserve-3d',
   }
   const hoverIn = (e: React.MouseEvent<HTMLElement>) => {
     e.currentTarget.style.background = 'hsl(var(--surface-elevated))'
@@ -597,6 +638,11 @@ function NotificationRow({
   const hoverOut = (e: React.MouseEvent<HTMLElement>) => {
     e.currentTarget.style.background = notif.isRead ? 'transparent' : 'hsl(var(--surface-elevated))'
     e.currentTarget.style.boxShadow  = 'none'
+    resetTilt()
+  }
+  const handleMove = (e: React.MouseEvent<HTMLElement>) => {
+    hoverIn(e)
+    handleTiltMove(e)
   }
 
   return (
@@ -604,6 +650,7 @@ function NotificationRow({
       initial={{ opacity: 0, y: 8, filter: 'blur(2px)' }}
       animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
       transition={{ delay, duration: 0.35, ease }}
+      style={{ rotateX: tiltX, rotateY: tiltY, transformPerspective: 600 }}
     >
       {notif.link ? (
         <Link
@@ -611,7 +658,8 @@ function NotificationRow({
           onClick={onRead}
           className={rowClassName}
           style={rowStyle}
-          onMouseEnter={hoverIn}
+          onMouseEnter={handleMove}
+          onMouseMove={handleTiltMove}
           onMouseLeave={hoverOut}
         >
           {content}
@@ -624,7 +672,8 @@ function NotificationRow({
           onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') onRead() }}
           className={rowClassName}
           style={rowStyle}
-          onMouseEnter={hoverIn}
+          onMouseEnter={handleMove}
+          onMouseMove={handleTiltMove}
           onMouseLeave={hoverOut}
         >
           {content}

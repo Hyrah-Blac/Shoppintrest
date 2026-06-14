@@ -35,12 +35,19 @@ const globalErrorHandler = (
   err.statusCode = err.statusCode || 500
   err.status = err.status || 'error'
 
-  logger.error(`${err.statusCode} - ${err.message} - ${req.originalUrl} - ${req.method}`)
+  // FIX — split log level by severity so 4xx operational errors don't
+  // flood error.log. Only true server errors (5xx) go to logger.error.
+  const logLine = `${err.statusCode} - ${err.message} - ${req.method} ${req.originalUrl}`
+  if (err.statusCode >= 500) {
+    logger.error(logLine)
+  } else {
+    logger.warn(logLine)
+  }
 
   let error = { ...err, message: err.message }
 
-  if (error.name === 'CastError') error = handleCastErrorDB(error)
-  if (error.code === 11000) error = handleDuplicateFieldsDB(error)
+  if (error.name === 'CastError')       error = handleCastErrorDB(error)
+  if (error.code === 11000)             error = handleDuplicateFieldsDB(error)
   if (error.name === 'ValidationError') error = handleValidationErrorDB(error)
   if (error.name === 'JsonWebTokenError') error = handleJWTError()
   if (error.name === 'TokenExpiredError') error = handleJWTExpiredError()
@@ -53,7 +60,7 @@ const globalErrorHandler = (
     })
   }
 
-  // Unknown / programming error — don't leak details
+  // Unknown / programming error — don't leak details to client
   logger.error('UNEXPECTED ERROR:', err)
   return res.status(500).json({
     success: false,

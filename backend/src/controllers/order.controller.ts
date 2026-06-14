@@ -8,10 +8,39 @@ import AppError from '../utils/AppError'
 import { sendSuccess, sendPaginated } from '../utils/apiResponse'
 import logger from '../utils/logger'
 
+// FIX 1 — Safaricom IP allowlist for the callback endpoint.
+// Requests not from these IPs are rejected before any DB work happens.
+// Source: https://developer.safaricom.co.ke/APIs/MpesaExpressSimulate
+const SAFARICOM_IPS = new Set([
+  '196.201.214.200',
+  '196.201.214.206',
+  '196.201.213.114',
+  '196.201.214.207',
+  '196.201.214.208',
+  '196.201.213.44',
+  '196.201.212.127',
+  '196.201.212.138',
+  '196.201.212.129',
+  '196.201.212.136',
+  '196.201.212.74',
+  '196.201.212.69',
+])
+
+// FIX 2 — whitelist of valid order statuses so updateOrderStatus
+// can't be used to set arbitrary values
+const VALID_ORDER_STATUSES = new Set([
+  'awaiting_payment',
+  'processing',
+  'shipped',
+  'delivered',
+  'cancelled',
+  'refunded',
+])
+
 const calculateOrderTotals = (items: { price: number; quantity: number }[]) => {
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0)
-  const shippingCost = 0  // free shipping
-  const tax = 0           // no VAT
+  const shippingCost = 0
+  const tax = 0
   const total = parseFloat((subtotal).toFixed(2))
   return { subtotal, shippingCost, tax, total }
 }
@@ -23,19 +52,16 @@ export const initiateMpesaPayment = asyncHandler(
 
     if (!phone) return next(new AppError('Phone number is required for M-Pesa payment', 400))
 
-    // Validate phone format
     const cleaned = phone.replace(/\D/g, '')
     if (cleaned.length < 9 || cleaned.length > 12) {
       return next(new AppError('Invalid phone number. Use format: 07XXXXXXXX or 254XXXXXXXXX', 400))
     }
 
-    // Get cart
     const cart = await Cart.findOne({ user: req.user._id }).populate('items.product')
     if (!cart || cart.items.length === 0) {
       return next(new AppError('Your cart is empty', 400))
     }
 
-    // Build order items — server-side prices only
     const orderItems = await Promise.all(
       cart.items.map(async (item: any) => {
         const product = await Product.findOne({
@@ -68,7 +94,6 @@ export const initiateMpesaPayment = asyncHandler(
 
     const { subtotal, shippingCost, tax, total } = calculateOrderTotals(orderItems)
 
-    // Create pending order first
     const order = await Order.create({
       user: req.user._id,
       items: orderItems,
@@ -83,7 +108,6 @@ export const initiateMpesaPayment = asyncHandler(
       isDelivered: false,
     })
 
-    // Initiate STK Push
     try {
       const stkResponse = await initiateStkPush({
         phone,
@@ -97,7 +121,6 @@ export const initiateMpesaPayment = asyncHandler(
         return next(new AppError(stkResponse.ResponseDescription || 'M-Pesa request failed', 400))
       }
 
-      // Save M-Pesa request IDs to order
       order.mpesaCheckoutRequestId = stkResponse.CheckoutRequestID
       order.mpesaMerchantRequestId = stkResponse.MerchantRequestID
       await order.save()
@@ -117,7 +140,6 @@ export const initiateMpesaPayment = asyncHandler(
         201
       )
     } catch (err: any) {
-      // Clean up pending order if STK push fails
       await Order.findByIdAndDelete(order._id)
       logger.error('STK Push error:', err?.response?.data || err.message)
       return next(
@@ -133,6 +155,17 @@ export const initiateMpesaPayment = asyncHandler(
 // ─── M-PESA CALLBACK (Safaricom calls this) ───────────────────────────────────
 export const mpesaCallback = asyncHandler(
   async (req: Request, res: Response) => {
+    // FIX 1 — reject requests not from Safaricom's known IP ranges.
+    // req.ip is reliable here because app.ts sets trust proxy: 1.
+    const clientIp = req.ip || ''
+    const normalizedIp = clientIp.replace('::ffff:', '') // strip IPv6 prefix
+
+    if (process.env.NODE_ENV === 'production' && !SAFARICOM_IPS.has(normalizedIp)) {
+      logger.warn(`[M-Pesa] Callback rejected — unknown IP: ${normalizedIp}`)
+      // Still return 200 so we don't leak that we rejected it
+      return res.status(200).json({ ResultCode: 0, ResultDesc: 'Accepted' })
+    }
+
     logger.info('M-Pesa callback received:', JSON.stringify(req.body, null, 2))
 
     const callbackData = req.body?.Body?.stkCallback
@@ -143,7 +176,6 @@ export const mpesaCallback = asyncHandler(
     }
 
     const {
-      MerchantRequestID,
       CheckoutRequestID,
       ResultCode,
       ResultDesc,
@@ -157,7 +189,6 @@ export const mpesaCallback = asyncHandler(
       return res.status(200).json({ ResultCode: 0, ResultDesc: 'Accepted' })
     }
 
-    // Payment successful
     if (ResultCode === 0) {
       const metadata: Record<string, any> = {}
       CallbackMetadata?.Item?.forEach((item: { Name: string; Value: any }) => {
@@ -173,7 +204,6 @@ export const mpesaCallback = asyncHandler(
 
       await order.save()
 
-      // Deduct inventory
       for (const item of order.items) {
         await Product.findOneAndUpdate(
           { _id: item.product, 'variants.size': item.size },
@@ -186,28 +216,25 @@ export const mpesaCallback = asyncHandler(
         )
       }
 
-      // Clear user cart
       await Cart.findOneAndUpdate({ user: order.user }, { items: [] })
 
       logger.info(
-        `✅ M-Pesa payment confirmed — Order ${order._id} — Receipt: ${metadata['MpesaReceiptNumber']}`
+        `M-Pesa payment confirmed — Order ${order._id} — Receipt: ${metadata['MpesaReceiptNumber']}`
       )
     } else {
-      // Payment failed or cancelled
       order.status = 'cancelled'
       order.mpesaResultCode = ResultCode
       order.mpesaResultDesc = ResultDesc
       await order.save()
 
-      logger.warn(`❌ M-Pesa payment failed — Order ${order._id} — ${ResultDesc}`)
+      logger.warn(`M-Pesa payment failed — Order ${order._id} — ${ResultDesc}`)
     }
 
-    // Always respond 200 to Safaricom
     res.status(200).json({ ResultCode: 0, ResultDesc: 'Accepted' })
   }
 )
 
-// ─── POLL PAYMENT STATUS (frontend polls this) ────────────────────────────────
+// ─── POLL PAYMENT STATUS ──────────────────────────────────────────────────────
 export const checkPaymentStatus = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     const { orderId } = req.params
@@ -219,17 +246,12 @@ export const checkPaymentStatus = asyncHandler(
 
     if (!order) return next(new AppError('Order not found', 404))
 
-    // If still pending, query Safaricom directly
     if (!order.isPaid && order.status === 'awaiting_payment' && order.mpesaCheckoutRequestId) {
       try {
         const queryResult = await queryStkStatus(order.mpesaCheckoutRequestId)
 
         if (queryResult.ResultCode === '0') {
-          sendSuccess(res, {
-            status: 'processing',
-            isPaid: true,
-            orderId: order._id,
-          })
+          sendSuccess(res, { status: 'processing', isPaid: true, orderId: order._id })
           return
         }
 
@@ -295,7 +317,10 @@ export const getAllOrders = asyncHandler(async (req: Request, res: Response) => 
   const skip = (page - 1) * limit
 
   const filter: Record<string, any> = {}
-  if (req.query.status) filter.status = req.query.status
+  // FIX 2 — only allow filtering by valid statuses
+  if (req.query.status && VALID_ORDER_STATUSES.has(req.query.status as string)) {
+    filter.status = req.query.status
+  }
 
   const [orders, total] = await Promise.all([
     Order.find(filter)
@@ -314,6 +339,11 @@ export const getAllOrders = asyncHandler(async (req: Request, res: Response) => 
 export const updateOrderStatus = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     const { status, trackingNumber } = req.body
+
+    // FIX 2 — validate status against whitelist before writing to DB
+    if (!status || !VALID_ORDER_STATUSES.has(status)) {
+      return next(new AppError(`Invalid status. Must be one of: ${[...VALID_ORDER_STATUSES].join(', ')}`, 400))
+    }
 
     const order = await Order.findByIdAndUpdate(
       req.params.id,
