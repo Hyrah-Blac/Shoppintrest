@@ -6,18 +6,15 @@ import { useSupportChat }  from '@/hooks/useSupportChat'
 import { useStreamContext } from '@/components/providers/StreamProvider'
 
 const DISPLAY: React.CSSProperties = {
-  fontFamily: 'var(--font-display, "Cormorant Garamond", Georgia, serif)',
+  fontFamily: 'var(--font-serif, "Cormorant Garamond", Georgia, serif)',
 }
 
-// WhatsApp palette
+// Brand accent colors — kept consistent regardless of site theme
 const WA = {
-  bubbleOutLt: '#d9fdd3',
-  bubbleInLt:  '#ffffff',
-  textOutLt:   '#111b21',
-  textInLt:    '#111b21',
-  tickRead:    '#53bdeb',
-  tickSent:    '#8696a0',
-  accent:      '#00a884',
+  tickRead: '#53bdeb', // WhatsApp blue (read receipts)
+  tickSent: 'hsl(var(--muted-foreground))',
+  accent:   '#00a884', // WhatsApp teal (send button, typing indicator)
+  online:   '#25d366', // WhatsApp green (online status)
 }
 
 // A compact, commonly-used emoji set rendered with the system/Apple emoji font
@@ -64,12 +61,12 @@ function TypingDots() {
         background: 'var(--wa-bubble-in)',
         borderRadius: '7.5px 7.5px 7.5px 0px',
         padding: '10px 14px',
-        boxShadow: '0 1px 0.5px rgba(0,0,0,0.13)',
+        boxShadow: '0 1px 0.5px hsl(var(--foreground) / 0.06)',
       }}>
         {[0, 0.18, 0.36].map((delay, i) => (
           <span key={i} style={{
             width: 6, height: 6, borderRadius: '50%',
-            background: 'var(--color-text-secondary)',
+            background: 'hsl(var(--muted-foreground))',
             display: 'block',
             animation: `typingBounce 1.2s ${delay}s infinite ease-in-out`,
           }} />
@@ -133,7 +130,7 @@ function Bubble({
           padding: '6px 12px',
           borderRadius: 7.5,
           display: 'flex', alignItems: 'center', gap: 6,
-          boxShadow: '0 1px 0.5px rgba(0,0,0,0.13)',
+          boxShadow: '0 1px 0.5px hsl(var(--foreground) / 0.06)',
         }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="10"/><line x1="4.9" y1="4.9" x2="19.1" y2="19.1"/>
@@ -153,7 +150,7 @@ function Bubble({
           padding: '6px 12px', borderRadius: 8,
           display: 'inline-block', lineHeight: 1.5,
           maxWidth: '90%',
-          boxShadow: '0 1px 0.5px rgba(0,0,0,0.13)',
+          boxShadow: '0 1px 0.5px hsl(var(--foreground) / 0.06)',
         }}>
           {text}
         </span>
@@ -173,7 +170,7 @@ function Bubble({
       <div
         style={{
           position: 'relative',
-          maxWidth: '76%',
+          maxWidth: 'min(76%, calc(100vw - 96px))',
           minWidth: 60,
           background: isMine ? 'var(--wa-bubble-out)' : 'var(--wa-bubble-in)',
           color: isMine ? 'var(--wa-text-out)' : 'var(--wa-text-in)',
@@ -183,7 +180,7 @@ function Bubble({
           padding: '6px 7px 8px 9px',
           fontSize: 14.5,
           lineHeight: 1.45,
-          boxShadow: '0 1px 0.5px rgba(0,0,0,0.13)',
+          boxShadow: '0 1px 0.5px hsl(var(--foreground) / 0.06)',
           wordBreak: 'break-word',
           userSelect: 'text' as const,
           opacity: status === 'sending' ? 0.7 : 1,
@@ -231,9 +228,10 @@ function Bubble({
         }}>
           {status === 'failed' ? (
             <button
+              className="wa-retry-btn"
               onClick={onRetry}
               style={{
-                fontSize: 11, fontWeight: 600, color: 'var(--color-text-danger)',
+                fontSize: 11, fontWeight: 600, color: 'hsl(var(--destructive))',
                 background: 'none', border: 'none', cursor: 'pointer', padding: 0,
                 display: 'flex', alignItems: 'center', gap: 4,
               }}
@@ -271,18 +269,19 @@ function EmojiPicker({ onPick, onClose }: { onPick: (emoji: string) => void; onC
   return (
     <div
       ref={ref}
+      className="wa-emoji-picker"
       style={{
         position: 'absolute',
         bottom: '100%',
         left: 8,
         marginBottom: 8,
-        width: 300,
-        maxHeight: 280,
+        width: 'min(300px, calc(100vw - 48px))',
+        maxHeight: 'min(280px, 50vh)',
         overflowY: 'auto',
         background: 'var(--wa-input-bg)',
         borderRadius: 12,
-        boxShadow: '0 4px 24px rgba(0,0,0,0.18)',
-        border: '0.5px solid var(--color-border-tertiary)',
+        boxShadow: '0 4px 24px hsl(var(--foreground) / 0.1)',
+        border: '0.5px solid hsl(var(--border) / 0.6)',
         padding: '10px 8px',
         zIndex: 20,
       }}
@@ -290,7 +289,7 @@ function EmojiPicker({ onPick, onClose }: { onPick: (emoji: string) => void; onC
       {EMOJI_GROUPS.map(group => (
         <div key={group.label} style={{ marginBottom: 6 }}>
           <p style={{
-            fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)',
+            fontSize: 11, fontWeight: 600, color: 'hsl(var(--muted-foreground))',
             margin: '2px 4px 4px', textTransform: 'uppercase', letterSpacing: 0.5,
           }}>
             {group.label}
@@ -309,7 +308,7 @@ function EmojiPicker({ onPick, onClose }: { onPick: (emoji: string) => void; onC
                   fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif',
                   transition: 'background 0.1s',
                 }}
-                onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-background-secondary)')}
+                onMouseEnter={e => (e.currentTarget.style.background = 'hsl(var(--muted))')}
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
               >
                 {emoji}
@@ -369,15 +368,21 @@ function Composer({ onSend, onTyping }: {
   }, [input, onTyping])
 
   return (
-    <div style={{
-      display: 'flex', alignItems: 'flex-end', gap: 8,
-      padding: '8px 8px',
-      background: 'var(--wa-composer-bg)',
-      flexShrink: 0,
-      position: 'relative',
-    }}>
+    <div
+      className="wa-composer"
+      style={{
+        display: 'flex', alignItems: 'flex-end', gap: 8,
+        padding: '8px 8px',
+        paddingBottom: 'max(8px, env(safe-area-inset-bottom))',
+        background: 'var(--wa-composer-bg)',
+        borderTop: '0.5px solid hsl(var(--border) / 0.6)',
+        flexShrink: 0,
+        position: 'relative',
+      }}
+    >
       {/* Emoji button */}
       <button
+        className="wa-icon-btn"
         onClick={() => setShowEmoji(v => !v)}
         aria-label="Open emoji picker"
         aria-expanded={showEmoji}
@@ -399,11 +404,14 @@ function Composer({ onSend, onTyping }: {
       )}
 
       <div
+        className="wa-input-wrap"
         style={{
           flex: 1, display: 'flex', alignItems: 'flex-end',
           background: 'var(--wa-input-bg)',
           borderRadius: 24, padding: '0 6px 0 16px',
           minHeight: 42,
+          border: '1px solid transparent',
+          transition: 'border-color 0.15s, box-shadow 0.15s',
         }}
       >
         <textarea
@@ -415,14 +423,16 @@ function Composer({ onSend, onTyping }: {
           rows={1}
           style={{
             flex: 1, resize: 'none', border: 'none', outline: 'none',
-            background: 'transparent', fontSize: 15, lineHeight: 1.5,
-            color: 'var(--wa-text-in)', fontFamily: 'var(--font-sans)',
-            overflowY: 'hidden', padding: '10px 0', maxHeight: 130,
+            background: 'transparent', fontSize: 16, lineHeight: 1.5,
+            color: 'hsl(var(--foreground))', caretColor: 'hsl(var(--foreground))',
+            fontFamily: 'var(--font-sans)',
+            overflowY: 'hidden', padding: '9px 0', maxHeight: 130,
           }}
         />
       </div>
 
       <button
+        className="wa-send-btn"
         onClick={send}
         disabled={!canSend && !sending}
         aria-label="Send message"
@@ -430,12 +440,12 @@ function Composer({ onSend, onTyping }: {
           width: 42, height: 42, borderRadius: '50%', flexShrink: 0,
           border: 'none',
           background: WA.accent,
-          color: '#ffffff',
+          color: 'hsl(var(--primary-foreground))',
           cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           transition: 'transform 0.15s, opacity 0.15s',
           opacity: canSend || sending ? 1 : 0.5,
-          transform: canSend ? 'scale(1)' : 'scale(0.92)',
+          transform: canSend ? undefined : 'scale(0.92)',
         }}
       >
         {sending ? (
@@ -625,31 +635,19 @@ export default function SupportPage() {
 
   return (
     <div
+      className="wa-chat-root"
       style={{
         maxWidth: 680, margin: '0 auto',
         display: 'flex', flexDirection: 'column',
-        height: 'calc(100dvh - 64px)',
         position: 'relative',
-        '--wa-bg-chat': 'var(--color-background-primary)',
-        '--wa-bubble-out': WA.bubbleOutLt,
-        '--wa-bubble-in': WA.bubbleInLt,
-        '--wa-text-out': WA.textOutLt,
-        '--wa-text-in': WA.textInLt,
-        '--wa-meta': 'rgba(0,0,0,0.45)',
-        '--wa-meta-out': 'rgba(0,0,0,0.45)',
-        '--wa-system-bg': '#ffffff',
-        '--wa-header-bg': 'var(--color-background-primary)',
-        '--wa-composer-bg': 'var(--color-background-primary)',
-        '--wa-input-bg': 'var(--color-background-secondary)',
-        '--wa-icon': 'var(--color-text-secondary)',
-      } as React.CSSProperties}
+      }}
     >
 
       {/* ── Header ── */}
-      <div style={{
+      <div className="wa-header" style={{
         display: 'flex', alignItems: 'center', gap: 12,
         padding: '10px 16px',
-        borderBottom: '0.5px solid var(--color-border-tertiary)',
+        borderBottom: '0.5px solid hsl(var(--border) / 0.6)',
         flexShrink: 0,
         background: 'var(--wa-header-bg)',
         zIndex: 2,
@@ -657,9 +655,9 @@ export default function SupportPage() {
         <div style={{ position: 'relative', flexShrink: 0 }}>
           <div style={{
             width: 40, height: 40, borderRadius: '50%',
-            background: 'var(--color-background-secondary)',
+            background: 'hsl(var(--muted))',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: 'var(--color-text-secondary)',
+            color: 'hsl(var(--muted-foreground))',
           }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
               <path d="M3 18v-6a9 9 0 0 1 18 0v6"/>
@@ -669,16 +667,18 @@ export default function SupportPage() {
           <span style={{
             position: 'absolute', bottom: -1, right: -1,
             width: 11, height: 11, borderRadius: '50%',
-            background: '#22c55e',
+            background: WA.online,
             border: '2px solid var(--wa-header-bg)',
           }} />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ fontSize: 15.5, fontWeight: 600, color: 'var(--color-text-primary)', margin: 0, lineHeight: 1.25 }}>
+          <p style={{ fontSize: 15.5, fontWeight: 600, color: 'hsl(var(--foreground))', margin: 0, lineHeight: 1.25 }}>
             Support Team
           </p>
-          <p style={{ fontSize: 12.5, color: 'var(--color-text-secondary)', margin: '2px 0 0' }}>
-            {isTyping ? <span style={{ color: WA.accent }}>typing…</span> : 'online'}
+          <p style={{ fontSize: 12.5, margin: '2px 0 0' }}>
+            {isTyping
+              ? <span style={{ color: WA.accent }}>typing…</span>
+              : <span style={{ color: WA.online, fontWeight: 500 }}>online</span>}
           </p>
         </div>
       </div>
@@ -686,6 +686,7 @@ export default function SupportPage() {
       {/* ── Messages ── */}
       <div
         ref={listRef}
+        className="wa-msg-list"
         role="log"
         aria-live="polite"
         style={{
@@ -694,17 +695,19 @@ export default function SupportPage() {
           display: 'flex', flexDirection: 'column',
           background: 'var(--wa-bg-chat)',
           backgroundImage: `
-            radial-gradient(circle at 20% 20%, rgba(120,120,120,0.035) 0%, transparent 35%),
-            radial-gradient(circle at 80% 0%, rgba(120,120,120,0.03) 0%, transparent 40%),
-            radial-gradient(circle at 60% 80%, rgba(120,120,120,0.035) 0%, transparent 35%),
-            radial-gradient(circle at 10% 70%, rgba(120,120,120,0.03) 0%, transparent 35%)
+            radial-gradient(circle at 20% 20%, hsl(var(--foreground) / 0.035) 0%, transparent 35%),
+            radial-gradient(circle at 80% 0%, hsl(var(--foreground) / 0.03) 0%, transparent 40%),
+            radial-gradient(circle at 60% 80%, hsl(var(--foreground) / 0.035) 0%, transparent 35%),
+            radial-gradient(circle at 10% 70%, hsl(var(--foreground) / 0.03) 0%, transparent 35%)
           `,
           overflowAnchor: 'none',
+          WebkitOverflowScrolling: 'touch',
+          overscrollBehaviorY: 'contain',
         }}
       >
         {(isLoading || !isLoaded) && (
           <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-secondary)" strokeWidth="2.5" strokeLinecap="round" style={{ animation: 'spin 0.8s linear infinite' }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--muted-foreground))" strokeWidth="2.5" strokeLinecap="round" style={{ animation: 'spin 0.8s linear infinite' }}>
               <path d="M21 12a9 9 0 1 1-6.219-8.56" />
             </svg>
           </div>
@@ -718,18 +721,18 @@ export default function SupportPage() {
           }}>
             <div style={{
               width: 64, height: 64, borderRadius: '50%',
-              background: 'var(--color-background-secondary)',
-              border: '0.5px solid var(--color-border-tertiary)',
+              background: 'hsl(var(--muted))',
+              border: '0.5px solid hsl(var(--border) / 0.6)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: 28,
             }}>
               👋
             </div>
             <div>
-              <p style={{ ...DISPLAY, fontSize: 22, fontWeight: 300, margin: '0 0 6px', color: 'var(--color-text-primary)' }}>
+              <p style={{ ...DISPLAY, fontSize: 22, fontWeight: 300, margin: '0 0 6px', color: 'hsl(var(--foreground))' }}>
                 Hi there!
               </p>
-              <p style={{ fontSize: 13, margin: 0, color: 'var(--color-text-secondary)', lineHeight: 1.7, maxWidth: 260 }}>
+              <p style={{ fontSize: 13, margin: 0, color: 'hsl(var(--muted-foreground))', lineHeight: 1.7, maxWidth: 260 }}>
                 Got a question or need help with an order? Send us a message — we're here.
               </p>
             </div>
@@ -744,7 +747,7 @@ export default function SupportPage() {
                 background: 'var(--wa-system-bg)',
                 padding: '5px 12px', borderRadius: 8,
                 fontWeight: 500,
-                boxShadow: '0 1px 0.5px rgba(0,0,0,0.13)',
+                boxShadow: '0 1px 0.5px hsl(var(--foreground) / 0.06)',
               }}>
                 {day}
               </span>
@@ -807,12 +810,14 @@ export default function SupportPage() {
         <button
           onClick={scrollToBottom}
           style={{
-            position: 'absolute', bottom: 80, left: '50%', transform: 'translateX(-50%)',
+            position: 'absolute',
+            bottom: 'calc(80px + env(safe-area-inset-bottom))',
+            left: '50%', transform: 'translateX(-50%)',
             padding: '7px 18px', borderRadius: 20, fontSize: 13, fontWeight: 600,
-            background: WA.accent, color: '#ffffff',
+            background: WA.accent, color: 'hsl(var(--primary-foreground))',
             border: 'none', cursor: 'pointer',
             display: 'flex', alignItems: 'center', gap: 6,
-            boxShadow: '0 4px 16px rgba(0,0,0,0.25)', zIndex: 5,
+            boxShadow: '0 4px 16px hsl(var(--foreground) / 0.15)', zIndex: 5,
           }}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -823,7 +828,86 @@ export default function SupportPage() {
       )}
 
       <Composer onSend={handleSend} onTyping={sendTyping} />
-      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .wa-chat-root {
+          height: calc(100vh - 64px);
+          --wa-bg-chat: hsl(var(--background));
+          --wa-bubble-out: hsl(var(--primary));
+          --wa-bubble-in: hsl(var(--card));
+          --wa-text-out: hsl(var(--primary-foreground));
+          --wa-text-in: hsl(var(--foreground));
+          --wa-meta: hsl(var(--muted-foreground));
+          --wa-meta-out: hsl(var(--primary-foreground) / 0.75);
+          --wa-system-bg: hsl(var(--card));
+          --wa-header-bg: hsl(var(--background));
+          --wa-composer-bg: hsl(var(--background));
+          --wa-input-bg: hsl(var(--muted));
+          --wa-icon: hsl(var(--muted-foreground));
+        }
+
+        @supports (height: 100dvh) {
+          .wa-chat-root { height: calc(100dvh - 64px); }
+        }
+
+        /* ── Themed scrollbars ── */
+        .wa-msg-list, .wa-emoji-picker {
+          scrollbar-width: thin;
+          scrollbar-color: hsl(var(--border)) transparent;
+        }
+        .wa-msg-list::-webkit-scrollbar, .wa-emoji-picker::-webkit-scrollbar {
+          width: 6px;
+        }
+        .wa-msg-list::-webkit-scrollbar-thumb, .wa-emoji-picker::-webkit-scrollbar-thumb {
+          background: hsl(var(--border));
+          border-radius: 999px;
+        }
+        .wa-msg-list::-webkit-scrollbar-track, .wa-emoji-picker::-webkit-scrollbar-track {
+          background: transparent;
+        }
+
+        /* ── Composer input states ── */
+        .wa-composer textarea::placeholder {
+          color: hsl(var(--muted-foreground));
+          opacity: 1;
+        }
+        .wa-input-wrap:focus-within {
+          border-color: hsl(var(--primary) / 0.5);
+          box-shadow: 0 0 0 2px hsl(var(--primary) / 0.15);
+        }
+
+        /* ── Button hover/active feedback ── */
+        .wa-icon-btn {
+          transition: background-color 0.15s, color 0.15s;
+        }
+        .wa-icon-btn:hover {
+          background: hsl(var(--muted));
+        }
+        .wa-send-btn {
+          transition: transform 0.15s, opacity 0.15s, filter 0.15s;
+        }
+        .wa-send-btn:hover:not(:disabled) {
+          filter: brightness(1.08);
+        }
+        .wa-send-btn:active:not(:disabled) {
+          transform: scale(0.94);
+        }
+        .wa-retry-btn {
+          transition: opacity 0.15s;
+        }
+        .wa-retry-btn:hover {
+          opacity: 0.7;
+        }
+
+        /* ── Small-screen polish ── */
+        @media (max-width: 480px) {
+          .wa-header { padding: 8px 12px; }
+          .wa-msg-list { padding: 8px 0 6px; }
+          .wa-composer { padding: 6px; }
+        }
+      `}</style>
     </div>
   )
 }
