@@ -294,9 +294,9 @@ export default function SupportPage() {
 
   useEffect(() => { load() }, [load])
 
-  useEffect(() => {
-    if (conversation?.streamChannelId) openChannel(conversation.streamChannelId)
-  }, [conversation?.streamChannelId, openChannel])
+useEffect(() => {
+  if (conversation?.streamChannelId && isReady) openChannel(conversation.streamChannelId)
+}, [conversation?.streamChannelId, isReady, openChannel])
 
   // Reset scroll bookkeeping whenever we switch to a different channel
   useEffect(() => {
