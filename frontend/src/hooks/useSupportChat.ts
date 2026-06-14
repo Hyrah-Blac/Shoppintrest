@@ -21,6 +21,7 @@ export function useSupportChat(client: StreamChat | null, isReady: boolean) {
 
   const activeChannelRef = useRef<Channel | null>(null)
   const cleanupFnsRef    = useRef<(() => void)[]>([])
+  const activeCidRef     = useRef<string | null>(null)
 
   const previewFromChannel = useCallback((ch: Channel): ChannelPreview => {
     const last     = ch.lastMessage()
@@ -51,8 +52,6 @@ export function useSupportChat(client: StreamChat | null, isReady: boolean) {
 
   // ── Load all support channels for this user ───────────────────────────────
   useEffect(() => {
-    // FIX — also guard on client.userID so we never call queryChannels
-    // before connectUser() has fully resolved, even if isReady flips early.
     if (!client || !isReady || !client.userID) return
     let cancelled = false
 
@@ -102,18 +101,22 @@ export function useSupportChat(client: StreamChat | null, isReady: boolean) {
 
   // ── Open a specific channel and attach listeners ──────────────────────────
   const openChannel = useCallback(async (channelId: string) => {
-    // FIX — guard on client.userID here too so openChannel called before
-    // connectUser resolves fails silently rather than throwing.
     if (!client || !client.userID) return
 
+    const cid = `messaging:${channelId}`
+
+    // Tear down any previously attached listeners — always, even if the
+    // "same" channelId is being re-opened, since a stale client/channel
+    // instance may have left dead listeners registered.
     cleanupFnsRef.current.forEach(fn => fn())
     cleanupFnsRef.current = []
 
     const prev = activeChannelRef.current
-    if (prev && prev.id !== channelId) prev.stopWatching().catch(() => {})
+    if (prev && prev.cid !== cid) prev.stopWatching().catch(() => {})
 
     const channel = client.channel('messaging', channelId)
     activeChannelRef.current = channel
+    activeCidRef.current     = cid
 
     setIsLoading(true)
     setIsTyping(false)
@@ -121,27 +124,17 @@ export function useSupportChat(client: StreamChat | null, isReady: boolean) {
     setReadBy({})
 
     try {
-      await channel.watch({ state: true, presence: true })
+      // watch() returns recent channel state (including messages), and
+      // crucially starts the live event subscription on this channel.
+      const state = await channel.watch({ state: true, presence: true })
 
-      if (activeChannelRef.current?.id !== channelId) return
+      // Bail if a newer openChannel call has since taken over.
+      if (activeCidRef.current !== cid) return
 
-      const { messages: freshMessages } = await channel.query({
-        messages: { limit: 50 },
-      })
-
-      if (activeChannelRef.current?.id !== channelId) return
-
-      setMessages(freshMessages as LocalMessage[])
-
-      const rb: Record<string, string> = {}
-      Object.entries(channel.state.read || {}).forEach(([uid, r]) => {
-        if (uid !== client.userID && r.last_read)
-          rb[uid] = new Date(r.last_read).toISOString()
-      })
-      setReadBy(rb)
-
-      channel.markRead().catch(() => {})
-
+      // ── Attach listeners IMMEDIATELY after watch() resolves ──────────────
+      // This closes the race where a message.new event could arrive in the
+      // gap between watch() resolving and listeners being attached (which
+      // previously happened only after a separate channel.query() call).
       const onNew = (e: Event) => {
         const msg = e.message as LocalMessage | undefined
         if (!msg) return
@@ -153,6 +146,12 @@ export function useSupportChat(client: StreamChat | null, isReady: boolean) {
       }
 
       const onUpdated = (e: Event) => {
+        const msg = e.message as LocalMessage | undefined
+        if (!msg) return
+        setMessages(prev => prev.map(m => m.id === msg.id ? msg : m))
+      }
+
+      const onDeleted = (e: Event) => {
         const msg = e.message as LocalMessage | undefined
         if (!msg) return
         setMessages(prev => prev.map(m => m.id === msg.id ? msg : m))
@@ -175,11 +174,39 @@ export function useSupportChat(client: StreamChat | null, isReady: boolean) {
       const subs = [
         channel.on('message.new',     onNew),
         channel.on('message.updated', onUpdated),
+        channel.on('message.deleted', onDeleted),
         channel.on('typing.start',    onTypingStart),
         channel.on('typing.stop',     onTypingStop),
         channel.on('message.read',    onRead),
       ]
       cleanupFnsRef.current = subs.map(s => () => s.unsubscribe())
+
+      // ── Now fetch the initial page of messages ───────────────────────────
+      // Any message.new events that arrive while this is in flight are
+      // already caught by onNew above, and de-duped against freshMessages
+      // by the `prev.some(m => m.id === msg.id)` check.
+      const { messages: freshMessages } = await channel.query({
+        messages: { limit: 50 },
+      })
+
+      if (activeCidRef.current !== cid) return
+
+      setMessages(prevMsgs => {
+        const incomingIds = new Set((freshMessages as LocalMessage[]).map(m => m.id))
+        // Keep any messages that arrived live (via onNew) but aren't in the
+        // fetched page yet (e.g. sent in the gap before query resolved).
+        const liveExtras = prevMsgs.filter(m => !incomingIds.has(m.id))
+        return [...(freshMessages as LocalMessage[]), ...liveExtras]
+      })
+
+      const rb: Record<string, string> = {}
+      Object.entries(channel.state.read || {}).forEach(([uid, r]) => {
+        if (uid !== client.userID && r.last_read)
+          rb[uid] = new Date(r.last_read).toISOString()
+      })
+      setReadBy(rb)
+
+      channel.markRead().catch(() => {})
 
     } catch (err) {
       console.error('[useSupportChat] openChannel error:', err)
@@ -191,6 +218,7 @@ export function useSupportChat(client: StreamChat | null, isReady: boolean) {
   useEffect(() => () => {
     cleanupFnsRef.current.forEach(fn => fn())
     activeChannelRef.current?.stopWatching().catch(() => {})
+    activeCidRef.current = null
   }, [])
 
   // ── Send ──────────────────────────────────────────────────────────────────
@@ -230,20 +258,26 @@ export function useSupportChat(client: StreamChat | null, isReady: boolean) {
   const loadOlderMessages = useCallback(async () => {
     const ch = activeChannelRef.current
     if (!ch) return
+
+    let oldestId: string | undefined
     setMessages(prev => {
-      const oldest = prev[0]
-      if (!oldest) return prev
-      ch.query({ messages: { limit: 25, id_lt: oldest.id } })
-        .then(({ messages: older }) => {
-          setMessages(cur => {
-            const ids      = new Set(cur.map(m => m.id))
-            const filtered = (older as unknown as LocalMessage[]).filter(m => !ids.has(m.id))
-            return [...filtered, ...cur]
-          })
-        })
-        .catch(() => {})
+      oldestId = prev[0]?.id
       return prev
     })
+    if (!oldestId) return
+
+    try {
+      const { messages: older } = await ch.query({
+        messages: { limit: 25, id_lt: oldestId },
+      })
+      setMessages(cur => {
+        const ids      = new Set(cur.map(m => m.id))
+        const filtered = (older as unknown as LocalMessage[]).filter(m => !ids.has(m.id))
+        return [...filtered, ...cur]
+      })
+    } catch {
+      // no-op
+    }
   }, [])
 
   const sendTyping = useCallback(() => {
