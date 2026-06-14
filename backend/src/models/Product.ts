@@ -23,15 +23,15 @@ export interface IProductDocument extends Document {
 
 const ProductSchema = new Schema<IProductDocument>(
   {
-    title: { type: String, required: true, trim: true, maxlength: 200 },
+    title:       { type: String, required: true, trim: true, maxlength: 200 },
     description: { type: String, required: true, maxlength: 5000 },
-    price: { type: Number, required: true, min: 0 },
-    comparePrice: { type: Number, min: 0 },
+    price:       { type: Number, required: true, min: 0 },
+    comparePrice:{ type: Number, min: 0 },
     images: [
       {
-        url: { type: String, required: true },
+        url:      { type: String, required: true },
         publicId: { type: String, required: true },
-        alt: { type: String },
+        alt:      { type: String, maxlength: 200 },
       },
     ],
     category: {
@@ -48,27 +48,29 @@ const ProductSchema = new Schema<IProductDocument>(
         'home',
       ],
     },
-    tags: [{ type: String, trim: true, lowercase: true }],
-    brand: { type: String, required: true, trim: true },
+    // FIX — added maxlength per tag (50 chars) to prevent oversized tag strings.
+    // Array length is capped in the controller (max 20 tags).
+    tags: [{ type: String, trim: true, lowercase: true, maxlength: 50 }],
+    brand: { type: String, required: true, trim: true, maxlength: 100 },
     variants: [
       {
-        size: { type: String, required: true },
+        size:      { type: String, required: true, maxlength: 20 },
         inventory: { type: Number, required: true, min: 0, default: 0 },
-        sku: { type: String, required: true },
+        sku:       { type: String, required: true, maxlength: 100 },
       },
     ],
-    totalInventory: { type: Number, default: 0 },
-    isFeatured: { type: Boolean, default: false },
-    isPublished: { type: Boolean, default: false },
-    rating: { type: Number, default: 0, min: 0, max: 5 },
-    reviewCount: { type: Number, default: 0 },
-    saves: { type: Number, default: 0 },
-    seller: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    totalInventory: { type: Number, default: 0, min: 0 },
+    isFeatured:     { type: Boolean, default: false },
+    isPublished:    { type: Boolean, default: false },
+    rating:         { type: Number, default: 0, min: 0, max: 5 },
+    reviewCount:    { type: Number, default: 0, min: 0 },
+    saves:          { type: Number, default: 0, min: 0 },
+    seller:         { type: Schema.Types.ObjectId, ref: 'User', required: true },
   },
   {
     timestamps: true,
-    toJSON: { virtuals: true },
-    toObject: { virtuals: true },
+    toJSON:     { virtuals: true },
+    toObject:   { virtuals: true },
   }
 )
 
@@ -83,7 +85,6 @@ ProductSchema.pre('save', function (next) {
   if (this.variants && this.variants.length > 0) {
     this.totalInventory = this.variants.reduce((sum, v) => sum + v.inventory, 0)
   } else if (this.isModified('variants')) {
-    // variants explicitly cleared to an empty array
     this.totalInventory = 0
   }
   next()
@@ -91,13 +92,11 @@ ProductSchema.pre('save', function (next) {
 
 // Recompute totalInventory whenever variants change via findByIdAndUpdate,
 // findOneAndUpdate, updateOne, or updateMany. pre('save') does not fire for
-// these query-based updates, so without this hook totalInventory goes stale
-// (e.g. admin edits to a product's stock not reflecting on product cards).
+// these query-based updates, so without this hook totalInventory goes stale.
 ProductSchema.pre(['findOneAndUpdate', 'updateOne', 'updateMany'], function (next) {
   const update = this.getUpdate() as any
   if (!update) return next()
 
-  // variants may be set directly or via $set
   const variants = update.variants ?? update.$set?.variants
 
   if (Array.isArray(variants)) {
