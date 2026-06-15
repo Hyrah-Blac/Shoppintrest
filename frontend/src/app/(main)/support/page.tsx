@@ -9,12 +9,12 @@ const DISPLAY: React.CSSProperties = {
   fontFamily: 'var(--font-serif, "Cormorant Garamond", Georgia, serif)',
 }
 
-// Brand accent colors — kept consistent regardless of site theme
+// Brand accent colors — Pinterest-red brand, adapted for a dark messaging UI
 const WA = {
-  tickRead: '#53bdeb', // WhatsApp blue (read receipts)
-  tickSent: 'hsl(var(--muted-foreground))',
-  accent:   '#00a884', // WhatsApp teal (send button, typing indicator)
-  online:   '#25d366', // WhatsApp green (online status)
+  tickRead: '#53bdeb', // WhatsApp blue (read receipts — conventional, kept distinct from brand)
+  tickSent: 'var(--wa-meta)',
+  accent:   '#e60023', // Pinterest red — send button, typing indicator, new-messages pill
+  online:   '#25d366', // WhatsApp green (online status — conventional)
 }
 
 // A compact, commonly-used emoji set rendered with the system/Apple emoji font
@@ -66,7 +66,7 @@ function TypingDots() {
         {[0, 0.18, 0.36].map((delay, i) => (
           <span key={i} style={{
             width: 6, height: 6, borderRadius: '50%',
-            background: 'hsl(var(--muted-foreground))',
+            background: 'var(--wa-meta)',
             display: 'block',
             animation: `typingBounce 1.2s ${delay}s infinite ease-in-out`,
           }} />
@@ -158,7 +158,7 @@ function Bubble({
     )
   }
 
-  const metaWidth = isMine ? 64 : 50
+  const metaWidth = isMine ? 72 : 58
 
   return (
     <div style={{
@@ -219,9 +219,12 @@ function Bubble({
         {/* Meta (time + ticks), absolutely positioned bottom-right */}
         <span style={{
           position: 'absolute',
-          right: 9, bottom: 6,
+          right: 6, bottom: 5,
           display: 'flex', alignItems: 'center', gap: 3,
-          fontSize: 11, lineHeight: 1,
+          fontSize: 11, fontWeight: 500, lineHeight: 1,
+          padding: '1px 5px',
+          borderRadius: 6,
+          background: isMine ? 'hsl(0 0% 100% / 0.14)' : 'hsl(var(--foreground) / 0.06)',
           color: isMine ? 'var(--wa-meta-out)' : 'var(--wa-meta)',
           whiteSpace: 'nowrap',
           userSelect: 'none',
@@ -231,7 +234,7 @@ function Bubble({
               className="wa-retry-btn"
               onClick={onRetry}
               style={{
-                fontSize: 11, fontWeight: 600, color: 'hsl(var(--destructive))',
+                fontSize: 11, fontWeight: 600, color: '#ffd9a0',
                 background: 'none', border: 'none', cursor: 'pointer', padding: 0,
                 display: 'flex', alignItems: 'center', gap: 4,
               }}
@@ -281,7 +284,7 @@ function EmojiPicker({ onPick, onClose }: { onPick: (emoji: string) => void; onC
         background: 'var(--wa-input-bg)',
         borderRadius: 12,
         boxShadow: '0 4px 24px hsl(var(--foreground) / 0.1)',
-        border: '0.5px solid hsl(var(--border) / 0.6)',
+        border: '0.5px solid var(--wa-border)',
         padding: '10px 8px',
         zIndex: 20,
       }}
@@ -289,7 +292,7 @@ function EmojiPicker({ onPick, onClose }: { onPick: (emoji: string) => void; onC
       {EMOJI_GROUPS.map(group => (
         <div key={group.label} style={{ marginBottom: 6 }}>
           <p style={{
-            fontSize: 11, fontWeight: 600, color: 'hsl(var(--muted-foreground))',
+            fontSize: 11, fontWeight: 600, color: 'var(--wa-meta)',
             margin: '2px 4px 4px', textTransform: 'uppercase', letterSpacing: 0.5,
           }}>
             {group.label}
@@ -308,7 +311,7 @@ function EmojiPicker({ onPick, onClose }: { onPick: (emoji: string) => void; onC
                   fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif',
                   transition: 'background 0.1s',
                 }}
-                onMouseEnter={e => (e.currentTarget.style.background = 'hsl(var(--muted))')}
+                onMouseEnter={e => (e.currentTarget.style.background = 'var(--wa-surface-hover)')}
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
               >
                 {emoji}
@@ -375,7 +378,7 @@ function Composer({ onSend, onTyping }: {
         padding: '8px 8px',
         paddingBottom: 'max(8px, env(safe-area-inset-bottom))',
         background: 'var(--wa-composer-bg)',
-        borderTop: '0.5px solid hsl(var(--border) / 0.6)',
+        borderTop: '0.5px solid var(--wa-border)',
         flexShrink: 0,
         position: 'relative',
       }}
@@ -424,7 +427,7 @@ function Composer({ onSend, onTyping }: {
           style={{
             flex: 1, resize: 'none', border: 'none', outline: 'none',
             background: 'transparent', fontSize: 16, lineHeight: 1.5,
-            color: 'hsl(var(--foreground))', caretColor: 'hsl(var(--foreground))',
+            color: 'var(--wa-text-in)', caretColor: 'var(--wa-text-in)',
             fontFamily: 'var(--font-sans)',
             overflowY: 'hidden', padding: '9px 0', maxHeight: 130,
           }}
@@ -440,7 +443,7 @@ function Composer({ onSend, onTyping }: {
           width: 42, height: 42, borderRadius: '50%', flexShrink: 0,
           border: 'none',
           background: WA.accent,
-          color: 'hsl(var(--primary-foreground))',
+          color: '#ffffff',
           cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           transition: 'transform 0.15s, opacity 0.15s',
@@ -611,8 +614,11 @@ export default function SupportPage() {
   }, [failedMsgs, handleSend])
 
   const grouped = useMemo(() => {
+    const seen   = new Set<string>()
     const result: { day: string; msgs: typeof messages }[] = []
     for (const msg of messages) {
+      if (seen.has(msg.id)) continue
+      seen.add(msg.id)
       const day  = dayLabel(msg.created_at)
       const last = result[result.length - 1]
       if (last?.day === day) last.msgs.push(msg)
@@ -647,7 +653,7 @@ export default function SupportPage() {
       <div className="wa-header" style={{
         display: 'flex', alignItems: 'center', gap: 12,
         padding: '10px 16px',
-        borderBottom: '0.5px solid hsl(var(--border) / 0.6)',
+        borderBottom: '0.5px solid var(--wa-border)',
         flexShrink: 0,
         background: 'var(--wa-header-bg)',
         zIndex: 2,
@@ -655,9 +661,9 @@ export default function SupportPage() {
         <div style={{ position: 'relative', flexShrink: 0 }}>
           <div style={{
             width: 40, height: 40, borderRadius: '50%',
-            background: 'hsl(var(--muted))',
+            background: 'var(--wa-bubble-in)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: 'hsl(var(--muted-foreground))',
+            color: 'var(--wa-meta)',
           }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
               <path d="M3 18v-6a9 9 0 0 1 18 0v6"/>
@@ -672,7 +678,7 @@ export default function SupportPage() {
           }} />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ fontSize: 15.5, fontWeight: 600, color: 'hsl(var(--foreground))', margin: 0, lineHeight: 1.25 }}>
+          <p style={{ fontSize: 15.5, fontWeight: 600, color: 'var(--wa-text-in)', margin: 0, lineHeight: 1.25 }}>
             Support Team
           </p>
           <p style={{ fontSize: 12.5, margin: '2px 0 0' }}>
@@ -707,7 +713,7 @@ export default function SupportPage() {
       >
         {(isLoading || !isLoaded) && (
           <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--muted-foreground))" strokeWidth="2.5" strokeLinecap="round" style={{ animation: 'spin 0.8s linear infinite' }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--wa-meta)" strokeWidth="2.5" strokeLinecap="round" style={{ animation: 'spin 0.8s linear infinite' }}>
               <path d="M21 12a9 9 0 1 1-6.219-8.56" />
             </svg>
           </div>
@@ -721,18 +727,18 @@ export default function SupportPage() {
           }}>
             <div style={{
               width: 64, height: 64, borderRadius: '50%',
-              background: 'hsl(var(--muted))',
-              border: '0.5px solid hsl(var(--border) / 0.6)',
+              background: 'var(--wa-bubble-in)',
+              border: '0.5px solid var(--wa-border)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: 28,
             }}>
               👋
             </div>
             <div>
-              <p style={{ ...DISPLAY, fontSize: 22, fontWeight: 300, margin: '0 0 6px', color: 'hsl(var(--foreground))' }}>
+              <p style={{ ...DISPLAY, fontSize: 22, fontWeight: 300, margin: '0 0 6px', color: 'var(--wa-text-in)' }}>
                 Hi there!
               </p>
-              <p style={{ fontSize: 13, margin: 0, color: 'hsl(var(--muted-foreground))', lineHeight: 1.7, maxWidth: 260 }}>
+              <p style={{ fontSize: 13, margin: 0, color: 'var(--wa-meta)', lineHeight: 1.7, maxWidth: 260 }}>
                 Got a question or need help with an order? Send us a message — we're here.
               </p>
             </div>
@@ -814,7 +820,7 @@ export default function SupportPage() {
             bottom: 'calc(80px + env(safe-area-inset-bottom))',
             left: '50%', transform: 'translateX(-50%)',
             padding: '7px 18px', borderRadius: 20, fontSize: 13, fontWeight: 600,
-            background: WA.accent, color: 'hsl(var(--primary-foreground))',
+            background: WA.accent, color: '#ffffff',
             border: 'none', cursor: 'pointer',
             display: 'flex', alignItems: 'center', gap: 6,
             boxShadow: '0 4px 16px hsl(var(--foreground) / 0.15)', zIndex: 5,
@@ -835,17 +841,19 @@ export default function SupportPage() {
         .wa-chat-root {
           height: calc(100vh - 64px);
           --wa-bg-chat: hsl(var(--background));
-          --wa-bubble-out: hsl(var(--primary));
-          --wa-bubble-in: hsl(var(--card));
-          --wa-text-out: hsl(var(--primary-foreground));
-          --wa-text-in: hsl(var(--foreground));
-          --wa-meta: hsl(var(--muted-foreground));
-          --wa-meta-out: hsl(var(--primary-foreground) / 0.75);
-          --wa-system-bg: hsl(var(--card));
+          --wa-bubble-out: #8e0c23; /* dark Pinterest red */
+          --wa-bubble-in: #27272a;
+          --wa-text-out: #e9edef;
+          --wa-text-in: #f4f4f5;
+          --wa-meta: #a1a1aa;
+          --wa-meta-out: hsl(0 0% 100% / 0.8);
+          --wa-system-bg: #27272a;
           --wa-header-bg: hsl(var(--background));
           --wa-composer-bg: hsl(var(--background));
-          --wa-input-bg: hsl(var(--muted));
-          --wa-icon: hsl(var(--muted-foreground));
+          --wa-input-bg: #27272a;
+          --wa-icon: #a1a1aa;
+          --wa-border: #3f3f46;
+          --wa-surface-hover: #3f3f46;
         }
 
         @supports (height: 100dvh) {
@@ -855,14 +863,17 @@ export default function SupportPage() {
         /* ── Themed scrollbars ── */
         .wa-msg-list, .wa-emoji-picker {
           scrollbar-width: thin;
-          scrollbar-color: hsl(var(--border)) transparent;
+          scrollbar-color: var(--wa-border) transparent;
         }
         .wa-msg-list::-webkit-scrollbar, .wa-emoji-picker::-webkit-scrollbar {
           width: 6px;
         }
         .wa-msg-list::-webkit-scrollbar-thumb, .wa-emoji-picker::-webkit-scrollbar-thumb {
-          background: hsl(var(--border));
+          background: var(--wa-border);
           border-radius: 999px;
+        }
+        .wa-msg-list::-webkit-scrollbar-thumb:hover, .wa-emoji-picker::-webkit-scrollbar-thumb:hover {
+          background: var(--wa-surface-hover);
         }
         .wa-msg-list::-webkit-scrollbar-track, .wa-emoji-picker::-webkit-scrollbar-track {
           background: transparent;
@@ -870,12 +881,20 @@ export default function SupportPage() {
 
         /* ── Composer input states ── */
         .wa-composer textarea::placeholder {
-          color: hsl(var(--muted-foreground));
+          color: var(--wa-meta);
           opacity: 1;
         }
+        .wa-composer textarea,
+        .wa-composer textarea:focus,
+        .wa-composer textarea:focus-visible {
+          outline: none !important;
+          box-shadow: none !important;
+          border: none !important;
+          border-radius: 0 !important;
+        }
         .wa-input-wrap:focus-within {
-          border-color: hsl(var(--primary) / 0.5);
-          box-shadow: 0 0 0 2px hsl(var(--primary) / 0.15);
+          border-color: ${WA.accent};
+          box-shadow: 0 0 0 2px rgba(230, 0, 35, 0.18);
         }
 
         /* ── Button hover/active feedback ── */
@@ -883,7 +902,7 @@ export default function SupportPage() {
           transition: background-color 0.15s, color 0.15s;
         }
         .wa-icon-btn:hover {
-          background: hsl(var(--muted));
+          background: var(--wa-surface-hover);
         }
         .wa-send-btn {
           transition: transform 0.15s, opacity 0.15s, filter 0.15s;

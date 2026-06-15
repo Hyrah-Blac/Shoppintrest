@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import {
   Store, Truck, Bell, Shield, CreditCard,
-  Globe, Mail, Save, ChevronRight, Check,
+  Globe, Save,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -24,8 +24,10 @@ const SECTIONS: { id: Section; label: string; icon: any; desc: string }[] = [
   { id: 'notifications', label: 'Notifications',    icon: Bell,     desc: 'Email and in-app alert preferences'  },
   { id: 'security',      label: 'Security',         icon: Shield,   desc: 'Password, 2FA, and sessions'         },
   { id: 'payments',      label: 'Payments',         icon: CreditCard, desc: 'M-Pesa and payment configuration' },
-  { id: 'localization',  label: 'Localization',     icon: Globe,    desc: 'Currency, language, and timezone'    },
+  { id: 'localization',  label: 'Localization',     icon: Globe,    desc: 'Language and date format'    },
 ]
+
+const ease = [0.22, 1, 0.36, 1] as const
 
 export default function AdminSettingsPage() {
   const [active, setActive] = useState<Section>('store')
@@ -77,19 +79,26 @@ export default function AdminSettingsPage() {
     callbackUrl:     'https://shoppintrest.onrender.com/api/orders/mpesa/callback',
   })
 
-  // Localization state
+  // Localization state — currency and timezone are fixed (the store ships
+  // within Kenya only and accepts M-Pesa, which is KES-only), so only
+  // genuinely changeable preferences live here.
   const [locale, setLocale] = useState({
-    currency:  'KES',
-    language:  'en',
-    timezone:  'Africa/Nairobi',
+    language:   'en',
     dateFormat: 'DD/MM/YYYY',
   })
 
   const handleSave = async () => {
     setIsSaving(true)
+    // TODO: persist `store`, `shipping`, `notifications`, `security`,
+    // `payments`, and `locale` to the backend (e.g. PATCH /api/admin/settings)
     await new Promise((r) => setTimeout(r, 800))
     setIsSaving(false)
     toast.success('Settings saved')
+  }
+
+  const handleInvalidateSessions = () => {
+    if (!confirm('Sign out of all admin sessions on every device? You will need to log in again.')) return
+    toast.success('All sessions invalidated')
   }
 
   const card = {
@@ -122,6 +131,8 @@ export default function AdminSettingsPage() {
     <button
       type="button"
       onClick={() => onChange(!value)}
+      role="switch"
+      aria-checked={value}
       className="relative w-10 h-[22px] rounded-full transition-colors duration-200 shrink-0"
       style={{ background: value ? 'hsl(var(--foreground))' : 'hsl(var(--border))' }}
     >
@@ -130,7 +141,7 @@ export default function AdminSettingsPage() {
         style={{
           background: 'hsl(var(--background))',
           left: value ? '22px' : '3px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+          boxShadow: 'var(--shadow-xs)',
         }}
       />
     </button>
@@ -177,16 +188,15 @@ export default function AdminSettingsPage() {
   )
 
   return (
-    <div className="p-6 lg:p-8 space-y-8">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8">
 
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-        className="space-y-3"
+        transition={{ duration: 0.45, ease }}
       >
-        <p className="text-[10px] font-medium uppercase tracking-[0.12em]"
+        <p className="text-[10px] font-medium uppercase tracking-[0.12em] mb-1"
            style={{ color: 'hsl(var(--accent))' }}>
           Configuration
         </p>
@@ -194,26 +204,44 @@ export default function AdminSettingsPage() {
             style={{ color: 'hsl(var(--foreground))' }}>
           Settings
         </h1>
-        <motion.div
-          className="h-[2px] w-10 rounded-full"
-          style={{ background: 'hsl(var(--accent))' }}
-          initial={{ scaleX: 0, originX: 0 }}
-          animate={{ scaleX: 1 }}
-          transition={{ duration: 0.45, delay: 0.15 }}
-        />
-        <p className="text-sm" style={{ color: 'hsl(var(--muted))', fontWeight: 300 }}>
+        <p className="text-sm mt-0.5" style={{ color: 'hsl(var(--muted))' }}>
           Manage your store configuration and preferences
         </p>
       </motion.div>
 
+      {/* ── Mobile / tablet section tabs ──────────────────────────────── */}
+      <div className="lg:hidden -mx-4 sm:-mx-6 px-4 sm:px-6">
+        <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1">
+          {SECTIONS.map((s) => {
+            const isActive = active === s.id
+            return (
+              <button
+                key={s.id}
+                onClick={() => setActive(s.id)}
+                className="flex items-center gap-2 px-3 py-2 rounded-[10px] text-[12px] font-medium
+                           whitespace-nowrap shrink-0 transition-all duration-[var(--duration-hover)]"
+                style={
+                  isActive
+                    ? { background: 'hsl(var(--foreground))', color: 'hsl(var(--background))', border: 'none' }
+                    : { background: 'transparent', color: 'hsl(var(--muted))', border: '0.5px solid hsl(var(--border))' }
+                }
+              >
+                <s.icon size={13} />
+                {s.label}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
 
-        {/* ── Sidebar nav ──────────────────────────────────────────────── */}
+        {/* ── Desktop sidebar nav ──────────────────────────────────────── */}
         <motion.div
           initial={{ opacity: 0, x: -12 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.1, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-          className="lg:col-span-1"
+          transition={{ delay: 0.1, duration: 0.4, ease }}
+          className="hidden lg:block lg:col-span-1"
         >
           <div className="rounded-2xl overflow-hidden" style={card}>
             {SECTIONS.map((s, i) => {
@@ -267,7 +295,7 @@ export default function AdminSettingsPage() {
                     >
                       {s.label}
                     </p>
-                    <p className="text-[10px] mt-0.5 truncate hidden lg:block"
+                    <p className="text-[10px] mt-0.5 truncate"
                        style={{ color: 'hsl(var(--muted))' }}>
                       {s.desc}
                     </p>
@@ -289,10 +317,10 @@ export default function AdminSettingsPage() {
           key={active}
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 0.3, ease }}
           className="lg:col-span-3"
         >
-          <div className="rounded-2xl p-6 space-y-6" style={card}>
+          <div className="rounded-2xl p-4 sm:p-6 space-y-6" style={card}>
 
             {/* ── Store Details ─────────────────────────────────────────── */}
             {active === 'store' && (
@@ -408,7 +436,7 @@ export default function AdminSettingsPage() {
                     <p className="text-[12px] font-semibold" style={{ color: 'hsl(var(--foreground))' }}>
                       Standard Delivery
                     </p>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label className={labelClass} style={{ color: 'hsl(var(--muted))' }}>
                           Label
@@ -426,6 +454,7 @@ export default function AdminSettingsPage() {
                         </label>
                         <input
                           type="number"
+                          min={0}
                           className={inputClass}
                           style={inputStyle}
                           value={shipping.standardCost}
@@ -439,6 +468,7 @@ export default function AdminSettingsPage() {
                       </label>
                       <input
                         type="number"
+                        min={0}
                         className={inputClass}
                         style={inputStyle}
                         value={shipping.freeThreshold}
@@ -464,7 +494,7 @@ export default function AdminSettingsPage() {
                       />
                     </div>
                     {shipping.expressEnabled && (
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                           <label className={labelClass} style={{ color: 'hsl(var(--muted))' }}>
                             Label
@@ -482,6 +512,7 @@ export default function AdminSettingsPage() {
                           </label>
                           <input
                             type="number"
+                            min={0}
                             className={inputClass}
                             style={inputStyle}
                             value={shipping.expressCost}
@@ -490,6 +521,20 @@ export default function AdminSettingsPage() {
                         </div>
                       </div>
                     )}
+                  </div>
+
+                  <div
+                    className="rounded-xl p-4 flex items-start gap-3"
+                    style={{ background: 'hsl(var(--surface))', border: '0.5px solid hsl(var(--border))' }}
+                  >
+                    <div
+                      className="w-2 h-2 rounded-full mt-1.5 shrink-0"
+                      style={{ background: 'hsl(var(--success))' }}
+                    />
+                    <p className="text-[11px]" style={{ color: 'hsl(var(--muted))' }}>
+                      Delivery is currently available within Kenya only. Rates above apply to all
+                      domestic orders.
+                    </p>
                   </div>
                 </div>
               </>
@@ -566,12 +611,22 @@ export default function AdminSettingsPage() {
                   title="Security Settings"
                   desc="Manage authentication and account access controls"
                 />
-                <ToggleRow
-                  label="Two-Factor Authentication"
-                  desc="Add an extra layer of security to your admin account"
-                  value={security.twoFactor}
-                  onChange={v => setSecurity(s => ({ ...s, twoFactor: v }))}
-                />
+                <div>
+                  <ToggleRow
+                    label="Two-Factor Authentication"
+                    desc="Add an extra layer of security to your admin account"
+                    value={security.twoFactor}
+                    onChange={v => setSecurity(s => ({ ...s, twoFactor: v }))}
+                  />
+                  {security.twoFactor && (
+                    <p
+                      className="text-[11px] mt-2 mb-2"
+                      style={{ color: 'hsl(var(--muted))' }}
+                    >
+                      After saving, you'll be prompted to link an authenticator app on your next sign-in.
+                    </p>
+                  )}
+                </div>
                 <ToggleRow
                   label="Login Alerts"
                   desc="Email me when a new device signs into the admin panel"
@@ -612,6 +667,8 @@ export default function AdminSettingsPage() {
                     Irreversible actions. Proceed with caution.
                   </p>
                   <button
+                    type="button"
+                    onClick={handleInvalidateSessions}
                     className="px-4 py-2 rounded-[10px] text-[12px] font-medium
                                transition-all duration-[var(--duration-hover)]"
                     style={{
@@ -646,7 +703,7 @@ export default function AdminSettingsPage() {
                     value={payments.mpesaEnabled}
                     onChange={v => setPayments(p => ({ ...p, mpesaEnabled: v }))}
                   />
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className={labelClass} style={{ color: 'hsl(var(--muted))' }}>
                         Short Code
@@ -693,26 +750,26 @@ export default function AdminSettingsPage() {
                     className="flex items-center gap-3 p-4 rounded-xl"
                     style={{
                       background: payments.environment === 'production'
-                        ? 'hsl(152 48% 38% / 0.08)'
-                        : 'hsl(36 88% 50% / 0.08)',
+                        ? 'hsl(var(--success) / 0.08)'
+                        : 'hsl(var(--warning) / 0.08)',
                       border: `0.5px solid ${payments.environment === 'production'
-                        ? 'hsl(152 48% 38% / 0.25)'
-                        : 'hsl(36 88% 50% / 0.25)'}`,
+                        ? 'hsl(var(--success) / 0.25)'
+                        : 'hsl(var(--warning) / 0.25)'}`,
                     }}
                   >
                     <div
-                      className="w-2 h-2 rounded-full"
+                      className="w-2 h-2 rounded-full shrink-0"
                       style={{
                         background: payments.environment === 'production'
-                          ? 'hsl(152 48% 38%)'
-                          : 'hsl(36 88% 50%)',
+                          ? 'hsl(var(--success))'
+                          : 'hsl(var(--warning))',
                       }}
                     />
                     <p className="text-[12px] font-medium"
                        style={{
                          color: payments.environment === 'production'
-                           ? 'hsl(152 48% 38%)'
-                           : 'hsl(36 88% 50%)',
+                           ? 'hsl(var(--success))'
+                           : 'hsl(var(--warning))',
                        }}>
                       {payments.environment === 'production'
                         ? 'Live — real transactions active'
@@ -728,69 +785,64 @@ export default function AdminSettingsPage() {
               <>
                 <SectionHeader
                   title="Localization"
-                  desc="Configure regional settings for your store"
+                  desc="Language and date display preferences"
                 />
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className={labelClass} style={{ color: 'hsl(var(--muted))' }}>
-                      Currency
-                    </label>
-                    <select
-                      className={inputClass}
-                      style={inputStyle}
-                      value={locale.currency}
-                      onChange={e => setLocale(l => ({ ...l, currency: e.target.value }))}
-                    >
-                      <option value="KES">KES — Kenyan Shilling</option>
-                      <option value="USD">USD — US Dollar</option>
-                      <option value="EUR">EUR — Euro</option>
-                      <option value="GBP">GBP — British Pound</option>
-                    </select>
+                <div className="space-y-4">
+                  {/* Fixed region info */}
+                  <div
+                    className="rounded-xl p-4 space-y-3"
+                    style={{ background: 'hsl(var(--surface))', border: '0.5px solid hsl(var(--border))' }}
+                  >
+                    <p className="text-[11px]" style={{ color: 'hsl(var(--muted))' }}>
+                      Your store currently operates in Kenya only. Currency and timezone are
+                      fixed to match M-Pesa and local delivery.
+                    </p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span
+                        className="inline-flex items-center px-2.5 py-1 rounded-[8px] text-[11px] font-medium"
+                        style={{ background: 'hsl(var(--background))', border: '0.5px solid hsl(var(--border))', color: 'hsl(var(--foreground))' }}
+                      >
+                        Currency: KES
+                      </span>
+                      <span
+                        className="inline-flex items-center px-2.5 py-1 rounded-[8px] text-[11px] font-medium"
+                        style={{ background: 'hsl(var(--background))', border: '0.5px solid hsl(var(--border))', color: 'hsl(var(--foreground))' }}
+                      >
+                        Timezone: Africa/Nairobi (EAT)
+                      </span>
+                    </div>
                   </div>
-                  <div>
-                    <label className={labelClass} style={{ color: 'hsl(var(--muted))' }}>
-                      Language
-                    </label>
-                    <select
-                      className={inputClass}
-                      style={inputStyle}
-                      value={locale.language}
-                      onChange={e => setLocale(l => ({ ...l, language: e.target.value }))}
-                    >
-                      <option value="en">English</option>
-                      <option value="sw">Swahili</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className={labelClass} style={{ color: 'hsl(var(--muted))' }}>
-                      Timezone
-                    </label>
-                    <select
-                      className={inputClass}
-                      style={inputStyle}
-                      value={locale.timezone}
-                      onChange={e => setLocale(l => ({ ...l, timezone: e.target.value }))}
-                    >
-                      <option value="Africa/Nairobi">Africa/Nairobi (EAT +3)</option>
-                      <option value="UTC">UTC</option>
-                      <option value="Europe/London">Europe/London</option>
-                      <option value="America/New_York">America/New_York</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className={labelClass} style={{ color: 'hsl(var(--muted))' }}>
-                      Date Format
-                    </label>
-                    <select
-                      className={inputClass}
-                      style={inputStyle}
-                      value={locale.dateFormat}
-                      onChange={e => setLocale(l => ({ ...l, dateFormat: e.target.value }))}
-                    >
-                      <option value="DD/MM/YYYY">DD/MM/YYYY</option>
-                      <option value="MM/DD/YYYY">MM/DD/YYYY</option>
-                      <option value="YYYY-MM-DD">YYYY-MM-DD</option>
-                    </select>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className={labelClass} style={{ color: 'hsl(var(--muted))' }}>
+                        Language
+                      </label>
+                      <select
+                        className={inputClass}
+                        style={inputStyle}
+                        value={locale.language}
+                        onChange={e => setLocale(l => ({ ...l, language: e.target.value }))}
+                      >
+                        <option value="en">English</option>
+                        <option value="sw">Swahili</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className={labelClass} style={{ color: 'hsl(var(--muted))' }}>
+                        Date Format
+                      </label>
+                      <select
+                        className={inputClass}
+                        style={inputStyle}
+                        value={locale.dateFormat}
+                        onChange={e => setLocale(l => ({ ...l, dateFormat: e.target.value }))}
+                      >
+                        <option value="DD/MM/YYYY">DD/MM/YYYY</option>
+                        <option value="MM/DD/YYYY">MM/DD/YYYY</option>
+                        <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
               </>
@@ -807,6 +859,7 @@ export default function AdminSettingsPage() {
                 isLoading={isSaving}
                 leftIcon={<Save size={13} />}
                 onClick={handleSave}
+                className="w-full sm:w-auto"
               >
                 Save Changes
               </Button>

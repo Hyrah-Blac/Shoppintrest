@@ -1,11 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import {
   TrendingUp, Users, Package, ShoppingCart,
-  DollarSign, ArrowUpRight, ArrowDownRight,
+  DollarSign, ArrowUpRight, ArrowDownRight, Receipt,
 } from 'lucide-react'
 import {
   LineChart, Line, XAxis, YAxis, Tooltip,
@@ -25,6 +25,8 @@ const statusVariant: Record<string, any> = {
   cancelled:        'destructive',
 }
 
+const ease = [0.22, 1, 0.36, 1] as const
+
 export default function AdminDashboard() {
   const [stats, setStats]       = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -42,56 +44,53 @@ export default function AdminDashboard() {
     orders:  m.orders,
   })) || []
 
+  // Real month-over-month revenue trend, derived from monthlyRevenue.
+  // Only shown when there's at least two data points to compare —
+  // never fabricated.
+  const revenueTrend = useMemo(() => {
+    if (chartData.length < 2) return null
+    const last = chartData[chartData.length - 1].revenue
+    const prev = chartData[chartData.length - 2].revenue
+    if (!prev) return null
+    const pct = ((last - prev) / prev) * 100
+    return { pct, up: pct >= 0 }
+  }, [chartData])
+
   const statCards = [
     {
       label: 'Total Revenue',
       value: stats ? formatPrice(stats.stats.totalRevenue, 'KES') : '—',
-      icon: DollarSign,
-      color: 'text-emerald-600 dark:text-emerald-400',
-      bg:    'bg-emerald-50 dark:bg-emerald-900/20',
-      trend: '+12%',
-      up:    true,
+      icon:  DollarSign,
+      trend: revenueTrend,
     },
     {
       label: 'Total Users',
       value: stats?.stats.totalUsers?.toLocaleString() || '—',
-      icon: Users,
-      color: 'text-blue-600 dark:text-blue-400',
-      bg:    'bg-blue-50 dark:bg-blue-900/20',
-      trend: '+8%',
-      up:    true,
+      icon:  Users,
+      trend: null,
     },
     {
       label: 'Total Orders',
       value: stats?.stats.totalOrders?.toLocaleString() || '—',
-      icon: ShoppingCart,
-      color: 'text-violet-600 dark:text-violet-400',
-      bg:    'bg-violet-50 dark:bg-violet-900/20',
-      trend: '+5%',
-      up:    true,
+      icon:  ShoppingCart,
+      trend: null,
     },
     {
       label: 'Products Listed',
       value: stats?.stats.totalProducts?.toLocaleString() || '—',
-      icon: Package,
-      color: 'text-amber-600 dark:text-amber-400',
-      bg:    'bg-amber-50 dark:bg-amber-900/20',
-      trend: '+2%',
-      up:    true,
+      icon:  Package,
+      trend: null,
     },
     {
       label: 'Conversion Rate',
       value: stats ? `${stats.stats.conversionRate}%` : '—',
-      icon: TrendingUp,
-      color: 'text-rose-600 dark:text-rose-400',
-      bg:    'bg-rose-50 dark:bg-rose-900/20',
-      trend: '-1.2%',
-      up:    false,
+      icon:  TrendingUp,
+      trend: null,
     },
   ]
 
   return (
-    <div className="p-6 lg:p-8 space-y-8">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8">
 
       {/* Header */}
       <div>
@@ -111,14 +110,14 @@ export default function AdminDashboard() {
       </div>
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
         {statCards.map((card, i) => (
           <motion.div
             key={card.label}
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.07, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-            className="rounded-2xl p-5 space-y-4"
+            transition={{ delay: i * 0.06, duration: 0.4, ease }}
+            className="rounded-2xl p-4 sm:p-5 space-y-3 sm:space-y-4"
             style={{
               background:  'hsl(var(--background))',
               border:      '0.5px solid hsl(var(--border))',
@@ -129,30 +128,35 @@ export default function AdminDashboard() {
               <p className="text-[11px] font-medium" style={{ color: 'hsl(var(--muted))' }}>
                 {card.label}
               </p>
-              <div className={cn('w-8 h-8 rounded-xl flex items-center justify-center', card.bg)}>
-                <card.icon size={14} className={card.color} />
+              <div
+                className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                style={{ background: 'hsl(var(--surface))' }}
+              >
+                <card.icon size={14} style={{ color: 'hsl(var(--muted))' }} />
               </div>
             </div>
             {isLoading ? (
               <Skeleton className="h-8 w-24 rounded-lg" />
             ) : (
               <div>
-                <p className="font-display text-2xl font-semibold tracking-tight"
+                <p className="font-display text-xl sm:text-2xl font-semibold tracking-tight"
                    style={{ color: 'hsl(var(--foreground))' }}>
                   {card.value}
                 </p>
-                <div className="flex items-center gap-1 mt-1">
-                  {card.up
-                    ? <ArrowUpRight size={11} className="text-emerald-500" />
-                    : <ArrowDownRight size={11} className="text-rose-500" />
-                  }
-                  <span className={cn(
-                    'text-[10px] font-medium',
-                    card.up ? 'text-emerald-600' : 'text-rose-600'
-                  )}>
-                    {card.trend} vs last month
-                  </span>
-                </div>
+                {card.trend && (
+                  <div className="flex items-center gap-1 mt-1">
+                    {card.trend.up
+                      ? <ArrowUpRight size={11} style={{ color: 'hsl(var(--success))' }} />
+                      : <ArrowDownRight size={11} style={{ color: 'hsl(var(--destructive))' }} />
+                    }
+                    <span
+                      className="text-[10px] font-medium"
+                      style={{ color: card.trend.up ? 'hsl(var(--success))' : 'hsl(var(--destructive))' }}
+                    >
+                      {card.trend.up ? '+' : ''}{card.trend.pct.toFixed(1)}% vs last month
+                    </span>
+                  </div>
+                )}
               </div>
             )}
           </motion.div>
@@ -160,11 +164,11 @@ export default function AdminDashboard() {
       </div>
 
       {/* Chart + Top Products */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6">
 
         {/* Revenue Chart */}
         <div
-          className="xl:col-span-2 rounded-2xl p-6"
+          className="xl:col-span-2 rounded-2xl p-4 sm:p-6"
           style={{
             background: 'hsl(var(--background))',
             border:     '0.5px solid hsl(var(--border))',
@@ -177,16 +181,17 @@ export default function AdminDashboard() {
                 Revenue Overview
               </h2>
               <p className="text-[11px] mt-0.5" style={{ color: 'hsl(var(--muted))' }}>
-                Last 6 months
+                Last {chartData.length || 6} months
               </p>
             </div>
           </div>
           {isLoading ? (
-            <Skeleton className="h-64 rounded-xl" />
+            <Skeleton className="h-56 sm:h-64 rounded-xl" />
           ) : chartData.length === 0 ? (
-            <div className="h-64 flex items-center justify-center text-sm"
+            <div className="h-56 sm:h-64 flex flex-col items-center justify-center text-center gap-2"
                  style={{ color: 'hsl(var(--muted))' }}>
-              No revenue data yet
+              <TrendingUp size={20} />
+              <p className="text-sm">No revenue data yet</p>
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={240}>
@@ -207,6 +212,7 @@ export default function AdminDashboard() {
                   axisLine={false}
                   tickLine={false}
                   tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
+                  width={40}
                 />
                 <Tooltip
                   contentStyle={{
@@ -234,7 +240,7 @@ export default function AdminDashboard() {
 
         {/* Top Products */}
         <div
-          className="rounded-2xl p-6"
+          className="rounded-2xl p-4 sm:p-6"
           style={{
             background: 'hsl(var(--background))',
             border:     '0.5px solid hsl(var(--border))',
@@ -257,9 +263,15 @@ export default function AdminDashboard() {
                 </div>
               ))}
             </div>
+          ) : !stats?.topProducts?.length ? (
+            <div className="flex flex-col items-center text-center gap-2 py-8"
+                 style={{ color: 'hsl(var(--muted))' }}>
+              <Package size={20} />
+              <p className="text-sm">No product data yet</p>
+            </div>
           ) : (
             <div className="space-y-4">
-              {stats?.topProducts?.map((product: any, i: number) => (
+              {stats.topProducts.map((product: any, i: number) => (
                 <div key={product._id} className="flex items-center gap-3">
                   <span className="text-[10px] font-bold w-4"
                         style={{ color: 'hsl(var(--muted))' }}>
@@ -300,7 +312,7 @@ export default function AdminDashboard() {
 
       {/* Recent Orders */}
       <div
-        className="rounded-2xl p-6"
+        className="rounded-2xl p-4 sm:p-6"
         style={{
           background: 'hsl(var(--background))',
           border:     '0.5px solid hsl(var(--border))',
@@ -329,65 +341,104 @@ export default function AdminDashboard() {
               <Skeleton key={i} className="h-14 rounded-xl" />
             ))}
           </div>
+        ) : !stats?.recentOrders?.length ? (
+          <div className="flex flex-col items-center text-center gap-2 py-12"
+               style={{ color: 'hsl(var(--muted))' }}>
+            <Receipt size={20} />
+            <p className="text-sm">No orders yet</p>
+          </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr
-                  className="text-left text-[11px]"
-                  style={{ borderBottom: '0.5px solid hsl(var(--border))' }}
-                >
-                  {['Order', 'Customer', 'Status', 'Date', 'Total'].map((h, i) => (
-                    <th
-                      key={h}
-                      className={cn('pb-3 font-medium', i === 4 && 'text-right')}
-                      style={{ color: 'hsl(var(--muted))' }}
-                    >
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {stats?.recentOrders?.map((order: any) => (
+          <>
+            {/* Desktop / tablet table */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
                   <tr
-                    key={order._id}
-                    className="transition-colors duration-[var(--duration-hover)]"
-                    style={{ borderBottom: '0.5px solid hsl(var(--border-subtle))' }}
-                    onMouseEnter={e => ((e.currentTarget as HTMLElement).style.background = 'hsl(var(--surface))')}
-                    onMouseLeave={e => ((e.currentTarget as HTMLElement).style.background = 'transparent')}
+                    className="text-left text-[11px]"
+                    style={{ borderBottom: '0.5px solid hsl(var(--border))' }}
                   >
-                    <td className="py-3.5 font-mono text-[11px]"
-                        style={{ color: 'hsl(var(--muted))' }}>
-                      #{order._id.slice(-8).toUpperCase()}
-                    </td>
-                    <td className="py-3.5">
-                      <p className="text-[13px] font-medium"
-                         style={{ color: 'hsl(var(--foreground))' }}>
+                    {['Order', 'Customer', 'Status', 'Date', 'Total'].map((h, i) => (
+                      <th
+                        key={h}
+                        className={cn('pb-3 font-medium', i === 4 && 'text-right')}
+                        style={{ color: 'hsl(var(--muted))' }}
+                      >
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {stats.recentOrders.map((order: any) => (
+                    <tr
+                      key={order._id}
+                      className="transition-colors duration-[var(--duration-hover)]"
+                      style={{ borderBottom: '0.5px solid hsl(var(--border-subtle))' }}
+                      onMouseEnter={e => ((e.currentTarget as HTMLElement).style.background = 'hsl(var(--surface))')}
+                      onMouseLeave={e => ((e.currentTarget as HTMLElement).style.background = 'transparent')}
+                    >
+                      <td className="py-3.5 font-mono text-[11px]"
+                          style={{ color: 'hsl(var(--muted))' }}>
+                        #{order._id.slice(-8).toUpperCase()}
+                      </td>
+                      <td className="py-3.5">
+                        <p className="text-[13px] font-medium"
+                           style={{ color: 'hsl(var(--foreground))' }}>
+                          {order.user?.displayName}
+                        </p>
+                        <p className="text-[11px]" style={{ color: 'hsl(var(--muted))' }}>
+                          {order.user?.email}
+                        </p>
+                      </td>
+                      <td className="py-3.5">
+                        <Badge variant={statusVariant[order.status] || 'secondary'} size="sm">
+                          {order.status.replace('_', ' ')}
+                        </Badge>
+                      </td>
+                      <td className="py-3.5 text-[11px]"
+                          style={{ color: 'hsl(var(--muted))' }}>
+                        {formatDate(order.createdAt)}
+                      </td>
+                      <td className="py-3.5 text-right text-[13px] font-semibold"
+                          style={{ color: 'hsl(var(--foreground))' }}>
+                        {formatPrice(order.total, 'KES')}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile cards */}
+            <div className="md:hidden -mx-4 sm:-mx-6">
+              <div className="divide-y" style={{ borderColor: 'hsl(var(--border-subtle))' }}>
+                {stats.recentOrders.map((order: any) => (
+                  <div
+                    key={order._id}
+                    className="px-4 sm:px-6 py-3.5 flex flex-col gap-2"
+                    style={{ borderBottom: '0.5px solid hsl(var(--border-subtle))' }}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-[13px] font-medium truncate" style={{ color: 'hsl(var(--foreground))' }}>
                         {order.user?.displayName}
                       </p>
-                      <p className="text-[11px]" style={{ color: 'hsl(var(--muted))' }}>
-                        {order.user?.email}
+                      <p className="text-[13px] font-semibold shrink-0" style={{ color: 'hsl(var(--foreground))' }}>
+                        {formatPrice(order.total, 'KES')}
                       </p>
-                    </td>
-                    <td className="py-3.5">
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-[11px] font-mono truncate" style={{ color: 'hsl(var(--muted))' }}>
+                        #{order._id.slice(-8).toUpperCase()} · {formatDate(order.createdAt)}
+                      </p>
                       <Badge variant={statusVariant[order.status] || 'secondary'} size="sm">
                         {order.status.replace('_', ' ')}
                       </Badge>
-                    </td>
-                    <td className="py-3.5 text-[11px]"
-                        style={{ color: 'hsl(var(--muted))' }}>
-                      {formatDate(order.createdAt)}
-                    </td>
-                    <td className="py-3.5 text-right text-[13px] font-semibold"
-                        style={{ color: 'hsl(var(--foreground))' }}>
-                      {formatPrice(order.total, 'KES')}
-                    </td>
-                  </tr>
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </div>
+            </div>
+          </>
         )}
       </div>
     </div>
