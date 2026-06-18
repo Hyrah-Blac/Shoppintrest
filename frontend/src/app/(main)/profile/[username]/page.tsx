@@ -6,8 +6,6 @@ interface Props {
 
 export default async function ProfilePage({ params }: Props) {
   const { username } = await params
-
   if (!username) return null
-
   return <ProfileView username={username} />
 }

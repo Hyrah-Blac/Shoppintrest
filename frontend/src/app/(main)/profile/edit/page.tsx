@@ -20,23 +20,34 @@ export default function ProfileEditPage() {
   const [form, setForm] = useState({
     displayName: '',
     bio:         '',
-    website:     '',
     avatar:      '',
   })
   const [isLoading,        setIsLoading]        = useState(false)
   const [isUploadingAvatar,setIsUploadingAvatar] = useState(false)
+  const [initialForm,      setInitialForm]      = useState(form)
   const fileRef = useRef<HTMLInputElement>(null)
+
+  const isDirty = JSON.stringify(form) !== JSON.stringify(initialForm)
 
   useEffect(() => {
     if (user) {
-      setForm({
+      const loaded = {
         displayName: user.displayName || '',
         bio:         user.bio         || '',
-        website:     user.website     || '',
         avatar:      user.avatar      || '',
-      })
+      }
+      setForm(loaded)
+      setInitialForm(loaded)
     }
   }, [user])
+
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (isDirty) e.preventDefault()
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [isDirty])
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -59,6 +70,7 @@ export default function ProfileEditPage() {
     setIsLoading(true)
     try {
       await updateUser(form)
+      setInitialForm(form)
       toast.success('Profile updated')
       router.push(`/profile/${user?.username}`)
     } catch {
@@ -70,7 +82,7 @@ export default function ProfileEditPage() {
 
   return (
     <div className="min-h-screen bg-surface">
-      <div className="container-narrow py-10 max-w-2xl">
+      <div className="mx-auto max-w-xl px-4 py-10">
         <Link
           href={`/profile/${user?.username}`}
           className="inline-flex items-center gap-2 text-sm text-muted
@@ -81,9 +93,10 @@ export default function ProfileEditPage() {
         </Link>
 
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-background rounded-3xl border border-border p-8 space-y-6"
+          transition={{ duration: 0.2 }}
+          className="bg-background rounded-3xl border border-border p-8 space-y-7"
         >
           <div>
             <h1 className="font-display text-2xl font-semibold tracking-tight">
@@ -96,12 +109,12 @@ export default function ProfileEditPage() {
 
           {/* Avatar */}
           <div className="flex items-center gap-5">
-            <div className="relative">
+            <div className="relative shrink-0">
               <div className="w-20 h-20 rounded-full overflow-hidden bg-surface border-2 border-border">
                 {form.avatar ? (
                   <Image src={form.avatar} alt="Avatar" width={80} height={80} className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-muted text-xl font-semibold">
+                  <div className="w-full h-full flex items-center justify-center text-muted text-2xl font-semibold select-none">
                     {form.displayName?.[0]?.toUpperCase() || '?'}
                   </div>
                 )}
@@ -109,9 +122,11 @@ export default function ProfileEditPage() {
               <button
                 onClick={() => fileRef.current?.click()}
                 disabled={isUploadingAvatar}
+                aria-label="Change profile photo"
                 className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full
                            bg-foreground text-background flex items-center
-                           justify-center hover:opacity-80 transition-opacity"
+                           justify-center shadow-sm
+                           hover:opacity-80 disabled:opacity-50 transition-opacity"
               >
                 {isUploadingAvatar ? <Loader2 size={12} className="animate-spin" /> : <Camera size={12} />}
               </button>
@@ -119,59 +134,48 @@ export default function ProfileEditPage() {
             </div>
             <div>
               <p className="text-sm font-medium text-foreground">Profile photo</p>
-              <p className="text-xs text-muted mt-0.5">JPG, PNG or WebP. Max 5MB.</p>
-              <button
-                onClick={() => fileRef.current?.click()}
-                className="text-xs text-foreground underline underline-offset-2 hover:opacity-70 transition-opacity mt-1"
-              >
-                Change photo
-              </button>
+              <p className="text-xs text-muted mt-0.5">JPG, PNG or WebP · max 5 MB</p>
             </div>
           </div>
 
           {/* Fields */}
-          <Input
-            label="Display name"
-            placeholder="Your name"
-            value={form.displayName}
-            onChange={e => setForm(f => ({ ...f, displayName: e.target.value }))}
-            maxLength={60}
-          />
-
-          <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-foreground">Bio</label>
-            <textarea
-              className="w-full h-24 rounded-xl border border-input bg-background
-                         px-4 py-3 text-sm text-foreground placeholder:text-muted
-                         resize-none focus:outline-none focus:ring-2 focus:ring-ring"
-              placeholder="Tell the world about yourself..."
-              value={form.bio}
-              onChange={e => setForm(f => ({ ...f, bio: e.target.value }))}
-              maxLength={300}
+          <div className="border-t border-border" />
+          <div className="space-y-5">
+            <Input
+              label="Display name"
+              placeholder="Your name"
+              value={form.displayName}
+              onChange={e => setForm(f => ({ ...f, displayName: e.target.value }))}
+              maxLength={60}
             />
-            <p className="text-xs text-muted text-right">{form.bio.length}/300</p>
+
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-foreground">Bio</label>
+              <textarea
+                className="w-full h-24 rounded-xl border border-input bg-background
+                           px-4 py-3 text-sm text-foreground placeholder:text-muted
+                           resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+                placeholder="Tell the world about yourself..."
+                value={form.bio}
+                onChange={e => setForm(f => ({ ...f, bio: e.target.value }))}
+                maxLength={300}
+              />
+              <p className="text-xs text-muted text-right tabular-nums">{form.bio.length}/300</p>
+            </div>
           </div>
 
-          <Input
-            label="Website"
-            placeholder="https://yoursite.com"
-            value={form.website}
-            onChange={e => setForm(f => ({ ...f, website: e.target.value }))}
-            type="url"
-          />
-
           {/* Read-only account info */}
-          <div className="p-4 bg-surface rounded-xl border border-border space-y-2">
-            <p className="text-xs text-muted font-medium uppercase tracking-wider">Account info</p>
-            <div className="flex justify-between text-sm">
+          <div className="px-4 py-3 bg-surface rounded-xl border border-border space-y-2.5">
+            <p className="text-[11px] font-semibold text-muted uppercase tracking-widest">Account</p>
+            <div className="flex justify-between items-center text-sm">
               <span className="text-muted">Username</span>
               <span className="font-medium">@{user?.username}</span>
             </div>
-            <div className="flex justify-between text-sm">
+            <div className="flex justify-between items-center text-sm">
               <span className="text-muted">Email</span>
-              <span className="font-medium">{user?.email}</span>
+              <span className="font-medium truncate max-w-[60%] text-right">{user?.email}</span>
             </div>
-            <p className="text-xs text-muted">Username and email are managed via your account settings</p>
+            <p className="text-xs text-muted pt-0.5">Username and email are managed in account settings.</p>
           </div>
 
           <div className="flex gap-3 pt-2">
@@ -180,13 +184,20 @@ export default function ProfileEditPage() {
               size="lg"
               className="flex-1 rounded-2xl"
               isLoading={isLoading}
+              disabled={!isDirty || isLoading}
               onClick={handleSave}
             >
               Save changes
             </Button>
-            <Link href={`/profile/${user?.username}`}>
-              <Button variant="outline" size="lg" className="rounded-2xl">Cancel</Button>
-            </Link>
+            <Button
+              variant="outline"
+              size="lg"
+              className="rounded-2xl"
+              disabled={isLoading}
+              onClick={() => router.push(`/profile/${user?.username}`)}
+            >
+              Cancel
+            </Button>
           </div>
         </motion.div>
       </div>
