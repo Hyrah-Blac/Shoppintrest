@@ -92,8 +92,8 @@ export default function AdminDashboard() {
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8">
 
-      {/* Header */}
-      <div>
+      {/* Header — extra top padding on mobile to clear the fixed 56px top bar */}
+      <div className="pt-2 sm:pt-0">
         <p
           className="text-[10px] font-medium uppercase tracking-[0.12em] mb-1"
           style={{ color: 'hsl(var(--accent))' }}
@@ -109,7 +109,9 @@ export default function AdminDashboard() {
         </p>
       </div>
 
-      {/* Stat Cards */}
+      {/* Stat Cards
+          5 cards: 2-col on mobile (last card spans full width to avoid orphan),
+          3-col on sm, 5-col on lg */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
         {statCards.map((card, i) => (
           <motion.div
@@ -117,7 +119,11 @@ export default function AdminDashboard() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.06, duration: 0.4, ease }}
-            className="rounded-2xl p-4 sm:p-5 space-y-3 sm:space-y-4"
+            // 5th card (i===4) spans 2 cols on mobile so it's not orphaned left
+            className={cn(
+              'rounded-xl p-4 sm:p-5 space-y-3 sm:space-y-4',
+              i === 4 && 'col-span-2 sm:col-span-1'
+            )}
             style={{
               background:  'hsl(var(--background))',
               border:      '0.5px solid hsl(var(--border))',
@@ -181,7 +187,7 @@ export default function AdminDashboard() {
                 Revenue Overview
               </h2>
               <p className="text-[11px] mt-0.5" style={{ color: 'hsl(var(--muted))' }}>
-                Last {chartData.length || 6} months
+                {chartData.length > 0 ? `Last ${chartData.length} month${chartData.length === 1 ? '' : 's'}` : 'No data yet'}
               </p>
             </div>
           </div>
@@ -195,7 +201,7 @@ export default function AdminDashboard() {
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={240}>
-              <LineChart data={chartData}>
+              <LineChart data={chartData} style={{ cursor: 'default' }}>
                 <CartesianGrid
                   strokeDasharray="3 3"
                   stroke="hsl(var(--border))"
@@ -223,7 +229,10 @@ export default function AdminDashboard() {
                     color:        'hsl(var(--foreground))',
                     boxShadow:    'var(--shadow-md)',
                   }}
+                  // Suppress the default label (which was rendering the "N" avatar)
+                  labelFormatter={() => ''}
                   formatter={(value: any) => [formatPrice(value, 'KES'), 'Revenue']}
+                  cursor={{ stroke: 'hsl(var(--border))', strokeWidth: 1 }}
                 />
                 <Line
                   type="monotone"

@@ -1,15 +1,17 @@
 'use client'
 
 /**
- * Navbar — v3 · Shoppin
+ * Navbar — v4 · Shoppin
  *
- * v2 → v3:
- *  - Removed: Collections nav item, Messages nav item
- *  - Removed: useMessageStore (store being deleted)
- *  - Removed: BookMarked, MessageCircle imports
- *  - Added:   Support to desktop dropdown + mobile links
- *  - Added:   Headphones icon
- *  - Mobile fill-current guard updated (removed /messages reference)
+ * v3 → v4: general polish pass
+ *  - Tighter, more consistent spacing scale across breakpoints
+ *  - Logo sizing normalized, better vertical centering
+ *  - Desktop nav pill + active indicator refined
+ *  - Icon button hit-targets unified (40px) for better touch/click feel
+ *  - Notification/cart badges repositioned for visual balance
+ *  - Mobile drawer: clearer grouping, larger tap targets, smoother stagger
+ *  - Avatar ring/focus states unified between mobile + desktop
+ *  - Search bar trigger restyled to look more like an actual search field
  */
 
 import { useState, useEffect, useRef } from 'react'
@@ -91,7 +93,7 @@ export function Navbar() {
     ? user.displayName.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
     : user?.email?.[0]?.toUpperCase() ?? 'U'
 
-  const Avatar = ({ size = 28 }: { size?: number }) => (
+  const Avatar = ({ size = 27 }: { size?: number }) => (
     <div
       className="rounded-full flex items-center justify-center
                  text-[hsl(var(--background))] font-semibold shrink-0 overflow-hidden"
@@ -115,29 +117,29 @@ export function Navbar() {
           'fixed top-0 left-0 right-0 z-50',
           'transition-[padding,background,border-color,box-shadow]',
           'duration-[var(--duration-standard)]',
-          isScrolled ? 'glass py-2' : 'bg-transparent py-3'
+          isScrolled ? 'glass py-2' : 'bg-transparent py-2.5'
         )}
         initial={{ y: -80, opacity: 0 }}
         animate={{ y: 0,   opacity: 1 }}
         transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
       >
-        <div className="container-wide flex items-center justify-between gap-4">
+        <div className="container-wide flex items-center justify-between gap-3 sm:gap-4">
 
           {/* ── Logo ── */}
-          <Link href="/" className="shrink-0 flex items-center">
-            <div className="relative w-16 h-7">
+          <Link href="/" className="shrink-0 flex items-center -ml-1">
+            <div className="relative w-[58px] h-[22px] sm:w-[64px] sm:h-[24px]">
               <Image src="/logo.png" alt="Shoppin" fill sizes="64px" className="object-contain" priority />
             </div>
           </Link>
 
           {/* ── Desktop Nav ── */}
-          <nav className="hidden md:flex items-center gap-1" aria-label="Main navigation">
+          <nav className="hidden md:flex items-center gap-0.5" aria-label="Main navigation">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
                 className={cn(
-                  'relative px-4 py-2 rounded-[var(--radius-sm)] text-sm font-medium',
+                  'relative px-3.5 py-1.5 rounded-[var(--radius-sm)] text-sm font-medium',
                   'transition-all duration-[var(--duration-hover)]',
                   pathname === link.href
                     ? 'text-[hsl(var(--foreground))] bg-[hsl(var(--surface))]'
@@ -158,13 +160,24 @@ export function Navbar() {
           </nav>
 
           {/* ── Right Actions ── */}
-          <div className="flex items-center gap-1.5 shrink-0">
+          <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
 
-            {/* Search + Theme — desktop only */}
-            <div className="hidden md:flex items-center gap-1.5">
-              <NavIconBtn onClick={() => setIsSearchOpen(true)} label="Search">
-                <Search size={17} />
-              </NavIconBtn>
+            {/* Search — desktop only, styled as an actual field trigger */}
+            <button
+              onClick={() => setIsSearchOpen(true)}
+              aria-label="Search"
+              className="hidden md:flex items-center gap-2 h-8 px-2.5 rounded-full text-[13px]
+                         text-[hsl(var(--muted))] transition-all duration-[var(--duration-hover)]
+                         border border-[hsl(var(--border))] bg-[hsl(var(--surface)/0.5)]
+                         hover:text-[hsl(var(--foreground))] hover:border-[hsl(var(--foreground)/0.2)]
+                         hover:bg-[hsl(var(--surface))]"
+              style={{ minWidth: '148px' }}
+            >
+              <Search size={14} className="shrink-0" />
+              <span className="truncate">Search anything…</span>
+            </button>
+
+            <div className="hidden md:flex items-center">
               <ThemeToggle />
             </div>
 
@@ -172,7 +185,7 @@ export function Navbar() {
               <>
                 {/* Notifications */}
                 <Link href="/notifications" className="btn-icon relative" aria-label="Notifications">
-                  <Bell size={17} />
+                  <Bell size={16} />
                   <AnimatePresence>
                     {unreadCount > 0 && (
                       <motion.span
@@ -198,12 +211,12 @@ export function Navbar() {
                     pathname === '/saved' && 'text-[hsl(var(--foreground))]'
                   )}
                 >
-                  <Heart size={17} className={cn(pathname === '/saved' && 'fill-current')} />
+                  <Heart size={16} className={cn(pathname === '/saved' && 'fill-current')} />
                 </Link>
 
                 {/* Cart */}
                 <button onClick={toggleCart} aria-label="Cart" className="btn-icon relative">
-                  <ShoppingBag size={17} />
+                  <ShoppingBag size={16} />
                   <AnimatePresence>
                     {itemCount > 0 && (
                       <motion.span
@@ -224,11 +237,11 @@ export function Navbar() {
                 <Link
                   href={`/profile/${user?.username}`}
                   aria-label="Your profile"
-                  className="md:hidden flex items-center p-1 rounded-full ml-0.5
-                             hover:ring-2 hover:ring-[hsl(var(--border))]
+                  className="md:hidden flex items-center p-[3px] rounded-full ml-0.5
+                             ring-1 ring-transparent hover:ring-[hsl(var(--border))]
                              transition-all duration-[var(--duration-hover)]"
                 >
-                  <Avatar size={28} />
+                  <Avatar size={26} />
                 </Link>
 
                 {/* Avatar — desktop: dropdown */}
@@ -241,13 +254,13 @@ export function Navbar() {
                     aria-label="Account menu"
                     aria-expanded={isUserOpen}
                     className={cn(
-                      'flex items-center p-1 rounded-full',
+                      'flex items-center p-[2px] rounded-full',
                       'transition-all duration-[var(--duration-hover)]',
-                      'hover:ring-2 hover:ring-[hsl(var(--border))]',
-                      isUserOpen && 'ring-2 ring-[hsl(var(--border))]'
+                      'ring-1 ring-transparent hover:ring-[hsl(var(--border))]',
+                      isUserOpen && 'ring-[hsl(var(--border))]'
                     )}
                   >
-                    <Avatar size={28} />
+                    <Avatar size={27} />
                   </button>
 
                   <AnimatePresence>
@@ -259,7 +272,7 @@ export function Navbar() {
                         transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
                         className="absolute right-0 top-full mt-2 z-50 overflow-hidden"
                         style={{
-                          width:        '276px',
+                          width:        '280px',
                           borderRadius: '16px',
                           background:   'hsl(var(--surface))',
                           border:       '0.5px solid hsl(var(--border))',
@@ -268,10 +281,10 @@ export function Navbar() {
                       >
                         {/* Header */}
                         <div
-                          className="px-3.5 py-3 flex items-center gap-3"
+                          className="px-3.5 py-3.5 flex items-center gap-3"
                           style={{ borderBottom: '0.5px solid hsl(var(--border))' }}
                         >
-                          <Avatar size={42} />
+                          <Avatar size={38} />
                           <div className="min-w-0">
                             <p
                               className="text-[14px] font-medium truncate leading-snug"
@@ -370,7 +383,7 @@ export function Navbar() {
               <>
                 {/* Cart — guests */}
                 <button onClick={toggleCart} aria-label="Cart" className="btn-icon relative">
-                  <ShoppingBag size={17} />
+                  <ShoppingBag size={16} />
                   <AnimatePresence>
                     {itemCount > 0 && (
                       <motion.span
@@ -434,7 +447,7 @@ export function Navbar() {
                 animate={{ opacity: 1 }}
                 exit={{   opacity: 0 }}
                 transition={{ duration: 0.2 }}
-                className="fixed inset-0 top-[52px] bg-black/40 md:hidden -z-10"
+                className="fixed inset-0 top-[48px] bg-black/40 md:hidden -z-10"
                 onClick={() => setIsMobileOpen(false)}
                 aria-hidden
               />
@@ -444,14 +457,37 @@ export function Navbar() {
                 animate={{ opacity: 1, y: 0,  scale: 1    }}
                 exit={{   opacity: 0, y: -8, scale: 0.98  }}
                 transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-                className="md:hidden mx-3 mt-2 mb-1 rounded-[var(--radius-lg)] overflow-hidden"
+                className="md:hidden mx-3 mt-2 mb-2 rounded-[var(--radius-lg)] overflow-hidden max-h-[calc(100vh-80px)] overflow-y-auto"
                 style={{
                   background: 'hsl(var(--surface))',
                   border:     '1px solid hsl(var(--border))',
                   boxShadow:  'var(--shadow-float)',
                 }}
               >
+                {/* Search — promoted to top, styled like a real field */}
+                <div className="p-3">
+                  <button
+                    onClick={() => { setIsSearchOpen(true); setIsMobileOpen(false) }}
+                    className="flex items-center gap-2.5 w-full px-3.5 py-3 rounded-[var(--radius-sm)]
+                               text-sm font-medium text-[hsl(var(--muted))]
+                               bg-[hsl(var(--background-secondary))]
+                               border border-[hsl(var(--border))]
+                               active:scale-[0.99] transition-all duration-[var(--duration-hover)]"
+                  >
+                    <Search size={15} />
+                    Search anything…
+                  </button>
+                </div>
+
+                <div className="h-px mx-3" style={{ background: 'hsl(var(--border))' }} />
+
                 <div className="p-2">
+                  <p
+                    className="px-3 pt-2 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.08em]"
+                    style={{ color: 'hsl(var(--muted))' }}
+                  >
+                    Browse
+                  </p>
                   {allMobileLinks.map((link, i) => {
                     const Icon   = link.icon
                     const active = pathname === link.href
@@ -465,25 +501,25 @@ export function Navbar() {
                         <Link
                           href={link.href}
                           className={cn(
-                            'group flex items-center gap-3 px-3 py-2.5 rounded-[var(--radius-sm)]',
-                            'transition-all duration-[var(--duration-hover)]',
+                            'group flex items-center gap-3 px-3 py-3 rounded-[var(--radius-sm)]',
+                            'transition-all duration-[var(--duration-hover)] active:scale-[0.99]',
                             active
                               ? 'bg-[hsl(var(--surface-elevated))] text-[hsl(var(--foreground))]'
                               : 'text-[hsl(var(--muted))] hover:bg-[hsl(var(--background-secondary))] hover:text-[hsl(var(--foreground))]'
                           )}
                         >
                           <span className={cn(
-                            'w-7 h-7 rounded-[var(--radius-sm)] flex items-center justify-center shrink-0',
+                            'w-8 h-8 rounded-[var(--radius-sm)] flex items-center justify-center shrink-0',
                             'transition-colors duration-[var(--duration-hover)]',
                             active
                               ? 'bg-[hsl(var(--background-secondary))] text-[hsl(var(--foreground))]'
                               : 'bg-[hsl(var(--background-secondary))] text-[hsl(var(--muted))] group-hover:text-[hsl(var(--foreground))]'
                           )}>
-                            <Icon size={14} className={cn(link.href === '/saved' && active && 'fill-current')} />
+                            <Icon size={15} className={cn(link.href === '/saved' && active && 'fill-current')} />
                           </span>
                           <span className="flex-1 text-sm font-medium">{link.label}</span>
                           <ChevronRight
-                            size={13}
+                            size={14}
                             className={cn(
                               'transition-all duration-[var(--duration-hover)]',
                               active ? 'opacity-30' : 'opacity-0 group-hover:opacity-30'
@@ -503,17 +539,17 @@ export function Navbar() {
                       <Link
                         href="/admin"
                         className={cn(
-                          'group flex items-center gap-3 px-3 py-2.5 rounded-[var(--radius-sm)]',
-                          'transition-all duration-[var(--duration-hover)]',
+                          'group flex items-center gap-3 px-3 py-3 rounded-[var(--radius-sm)]',
+                          'transition-all duration-[var(--duration-hover)] active:scale-[0.99]',
                           pathname.startsWith('/admin')
                             ? 'bg-[hsl(var(--surface-elevated))] text-[hsl(var(--foreground))]'
                             : 'text-[hsl(var(--muted))] hover:bg-[hsl(var(--background-secondary))] hover:text-[hsl(var(--foreground))]'
                         )}
                       >
-                        <span className="w-7 h-7 rounded-[var(--radius-sm)] flex items-center justify-center shrink-0
+                        <span className="w-8 h-8 rounded-[var(--radius-sm)] flex items-center justify-center shrink-0
                                          bg-[hsl(var(--background-secondary))] text-[hsl(var(--muted))]
                                          group-hover:text-[hsl(var(--foreground))] transition-colors duration-[var(--duration-hover)]">
-                          <LayoutDashboard size={14} />
+                          <LayoutDashboard size={15} />
                         </span>
                         <span className="flex-1 text-sm font-medium">Dashboard</span>
                       </Link>
@@ -524,27 +560,15 @@ export function Navbar() {
                 <div className="h-px mx-3" style={{ background: 'hsl(var(--border))' }} />
 
                 <motion.div
-                  className="p-2 flex items-center gap-2"
+                  className="p-3 flex items-center justify-between"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: allMobileLinks.length * 0.04 + 0.05 }}
                 >
-                  <button
-                    onClick={() => { setIsSearchOpen(true); setIsMobileOpen(false) }}
-                    className={cn(
-                      'flex items-center gap-2 flex-1 px-3 py-2.5 rounded-[var(--radius-sm)]',
-                      'text-sm font-medium text-[hsl(var(--muted))]',
-                      'bg-[hsl(var(--background-secondary))]',
-                      'hover:bg-[hsl(var(--border))] hover:text-[hsl(var(--foreground))]',
-                      'transition-all duration-[var(--duration-hover)]'
-                    )}
-                  >
-                    <Search size={14} />
-                    Search anything…
-                  </button>
-                  <div className="flex items-center justify-center w-10 h-10 rounded-[var(--radius-sm)] bg-[hsl(var(--background-secondary))]">
-                    <ThemeToggle />
-                  </div>
+                  <span className="text-sm font-medium" style={{ color: 'hsl(var(--muted))' }}>
+                    Appearance
+                  </span>
+                  <ThemeToggle />
                 </motion.div>
 
                 {!isSignedIn && (
@@ -587,9 +611,9 @@ export function Navbar() {
                     >
                       <button
                         onClick={() => signOut()}
-                        className="w-full flex items-center gap-3 px-3 py-2.5
+                        className="w-full flex items-center gap-3 px-3 py-3
                                    rounded-[var(--radius-sm)] text-sm
-                                   transition-all duration-[var(--duration-hover)]"
+                                   transition-all duration-[var(--duration-hover)] active:scale-[0.99]"
                         style={{ color: 'hsl(var(--muted))' }}
                         onMouseEnter={e => {
                           e.currentTarget.style.background = 'hsl(var(--background-secondary))'
@@ -601,10 +625,10 @@ export function Navbar() {
                         }}
                       >
                         <span
-                          className="w-7 h-7 rounded-[var(--radius-sm)] flex items-center justify-center shrink-0"
+                          className="w-8 h-8 rounded-[var(--radius-sm)] flex items-center justify-center shrink-0"
                           style={{ background: 'hsl(var(--background-secondary))' }}
                         >
-                          <LogOut size={13} style={{ color: 'hsl(var(--muted))' }} />
+                          <LogOut size={14} style={{ color: 'hsl(var(--muted))' }} />
                         </span>
                         <span className="font-medium">Sign out</span>
                       </button>
@@ -617,7 +641,7 @@ export function Navbar() {
         </AnimatePresence>
       </motion.header>
 
-      <div className="h-[52px]" aria-hidden />
+      <div className="h-[48px]" aria-hidden />
 
       <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
     </>
@@ -661,19 +685,5 @@ function DropdownItem({
       </span>
       <ChevronRight size={13} style={{ color: 'hsl(var(--muted))', opacity: 0.45 }} />
     </Link>
-  )
-}
-
-// ─── NavIconBtn ───────────────────────────────────────────────────────────────
-
-function NavIconBtn({ onClick, label, children }: {
-  onClick?: () => void
-  label: string
-  children: React.ReactNode
-}) {
-  return (
-    <button onClick={onClick} aria-label={label} className="btn-icon">
-      {children}
-    </button>
   )
 }

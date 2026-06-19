@@ -147,7 +147,27 @@ function Bubble({
     )
   }
 
-  const metaWidth = isMine ? 64 : 50
+  const metaNode = status === 'failed' ? (
+    <button
+      className="wa-retry-btn"
+      onClick={onRetry}
+      style={{
+        fontSize: 11, fontWeight: 600, color: '#ffd9a0',
+        background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+        display: 'flex', alignItems: 'center', gap: 4,
+      }}
+    >
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/>
+      </svg>
+      Retry
+    </button>
+  ) : (
+    <>
+      <span>{timeLabel(createdAt)}</span>
+      {isMine && <Ticks status={status} />}
+    </>
+  )
 
   return (
     <div style={{
@@ -163,13 +183,16 @@ function Bubble({
           minWidth: 60,
           background: isMine ? 'var(--wa-bubble-out)' : 'var(--wa-bubble-in)',
           color: isMine ? 'var(--wa-text-out)' : 'var(--wa-text-in)',
-          borderRadius: 7.5,
-          borderTopRightRadius: isMine && showTail ? 0 : 7.5,
-          borderTopLeftRadius: !isMine && showTail ? 0 : 7.5,
-          padding: '6px 7px 8px 9px',
+          border: isMine ? '0.5px solid hsl(0 0% 100% / 0.07)' : '0.5px solid var(--wa-border)',
+          borderRadius: 10,
+          borderTopRightRadius: isMine && showTail ? 3 : 10,
+          borderTopLeftRadius: !isMine && showTail ? 3 : 10,
+          padding: '7px 10px 7px 11px',
           fontSize: 14.5,
           lineHeight: 1.45,
-          boxShadow: '0 1px 0.5px hsl(var(--foreground) / 0.06)',
+          boxShadow: isMine
+            ? '0 1px 2px hsl(0 0% 0% / 0.25)'
+            : '0 1px 0.5px hsl(var(--foreground) / 0.06)',
           wordBreak: 'break-word',
           userSelect: 'text' as const,
           opacity: status === 'sending' ? 0.7 : 1,
@@ -194,52 +217,35 @@ function Bubble({
           </svg>
         )}
 
-        {/* Message text with reserved trailing space for meta */}
-        <span style={{ whiteSpace: 'pre-wrap' }}>
-          {text}
-          <span style={{
-            display: 'inline-block',
-            width: metaWidth,
-            height: 1,
-            verticalAlign: 'bottom',
-          }} />
-        </span>
-
-        {/* Meta (time + ticks), absolutely positioned bottom-right */}
-        <span style={{
-          position: 'absolute',
-          right: 6, bottom: 5,
-          display: 'flex', alignItems: 'center', gap: 3,
-          fontSize: 11, fontWeight: 500, lineHeight: 1,
-          padding: '1px 5px',
-          borderRadius: 6,
-          background: isMine ? 'hsl(0 0% 100% / 0.14)' : 'hsl(var(--foreground) / 0.06)',
-          color: isMine ? 'var(--wa-meta-out)' : 'var(--wa-meta)',
-          whiteSpace: 'nowrap',
-          userSelect: 'none',
+        {/* Text + meta as a wrapping flex row: the timestamp tucks onto the
+            last line when there's room, and falls to its own (still
+            right-aligned) line when there isn't — so it can never overlap
+            the message text, regardless of message length or font. */}
+        <div style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'flex-end',
+          columnGap: 8,
+          rowGap: 2,
         }}>
-          {status === 'failed' ? (
-            <button
-              className="wa-retry-btn"
-              onClick={onRetry}
-              style={{
-                fontSize: 11, fontWeight: 600, color: '#ffd9a0',
-                background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-                display: 'flex', alignItems: 'center', gap: 4,
-              }}
-            >
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/>
-              </svg>
-              Retry
-            </button>
-          ) : (
-            <>
-              <span>{timeLabel(createdAt)}</span>
-              {isMine && <Ticks status={status} />}
-            </>
-          )}
-        </span>
+          <span style={{ whiteSpace: 'pre-wrap', flex: '1 1 auto', minWidth: 0 }}>
+            {text}
+          </span>
+          <span style={{
+            flexShrink: 0,
+            marginLeft: 'auto',
+            display: 'flex', alignItems: 'center', gap: 3,
+            fontSize: 11, fontWeight: 500, lineHeight: 1,
+            padding: '2px 5px',
+            borderRadius: 6,
+            background: isMine ? 'hsl(0 0% 100% / 0.14)' : 'hsl(var(--foreground) / 0.07)',
+            color: isMine ? 'var(--wa-meta-out)' : 'var(--wa-meta)',
+            whiteSpace: 'nowrap',
+            userSelect: 'none',
+          }}>
+            {metaNode}
+          </span>
+        </div>
       </div>
     </div>
   )

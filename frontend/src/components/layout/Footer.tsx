@@ -1,41 +1,18 @@
 'use client'
 
 /**
- * Footer — v5 · Shoppin
+ * Footer — v6 · Shoppin
  *
- * v4 → v5:
- *  - Added newsletter signup band above the main grid — headline + email
- *    capture, matches Net-a-Porter/Mytheresa pattern of leading with email
- *    capture rather than burying it in a column
- *  - Added "Shipping within Kenya" indicator pill near the tagline — replaces
- *    the old region-selector idea with a static trust signal (small status
- *    dot using --success token, not accent)
- *  - Added "Pay with M-Pesa" badge in the bottom bar — single, confident
- *    payment indicator instead of a generic (and currently inaccurate)
- *    multi-card row
- *  - Bottom bar restructured: left cluster = copyright + M-Pesa badge,
- *    right = Est. 2026, still stacks/centers on mobile
- *
- * v3 → v4 (aligned with Mytheresa / Net-a-Porter / SSENSE footer conventions):
- *  - Removed "Collections" from Shop — lives in primary nav already, redundant
- *    in the footer for a shopping site
- *  - Removed "Careers" from Company — premature for footer real estate;
- *    luxury/fashion e-comm footers keep Company to About/Press/Journal
- *  - Result: Shop (4), Company (3), Support (4), Legal (3) — evenly balanced
- *    columns, no orphaned single links in the mobile 2x2 grid
- *
- * v2 → v3:
- *  - Removed location badge ("Nairobi, Kenya" / MapPin) — placeholder data,
- *    no real address, irrelevant to an online store
- *  - Removed unused MapPin import
- *  - Responsive grid reworked:
- *      mobile   → brand full-width, nav columns 2x2
- *      tablet   → brand full-width, nav columns in a single row of 4
- *      desktop  → brand + 4 nav columns side by side (6-col grid)
- *  - Gaps scale down on mobile (gap-8 → sm:gap-10 → lg:gap-16)
- *  - Bottom bar stacks + centers on mobile, row + space-between on larger screens
- *  - Tagline max-width relaxed so it doesn't wrap awkwardly when brand spans
- *    full width on tablet
+ * v5 → v6: general polish pass
+ *  - Tighter mobile vertical rhythm — reduced gap-y in nav grid, reduced
+ *    brand-column gap, reduced top/bottom section padding on small screens
+ *  - Social icons given a touch more presence (34px, slightly larger glyphs)
+ *    and moved below the tagline+pill cluster consistently across breakpoints
+ *  - Nav column label tracking/margin tightened slightly for better rhythm
+ *    with the smaller link gap below
+ *  - Bottom bar: copyright + M-Pesa badge wrap more gracefully at narrow
+ *    widths (whitespace-nowrap on the badge so it never breaks mid-pill)
+ *  - Divider opacity softened slightly so it reads as a hairline, not a rule
  */
 
 import Link from 'next/link'
@@ -74,7 +51,7 @@ const socials = [
     label: 'Pinterest',
     href: 'https://pinterest.com',
     icon: (
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
         <path d="M12 0C5.373 0 0 5.373 0 12c0 5.084 3.163 9.426 7.627 11.174-.105-.949-.2-2.405.042-3.441.218-.937 1.407-5.965 1.407-5.965s-.359-.719-.359-1.782c0-1.668.967-2.914 2.171-2.914 1.023 0 1.518.769 1.518 1.69 0 1.029-.655 2.568-.994 3.995-.283 1.194.599 2.169 1.777 2.169 2.133 0 3.772-2.249 3.772-5.495 0-2.873-2.064-4.882-5.012-4.882-3.414 0-5.418 2.561-5.418 5.207 0 1.031.397 2.138.893 2.738a.36.36 0 0 1 .083.345l-.333 1.36c-.053.22-.174.267-.402.161-1.499-.698-2.436-2.889-2.436-4.649 0-3.785 2.75-7.262 7.929-7.262 4.163 0 7.398 2.967 7.398 6.931 0 4.136-2.607 7.464-6.227 7.464-1.216 0-2.359-.632-2.75-1.378l-.748 2.853c-.271 1.043-1.002 2.35-1.492 3.146C9.57 23.812 10.763 24 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0z"/>
       </svg>
     ),
@@ -83,7 +60,7 @@ const socials = [
     label: 'Instagram',
     href: 'https://instagram.com',
     icon: (
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
         <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/>
       </svg>
     ),
@@ -92,7 +69,7 @@ const socials = [
     label: 'X',
     href: 'https://x.com',
     icon: (
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
         <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
       </svg>
     ),
@@ -106,7 +83,7 @@ export function Footer() {
     <footer
       className="relative"
       style={{
-        marginTop:  'clamp(4rem, 8vw, 8rem)',
+        marginTop:  'clamp(3rem, 8vw, 8rem)',
         background: 'hsl(var(--background))',
         borderTop:  '1px solid hsl(var(--border) / 0.5)',
       }}
@@ -114,20 +91,20 @@ export function Footer() {
       <div
         className="container-wide"
         style={{
-          paddingTop:    'clamp(2.5rem, 5vw, 5rem)',
-          paddingBottom: 'clamp(1.75rem, 3vw, 3rem)',
+          paddingTop:    'clamp(2rem, 5vw, 5rem)',
+          paddingBottom: 'clamp(1.5rem, 3vw, 3rem)',
         }}
       >
 
         {/* ── Main grid ── */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-x-6 gap-y-10 sm:gap-x-8 lg:gap-16">
+        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-x-6 gap-y-7 sm:gap-y-10 sm:gap-x-8 lg:gap-16">
 
           {/* ── Brand column ── */}
-          <div className="col-span-2 sm:col-span-4 md:col-span-2 flex flex-col gap-6">
+          <div className="col-span-2 sm:col-span-4 md:col-span-2 flex flex-col gap-4 sm:gap-6">
 
             {/* Logo */}
             <Link href="/" className="inline-flex items-center self-start">
-              <div className="relative w-24 h-8">
+              <div className="relative w-20 h-7 sm:w-24 sm:h-8">
                 <Image
                   src="/logo.png"
                   alt="Shoppin"
@@ -142,7 +119,7 @@ export function Footer() {
               style={{
                 fontSize:   '13px',
                 fontWeight: 300,
-                lineHeight: 1.75,
+                lineHeight: 1.7,
                 color:      'hsl(var(--muted))',
                 maxWidth:   '22rem',
               }}
@@ -193,8 +170,8 @@ export function Footer() {
                   aria-label={s.label}
                   className="social-icon"
                   style={{
-                    width:          '32px',
-                    height:         '32px',
+                    width:          '34px',
+                    height:         '34px',
                     borderRadius:   'var(--radius-sm, 6px)',
                     display:        'flex',
                     alignItems:     'center',
@@ -229,16 +206,16 @@ export function Footer() {
                 style={{
                   fontSize:      '10px',
                   fontWeight:    500,
-                  letterSpacing: '0.18em',
+                  letterSpacing: '0.16em',
                   textTransform: 'uppercase',
                   color:         'hsl(var(--muted))',
-                  marginBottom:  '1.25rem',
+                  marginBottom:  '1rem',
                 }}
               >
                 {title}
               </p>
 
-              <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
                 {links.map((link) => (
                   <li key={link.href}>
                     <Link
@@ -268,15 +245,15 @@ export function Footer() {
 
         {/* ── Bottom bar ── */}
         <div
-          className="flex flex-col sm:flex-row items-center sm:justify-between gap-4 text-center sm:text-left"
+          className="flex flex-col sm:flex-row items-center sm:justify-between gap-3 sm:gap-4 text-center sm:text-left"
           style={{
-            marginTop:  'clamp(2.5rem, 5vw, 4.5rem)',
-            paddingTop: '1.5rem',
-            borderTop:  '1px solid hsl(var(--border) / 0.5)',
+            marginTop:  'clamp(2rem, 5vw, 4.5rem)',
+            paddingTop: '1.25rem',
+            borderTop:  '1px solid hsl(var(--border) / 0.4)',
           }}
         >
           {/* Left cluster: copyright + payment badge */}
-          <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4">
+          <div className="flex flex-col sm:flex-row items-center gap-2.5 sm:gap-4">
             <p
               style={{
                 fontSize:      '10px',
@@ -289,7 +266,7 @@ export function Footer() {
             </p>
 
             <div
-              className="inline-flex items-center gap-2"
+              className="inline-flex items-center gap-2 whitespace-nowrap"
               style={{
                 borderRadius: '100px',
                 border:       '0.5px solid hsl(142 45% 40% / 0.35)',

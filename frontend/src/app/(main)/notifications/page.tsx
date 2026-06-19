@@ -116,6 +116,7 @@ export default function NotificationsPage() {
   const spotlightBackground = useMotionTemplate`radial-gradient(600px circle at ${spotlightXSpring}px ${spotlightYSpring}px, hsl(var(--foreground) / 0.045), transparent 60%)`
 
   const handlePointerMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (typeof window !== 'undefined' && window.matchMedia('(hover: none)').matches) return
     spotlightX.set(e.clientX)
     spotlightY.set(e.clientY)
   }
@@ -493,13 +494,15 @@ function NotificationRow({
 
   const hasIdentity = Boolean(notif.sender?.avatar || notif.sender?.displayName)
 
-  // ── Magnetic tilt — subtle 3D rotation toward cursor on hover ──
+  // ── Magnetic tilt — desktop only, disabled on touch devices ──
   const rotateX = useMotionValue(0)
   const rotateY = useMotionValue(0)
   const tiltX = useSpring(rotateX, { damping: 18, stiffness: 220, mass: 0.4 })
   const tiltY = useSpring(rotateY, { damping: 18, stiffness: 220, mass: 0.4 })
 
   const handleTiltMove = (e: React.MouseEvent<HTMLElement>) => {
+    // Skip tilt on touch-primary devices
+    if (window.matchMedia('(hover: none)').matches) return
     const rect = e.currentTarget.getBoundingClientRect()
     const px = (e.clientX - rect.left) / rect.width  - 0.5
     const py = (e.clientY - rect.top)  / rect.height - 0.5
@@ -587,15 +590,19 @@ function NotificationRow({
         </div>
       </div>
 
-      {/* End slot: unread → tap-to-mark-read dot/check; read → reveal chevron */}
+      {/* End slot:
+          - Unread: dot on desktop (hidden on hover → check icon);
+                    always-visible check button on mobile (touch has no hover)
+          - Read: chevron always visible on mobile, hover-reveal on desktop */}
       <div
         className="shrink-0 flex items-center justify-center relative"
         style={{ width: '1.25rem', height: '1.25rem', marginTop: '0.4rem' }}
       >
         {!notif.isRead ? (
           <>
+            {/* Desktop: dot that hides on hover */}
             <motion.span
-              className="absolute inset-0 m-auto rounded-full transition-opacity group-hover:opacity-0"
+              className="absolute inset-0 m-auto rounded-full sm:block hidden group-hover:opacity-0 transition-opacity"
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ delay: delay + 0.15, duration: 0.25 }}
@@ -604,22 +611,41 @@ function NotificationRow({
                 background: 'hsl(var(--foreground))',
               }}
             />
+            {/* Desktop: check appears on hover */}
             <button
               aria-label="Mark as read"
               onClick={e => { e.preventDefault(); e.stopPropagation(); onRead() }}
-              className="absolute inset-0 flex items-center justify-center rounded-full opacity-0
-                         transition-opacity group-hover:opacity-100"
+              className="absolute inset-0 items-center justify-center rounded-full
+                         hidden sm:flex opacity-0 group-hover:opacity-100 transition-opacity"
               style={{ background: 'hsl(var(--surface-elevated))', color: 'hsl(var(--foreground))' }}
             >
               <Check size={11} strokeWidth={2.5} />
             </button>
+            {/* Mobile: always-visible tap target */}
+            <button
+              aria-label="Mark as read"
+              onClick={e => { e.preventDefault(); e.stopPropagation(); onRead() }}
+              className="sm:hidden flex items-center justify-center rounded-full w-full h-full"
+              style={{ color: 'hsl(var(--foreground))' }}
+            >
+              <Check size={13} strokeWidth={2.5} />
+            </button>
           </>
         ) : (
-          <ChevronRight
-            size={14}
-            className="opacity-0 -translate-x-1 transition-all group-hover:opacity-100 group-hover:translate-x-0"
-            style={{ color: 'hsl(var(--muted-foreground))' }}
-          />
+          <>
+            {/* Desktop: reveal on hover */}
+            <ChevronRight
+              size={14}
+              className="hidden sm:block opacity-0 -translate-x-1 transition-all group-hover:opacity-100 group-hover:translate-x-0"
+              style={{ color: 'hsl(var(--muted-foreground))' }}
+            />
+            {/* Mobile: always visible */}
+            <ChevronRight
+              size={14}
+              className="sm:hidden"
+              style={{ color: 'hsl(var(--muted-foreground))', opacity: 0.4 }}
+            />
+          </>
         )}
       </div>
     </>
@@ -627,20 +653,28 @@ function NotificationRow({
 
   const rowClassName = "group flex items-start gap-3.5 rounded-[var(--radius-lg)] cursor-pointer transition-all duration-[var(--duration-hover)]"
   const rowStyle: React.CSSProperties = {
-    padding:    '0.875rem 1rem',
+    padding:    '0.875rem 0.75rem',
     background: notif.isRead ? 'transparent' : 'hsl(var(--surface-elevated))',
     transformStyle: 'preserve-3d',
+    // Ensure tap target feels generous on mobile
+    WebkitTapHighlightColor: 'transparent',
   }
+
+  const isTouch = () => typeof window !== 'undefined' && window.matchMedia('(hover: none)').matches
+
   const hoverIn = (e: React.MouseEvent<HTMLElement>) => {
+    if (isTouch()) return
     e.currentTarget.style.background = 'hsl(var(--surface-elevated))'
     e.currentTarget.style.boxShadow  = 'var(--shadow-xs)'
   }
   const hoverOut = (e: React.MouseEvent<HTMLElement>) => {
+    if (isTouch()) return
     e.currentTarget.style.background = notif.isRead ? 'transparent' : 'hsl(var(--surface-elevated))'
     e.currentTarget.style.boxShadow  = 'none'
     resetTilt()
   }
   const handleMove = (e: React.MouseEvent<HTMLElement>) => {
+    if (isTouch()) return
     hoverIn(e)
     handleTiltMove(e)
   }

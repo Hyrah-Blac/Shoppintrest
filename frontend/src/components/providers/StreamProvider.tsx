@@ -42,6 +42,9 @@ export function StreamProvider({ children }: { children: ReactNode }) {
         const { data: body } = await apiClient.chat.getToken()
         const token: string = body.data.token
 
+        // Bail before connecting if this effect instance was already
+        // cancelled (e.g. Strict Mode unmount, or the user changed again
+        // before the token request resolved).
         if (cancelled) return
 
         const sc = await connectStreamUser({
@@ -52,11 +55,16 @@ export function StreamProvider({ children }: { children: ReactNode }) {
           token,
         })
 
-        if (cancelled) return
+        // Bail AFTER connectUser resolves too — if cleanup ran while we
+        // were awaiting connectUser, immediately disconnect again rather
+        // than exposing a "ready" client that's about to be torn down.
+        // connectStreamUser/disconnectStreamUser share a serialized queue,
+        // so this disconnect correctly waits its turn.
+        if (cancelled) {
+          disconnectStreamUser().catch(() => {})
+          return
+        }
 
-        // FIX — confirm connectUser fully resolved before telling the app
-        // the client is ready. sc.userID is only set after connectUser
-        // completes, so this is the most reliable signal available.
         if (sc.userID) {
           setClient(sc)
           setIsReady(true)
@@ -64,7 +72,9 @@ export function StreamProvider({ children }: { children: ReactNode }) {
           console.error('[StreamProvider] connectUser resolved but userID is missing')
         }
       } catch (err) {
-        console.error('[StreamProvider] connection error:', err)
+        if (!cancelled) {
+          console.error('[StreamProvider] connection error:', err)
+        }
       }
     }
 
@@ -72,9 +82,12 @@ export function StreamProvider({ children }: { children: ReactNode }) {
 
     return () => {
       cancelled = true
-      disconnectStreamUser()
       setClient(null)
       setIsReady(false)
+      // Fire-and-forget — connectStreamUser/disconnectStreamUser internally
+      // serialize against any in-flight connect, so this is always safe to
+      // call even mid-connection.
+      disconnectStreamUser().catch(() => {})
     }
   }, [currentUser?._id])
 

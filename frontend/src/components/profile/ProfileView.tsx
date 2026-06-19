@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useAuth } from '@clerk/nextjs'
 import { Globe, Settings, Heart, ShoppingBag, CalendarDays, UserX, UserCheck, Bookmark } from 'lucide-react'
 import { toast } from 'sonner'
 import { apiClient } from '@/lib/api'
@@ -16,7 +15,6 @@ import { cn, formatDate } from '@/lib/utils'
 type Tab = 'saved'
 
 export function ProfileView({ username }: { username: string }) {
-  const { isSignedIn }  = useAuth()
   const currentUser     = useUserStore((s) => s.user)
 
   const [profile,        setProfile]        = useState<any>(null)
@@ -94,7 +92,7 @@ export function ProfileView({ username }: { username: string }) {
   if (isLoading) return <ProfileSkeleton />
 
   if (!profile) return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: '#000' }}>
+    <div className="min-h-screen flex items-center justify-center" style={{ background: 'hsl(var(--background))' }}>
       <p style={{ color: 'hsl(var(--muted))' }}>User not found</p>
     </div>
   )
@@ -102,12 +100,10 @@ export function ProfileView({ username }: { username: string }) {
   const savedCount = profile.savedProducts?.length ?? 0
 
   return (
-    <div className="min-h-screen" style={{ background: '#000' }}>
-
-      {/* ── Hero ── */}
+    <div className="min-h-screen" style={{ background: 'hsl(var(--background))' }}>
       <div className="relative">
-        <div className="container-narrow px-6 sm:px-8 pt-16 pb-14">
-          <div className="flex flex-col sm:flex-row items-start gap-10">
+        <div className="container-narrow px-5 sm:px-8 pt-10 sm:pt-16 pb-10 sm:pb-14">
+          <div className="flex flex-col items-center text-center sm:flex-row sm:items-start sm:text-left gap-5 sm:gap-10">
 
             {/* Avatar — plain, no ring */}
             <motion.div
@@ -120,7 +116,7 @@ export function ProfileView({ username }: { username: string }) {
                 src={profile.avatar}
                 name={profile.displayName}
                 size="xl"
-                className="w-28 h-28 text-3xl rounded-2xl"
+                className="w-24 h-24 sm:w-28 sm:h-28 text-2xl sm:text-3xl rounded-2xl"
               />
               {profile.isVerified && (
                 <div
@@ -139,12 +135,12 @@ export function ProfileView({ username }: { username: string }) {
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.06, ease: [0.22, 1, 0.36, 1] }}
-              className="flex-1 min-w-0"
+              className="flex-1 min-w-0 w-full"
             >
               {/* Name row */}
-              <div className="flex items-start justify-between gap-6 flex-wrap">
+              <div className="flex flex-col items-center sm:flex-row sm:items-start sm:justify-between gap-4 sm:gap-6">
                 <div>
-                  <h1 className="text-white font-semibold tracking-tight" style={{ fontSize: 'clamp(1.6rem, 3.5vw, 2.2rem)', lineHeight: 1.1 }}>
+                  <h1 className="font-semibold tracking-tight" style={{ fontSize: 'clamp(1.5rem, 3.5vw, 2.2rem)', lineHeight: 1.1, color: 'hsl(var(--foreground))' }}>
                     {profile.displayName}
                   </h1>
                   <p className="text-sm mt-1.5 tracking-wide" style={{ color: 'hsl(var(--muted))' }}>
@@ -152,11 +148,11 @@ export function ProfileView({ username }: { username: string }) {
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 w-full sm:w-auto justify-center sm:justify-end">
                   {isOwnProfile && (
                     <Link
                       href="/profile/edit"
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-150 hover:opacity-75"
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-150 hover:opacity-75 whitespace-nowrap"
                       style={{
                         background: 'hsl(var(--foreground) / 0.08)',
                         color:      'hsl(var(--foreground) / 0.9)',
@@ -171,7 +167,7 @@ export function ProfileView({ username }: { username: string }) {
                     <button
                       onClick={handleToggleActive}
                       disabled={togglingActive}
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-150 disabled:opacity-40 hover:opacity-75"
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-150 disabled:opacity-40 hover:opacity-75 whitespace-nowrap"
                       style={{
                         background: profile.isActive ? 'hsl(var(--destructive) / 0.08)' : 'hsl(var(--success) / 0.08)',
                         color:      profile.isActive ? 'hsl(var(--destructive))' : 'hsl(var(--success))',
@@ -188,13 +184,13 @@ export function ProfileView({ username }: { username: string }) {
 
               {/* Bio */}
               {profile.bio && (
-                <p className="mt-4 text-sm leading-relaxed max-w-md" style={{ color: 'hsl(var(--foreground) / 0.5)', fontWeight: 300 }}>
+                <p className="mt-4 text-sm leading-relaxed max-w-md mx-auto sm:mx-0" style={{ color: 'hsl(var(--foreground) / 0.5)', fontWeight: 300 }}>
                   {profile.bio}
                 </p>
               )}
 
               {/* Meta chips */}
-              <div className="flex items-center gap-2 mt-5 flex-wrap">
+              <div className="flex items-center justify-center sm:justify-start gap-2 mt-5 flex-wrap">
                 {profile.createdAt && (
                   <span
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs"
@@ -226,23 +222,6 @@ export function ProfileView({ username }: { username: string }) {
                   </a>
                 )}
 
-                {isAdmin && (
-                  <span
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
-                    style={{
-                      background: profile.isActive ? 'hsl(142 70% 45% / 0.08)' : 'hsl(var(--destructive) / 0.08)',
-                      color:      profile.isActive ? 'hsl(142 60% 55%)' : 'hsl(var(--destructive))',
-                      border:     `1px solid ${profile.isActive ? 'hsl(142 70% 45% / 0.15)' : 'hsl(var(--destructive) / 0.15)'}`,
-                    }}
-                  >
-                    <span
-                      className="w-1.5 h-1.5 rounded-full"
-                      style={{ background: profile.isActive ? 'hsl(142 60% 55%)' : 'hsl(var(--destructive))' }}
-                    />
-                    {profile.isActive ? 'Active' : 'Inactive'}
-                  </span>
-                )}
-
                 {isAdmin && !isOwnProfile && (
                   <select
                     value={profile.role}
@@ -262,8 +241,8 @@ export function ProfileView({ username }: { username: string }) {
               </div>
 
               {/* Saved stat */}
-              <div className="flex items-baseline gap-2 mt-8">
-                <span className="text-3xl font-bold text-white tabular-nums tracking-tight">
+              <div className="flex items-baseline justify-center sm:justify-start gap-2 mt-8">
+                <span className="text-3xl font-bold tabular-nums tracking-tight" style={{ color: 'hsl(var(--foreground))' }}>
                   {savedCount.toLocaleString()}
                 </span>
                 <span className="text-xs uppercase tracking-[0.15em] font-medium" style={{ color: 'hsl(var(--muted))' }}>
@@ -275,20 +254,20 @@ export function ProfileView({ username }: { username: string }) {
         </div>
 
         {/* Divider */}
-        <div className="h-px mx-6 sm:mx-8" style={{ background: 'hsl(var(--foreground) / 0.07)' }} />
+        <div className="h-px mx-5 sm:mx-8" style={{ background: 'hsl(var(--foreground) / 0.07)' }} />
       </div>
 
       {/* ── Tabs ── */}
       {isOwnProfile && (
         <div className="relative" style={{ borderBottom: '1px solid hsl(var(--foreground) / 0.07)' }}>
-          <div className="container-narrow px-6 sm:px-8">
+          <div className="container-narrow px-5 sm:px-8 overflow-x-auto">
             <div className="flex">
               {([{ id: 'saved', label: 'Saved', icon: Bookmark }] as const).map(t => (
                 <button
                   key={t.id}
                   onClick={() => setTab(t.id as Tab)}
                   className="relative flex items-center gap-2 px-1 py-4 mr-8 text-sm font-medium transition-colors duration-150"
-                  style={{ color: tab === t.id ? 'white' : 'hsl(var(--muted))' }}
+                  style={{ color: tab === t.id ? 'hsl(var(--foreground))' : 'hsl(var(--muted))' }}
                 >
                   <t.icon size={13} />
                   {t.label}
@@ -307,7 +286,7 @@ export function ProfileView({ username }: { username: string }) {
                     <motion.div
                       layoutId="tab-line"
                       className="absolute bottom-0 left-0 right-0 h-px"
-                      style={{ background: 'white' }}
+                      style={{ background: 'hsl(var(--foreground))' }}
                       transition={{ type: 'spring', stiffness: 500, damping: 40 }}
                     />
                   )}
@@ -319,12 +298,12 @@ export function ProfileView({ username }: { username: string }) {
       )}
 
       {/* ── Content ── */}
-      <div className="container-narrow px-6 sm:px-8 py-8">
+      <div className="container-narrow px-5 sm:px-8 py-6 sm:py-8">
 
         {isOwnProfile && tab === 'saved' && (
           <>
             {savedLoading ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
                 {Array.from({ length: 6 }).map((_, i) => <ProductCardSkeleton key={i} />)}
               </div>
             ) : savedProducts.length === 0 ? (
@@ -332,7 +311,7 @@ export function ProfileView({ username }: { username: string }) {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.4 }}
-                className="flex flex-col items-center justify-center py-32 text-center"
+                className="flex flex-col items-center justify-center py-20 sm:py-32 text-center"
               >
                 <div
                   className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5"
@@ -340,20 +319,20 @@ export function ProfileView({ username }: { username: string }) {
                 >
                   <Heart size={20} style={{ color: 'hsl(var(--muted))' }} />
                 </div>
-                <p className="font-semibold text-white mb-2">Nothing saved yet</p>
+                <p className="font-semibold mb-2" style={{ color: 'hsl(var(--foreground))' }}>Nothing saved yet</p>
                 <p className="text-sm mb-7 max-w-xs leading-relaxed" style={{ color: 'hsl(var(--muted))', fontWeight: 300 }}>
                   Products you save will appear here
                 </p>
                 <Link
                   href="/explore"
                   className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-opacity hover:opacity-80"
-                  style={{ background: 'white', color: '#000' }}
+                  style={{ background: 'hsl(var(--foreground))', color: 'hsl(var(--background))' }}
                 >
                   Explore products
                 </Link>
               </motion.div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
                 <AnimatePresence mode="popLayout">
                   {savedProducts.map((product, i) => (
                     <motion.div
@@ -408,7 +387,7 @@ export function ProfileView({ username }: { username: string }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.4 }}
-            className="flex flex-col items-center justify-center py-32 text-center"
+            className="flex flex-col items-center justify-center py-20 sm:py-32 text-center"
           >
             <div
               className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5"
@@ -416,7 +395,7 @@ export function ProfileView({ username }: { username: string }) {
             >
               <ShoppingBag size={20} style={{ color: 'hsl(var(--muted))' }} />
             </div>
-            <p className="font-semibold text-white mb-2">{profile.displayName}'s profile</p>
+            <p className="font-semibold mb-2" style={{ color: 'hsl(var(--foreground))' }}>{profile.displayName}'s profile</p>
             <p className="text-sm max-w-xs leading-relaxed" style={{ color: 'hsl(var(--muted))', fontWeight: 300 }}>
               This user's activity is private.
             </p>
@@ -481,11 +460,11 @@ function UnsaveButton({ isRemoving, onRemove, showTooltip = false }: {
 /* ── Profile Skeleton ── */
 function ProfileSkeleton() {
   return (
-    <div className="min-h-screen" style={{ background: '#000' }}>
-      <div className="container-narrow px-6 sm:px-8 pt-16 pb-14">
-        <div className="flex gap-10 items-start">
-          <div className="skeleton w-28 h-28 shrink-0 rounded-2xl" />
-          <div className="flex-1 space-y-4 pt-1">
+    <div className="min-h-screen" style={{ background: 'hsl(var(--background))' }}>
+      <div className="container-narrow px-5 sm:px-8 pt-10 sm:pt-16 pb-10 sm:pb-14">
+        <div className="flex flex-col items-center sm:flex-row sm:items-start gap-5 sm:gap-10">
+          <div className="skeleton w-24 h-24 sm:w-28 sm:h-28 shrink-0 rounded-2xl" />
+          <div className="flex-1 w-full space-y-4 pt-1 flex flex-col items-center sm:items-start">
             <div className="skeleton h-8 w-48 rounded-xl" />
             <div className="skeleton h-3.5 w-28 rounded-lg" />
             <div className="skeleton h-10 w-full max-w-sm rounded-xl" />
@@ -497,6 +476,15 @@ function ProfileSkeleton() {
           </div>
         </div>
       </div>
+      <div className="container-narrow px-5 sm:px-8 py-6 sm:py-8">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="skeleton aspect-[4/3]" style={{ borderRadius: 'var(--radius-xl)' }} />
+          ))}
+        </div>
+      </div>
     </div>
   )
 }
+
+const _style = <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>

@@ -65,6 +65,9 @@ export function AdminSidebar() {
             src="/logo.png"
             alt="Shoppin"
             fill
+            sizes="80px"
+            loading="eager"
+            priority
             className="object-contain object-left"
           />
         </Link>
@@ -138,6 +141,7 @@ export function AdminSidebar() {
                       src="/logo.png"
                       alt="Shoppin"
                       fill
+                      sizes="96px"
                       className="object-contain object-left"
                     />
                   </div>

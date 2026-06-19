@@ -124,17 +124,16 @@ export function useSupportChat(client: StreamChat | null, isReady: boolean) {
     setReadBy({})
 
     try {
-      // watch() returns recent channel state (including messages), and
-      // crucially starts the live event subscription on this channel.
-      const state = await channel.watch({ state: true, presence: true })
+      // watch() starts the live event subscription on this channel.
+      await channel.watch({ state: true, presence: true })
 
       // Bail if a newer openChannel call has since taken over.
       if (activeCidRef.current !== cid) return
 
       // ── Attach listeners IMMEDIATELY after watch() resolves ──────────────
-      // This closes the race where a message.new event could arrive in the
-      // gap between watch() resolving and listeners being attached (which
-      // previously happened only after a separate channel.query() call).
+      // Closes the race where a message.new event could arrive in the gap
+      // between watch() resolving and listeners being attached (which would
+      // previously happen only after a separate channel.query() call).
       const onNew = (e: Event) => {
         const msg = e.message as LocalMessage | undefined
         if (!msg) return
