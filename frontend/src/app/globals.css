@@ -19,7 +19,7 @@
 @supports (font: -apple-system-body) {
   :root { --font-display: 'SF Pro Display', 'Playfair Display', Georgia, serif; }
 }
-
+.dark .mpesa-label { color: hsl(142 55% 62%); }
 /* ═══════════════════════════════════════════════════════════════════════════
    TOKEN ARCHITECTURE
    ═══════════════════════════════════════════════════════════════════════════ */
