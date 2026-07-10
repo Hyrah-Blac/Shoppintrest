@@ -16,7 +16,6 @@ const CATEGORIES = [
   'womenswear', 'menswear', 'shoes', 'bags',
   'jewelry', 'accessories', 'beauty', 'home',
 ]
-const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'One Size']
 const PAGE_LIMIT = 20
 
 const emptyForm = {
@@ -28,9 +27,15 @@ const emptyForm = {
   isPublished: false,
 }
 
-// Categories where items come in clothing sizes. Everything else gets a
-// single stock-quantity field instead of size selectors.
-const SIZED_CATEGORIES = ['womenswear', 'menswear', 'shoes']
+// Categories that use a size picker, and which size set each one uses.
+// Everything else (bags, jewelry, accessories, beauty, home) gets a single
+// stock-quantity field instead.
+const CATEGORY_SIZES: Record<string, string[]> = {
+  womenswear: ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
+  menswear:   ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
+  shoes:      ['36', '37', '38', '39', '40', '41', '42', '43', '44', '45'], // EU
+}
+const SIZED_CATEGORIES = Object.keys(CATEGORY_SIZES)
 
 const slugify = (s: string) =>
   s.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
@@ -710,7 +715,7 @@ export default function AdminProductsPage() {
                       Sizes & inventory
                     </label>
                     <div className="flex flex-wrap gap-2">
-                      {SIZES.map((size) => {
+                      {(CATEGORY_SIZES[form.category] || []).map((size) => {
                         const selected = form.sizes.find((s) => s.size === size)
                         return (
                           <button

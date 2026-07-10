@@ -140,7 +140,7 @@ function Bubble({ text, isMine, createdAt, isSystem, showTail, status, onRetry }
         minWidth: 64,
         background: bubbleBg,
         color: bubbleColor,
-        border: `0.5px solid ${isMine ? 'rgba(230,0,35,0.2)' : T.border}`,
+        border: `0.5px solid ${isMine ? 'rgba(255,255,255,0.12)' : T.border}`,
         borderRadius: 12,
         borderTopRightRadius: isMine && showTail ? 3 : 12,
         borderTopLeftRadius:  !isMine && showTail ? 3 : 12,

@@ -86,14 +86,19 @@ interface Product {
 
 /**
  * Categories for which a size guide is relevant.
- * Matches the Product schema's category enum — only apparel categories
- * (womenswear, menswear) use garment sizing. Accessories, shoes, bags,
- * jewelry, beauty, and home goods don't.
+ * Matches the Product schema's category enum — apparel categories
+ * (womenswear, menswear) use garment sizing, shoes use EU foot sizing.
+ * Bags, jewelry, accessories, beauty, and home goods don't get a guide.
  */
 const CLOTHING_CATEGORIES = new Set(['womenswear', 'menswear'])
+const SHOE_CATEGORIES     = new Set(['shoes'])
+const SIZED_CATEGORIES    = new Set([...CLOTHING_CATEGORIES, ...SHOE_CATEGORIES])
 
 const hassizing = (category?: string) =>
-  category ? CLOTHING_CATEGORIES.has(category.toLowerCase()) : false
+  category ? SIZED_CATEGORIES.has(category.toLowerCase()) : false
+
+const isShoeCategory = (category?: string) =>
+  category ? SHOE_CATEGORIES.has(category.toLowerCase()) : false
 
 // ─── ProductDetail ────────────────────────────────────────────────────────────
 
@@ -751,104 +756,193 @@ export function ProductDetail({ id }: Props) {
                   {/* Modal body */}
                   <div className="p-6 space-y-8">
 
-                    {/* How to measure — mono */}
-                    <div
-                      className="flex gap-3 p-4 rounded-[var(--radius-lg)]"
-                      style={{
-                        background: 'hsl(var(--background-secondary))',
-                        border:     '1px solid hsl(var(--border))',
-                      }}
-                    >
-                      <div
-                        className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5"
-                        style={{ background: 'hsl(var(--surface))', border: '1px solid hsl(var(--border))' }}
-                      >
-                        <Ruler size={14} style={{ color: 'hsl(var(--muted))' }} />
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold mb-1" style={{ color: 'hsl(var(--foreground))' }}>
-                          How to measure
-                        </p>
-                        <p className="text-xs leading-relaxed" style={{ color: 'hsl(var(--muted))', fontWeight: 300 }}>
-                          Measure your <strong style={{ fontWeight: 600 }}>chest</strong> around the fullest part,
-                          your <strong style={{ fontWeight: 600 }}>waist</strong> at the narrowest point, and
-                          your <strong style={{ fontWeight: 600 }}>hips</strong> at the widest point.
-                          Keep the tape measure snug but not tight.
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Size tables */}
-                    {[
-                      {
-                        label: "Women's",
-                        rows: [
-                          { size: 'XS',  chest: '79–82',  waist: '61–64',  hips: '87–90',   ref: 'US 0–2 / EU 32–34'   },
-                          { size: 'S',   chest: '83–86',  waist: '65–68',  hips: '91–94',   ref: 'US 4–6 / EU 36–38'   },
-                          { size: 'M',   chest: '87–91',  waist: '69–73',  hips: '95–99',   ref: 'US 8–10 / EU 40–42'  },
-                          { size: 'L',   chest: '92–97',  waist: '74–79',  hips: '100–105', ref: 'US 12–14 / EU 44–46' },
-                          { size: 'XL',  chest: '98–104', waist: '80–86',  hips: '106–112', ref: 'US 16–18 / EU 48–50' },
-                          { size: 'XXL', chest: '105–112',waist: '87–94',  hips: '113–120', ref: 'US 20–22 / EU 52–54' },
-                        ],
-                      },
-                      {
-                        label: "Men's",
-                        rows: [
-                          { size: 'XS',  chest: '84–87',  waist: '71–74',  hips: '87–90',  ref: 'US XS / EU 44'   },
-                          { size: 'S',   chest: '88–92',  waist: '75–79',  hips: '91–95',  ref: 'US S / EU 46–48' },
-                          { size: 'M',   chest: '93–98',  waist: '80–85',  hips: '96–101', ref: 'US M / EU 48–50' },
-                          { size: 'L',   chest: '99–105', waist: '86–92',  hips: '102–108',ref: 'US L / EU 50–52' },
-                          { size: 'XL',  chest: '106–113',waist: '93–100', hips: '109–116',ref: 'US XL / EU 54–56'},
-                          { size: 'XXL', chest: '114–122',waist: '101–109',hips: '117–125',ref: 'US XXL / EU 58'  },
-                        ],
-                      },
-                    ].map(({ label, rows }) => (
-                      <div key={label}>
-                        <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'hsl(var(--muted))' }}>
-                          {label}
-                        </p>
+                    {isShoeCategory(product?.category) ? (
+                      <>
+                        {/* How to measure — feet */}
                         <div
-                          className="overflow-x-auto scrollbar-hide rounded-[var(--radius-lg)]"
-                          style={{ border: '1px solid hsl(var(--border))' }}
+                          className="flex gap-3 p-4 rounded-[var(--radius-lg)]"
+                          style={{
+                            background: 'hsl(var(--background-secondary))',
+                            border:     '1px solid hsl(var(--border))',
+                          }}
                         >
-                          <table className="w-full text-xs">
-                            <thead>
-                              <tr style={{ background: 'hsl(var(--background-secondary))' }}>
-                                {['Size', 'Chest (cm)', 'Waist (cm)', 'Hips (cm)', 'US / EU'].map((h) => (
-                                  <th
-                                    key={h}
-                                    className="px-4 py-3 text-left font-semibold whitespace-nowrap"
-                                    style={{ color: 'hsl(var(--foreground))' }}
-                                  >
-                                    {h}
-                                  </th>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {rows.map((row, i) => (
-                                <tr
-                                  key={row.size}
-                                  style={{
-                                    background: i % 2 === 0
-                                      ? 'hsl(var(--surface-elevated))'
-                                      : 'hsl(var(--background-secondary) / 0.5)',
-                                    borderTop: '1px solid hsl(var(--border-subtle))',
-                                  }}
-                                >
-                                  {/* Size column: foreground bold (was accent) */}
-                                  <td className="px-4 py-3 font-bold" style={{ color: 'hsl(var(--foreground))' }}>{row.size}</td>
-                                  <td className="px-4 py-3" style={{ color: 'hsl(var(--foreground))' }}>{row.chest}</td>
-                                  <td className="px-4 py-3" style={{ color: 'hsl(var(--foreground))' }}>{row.waist}</td>
-                                  <td className="px-4 py-3" style={{ color: 'hsl(var(--foreground))' }}>{row.hips}</td>
-                                  <td className="px-4 py-3" style={{ color: 'hsl(var(--muted))' }}>{row.ref}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
+                          <div
+                            className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5"
+                            style={{ background: 'hsl(var(--surface))', border: '1px solid hsl(var(--border))' }}
+                          >
+                            <Ruler size={14} style={{ color: 'hsl(var(--muted))' }} />
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold mb-1" style={{ color: 'hsl(var(--foreground))' }}>
+                              How to measure
+                            </p>
+                            <p className="text-xs leading-relaxed" style={{ color: 'hsl(var(--muted))', fontWeight: 300 }}>
+                              Stand on a sheet of paper and trace your foot, then measure the length
+                              from heel to longest toe. Match that to <strong style={{ fontWeight: 600 }}>foot length (cm)</strong>{' '}
+                              below to find your EU size.
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+
+                        {/* EU shoe size table */}
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'hsl(var(--muted))' }}>
+                            EU sizing
+                          </p>
+                          <div
+                            className="overflow-x-auto scrollbar-hide rounded-[var(--radius-lg)]"
+                            style={{ border: '1px solid hsl(var(--border))' }}
+                          >
+                            <table className="w-full text-xs">
+                              <thead>
+                                <tr style={{ background: 'hsl(var(--background-secondary))' }}>
+                                  {['EU', 'Foot length (cm)', 'UK', 'US Men', 'US Women'].map((h) => (
+                                    <th
+                                      key={h}
+                                      className="px-4 py-3 text-left font-semibold whitespace-nowrap"
+                                      style={{ color: 'hsl(var(--foreground))' }}
+                                    >
+                                      {h}
+                                    </th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {[
+                                  { eu: '36', cm: '22.5', uk: '3.5',  usM: '4',    usW: '6'    },
+                                  { eu: '37', cm: '23.0', uk: '4',    usM: '5',    usW: '6.5'  },
+                                  { eu: '38', cm: '24.0', uk: '5',    usM: '6',    usW: '7.5'  },
+                                  { eu: '39', cm: '24.5', uk: '6',    usM: '6.5',  usW: '8'    },
+                                  { eu: '40', cm: '25.5', uk: '6.5',  usM: '7.5',  usW: '9'    },
+                                  { eu: '41', cm: '26.0', uk: '7',    usM: '8',    usW: '9.5'  },
+                                  { eu: '42', cm: '27.0', uk: '8',    usM: '9',    usW: '10.5' },
+                                  { eu: '43', cm: '27.5', uk: '9',    usM: '9.5',  usW: '11'   },
+                                  { eu: '44', cm: '28.5', uk: '9.5',  usM: '10.5', usW: '12'   },
+                                  { eu: '45', cm: '29.0', uk: '10.5', usM: '11',   usW: '12.5' },
+                                ].map((row, i) => (
+                                  <tr
+                                    key={row.eu}
+                                    style={{
+                                      background: i % 2 === 0
+                                        ? 'hsl(var(--surface-elevated))'
+                                        : 'hsl(var(--background-secondary) / 0.5)',
+                                      borderTop: '1px solid hsl(var(--border-subtle))',
+                                    }}
+                                  >
+                                    <td className="px-4 py-3 font-bold" style={{ color: 'hsl(var(--foreground))' }}>{row.eu}</td>
+                                    <td className="px-4 py-3" style={{ color: 'hsl(var(--foreground))' }}>{row.cm}</td>
+                                    <td className="px-4 py-3" style={{ color: 'hsl(var(--foreground))' }}>{row.uk}</td>
+                                    <td className="px-4 py-3" style={{ color: 'hsl(var(--foreground))' }}>{row.usM}</td>
+                                    <td className="px-4 py-3" style={{ color: 'hsl(var(--muted))' }}>{row.usW}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        {/* How to measure — mono */}
+                        <div
+                          className="flex gap-3 p-4 rounded-[var(--radius-lg)]"
+                          style={{
+                            background: 'hsl(var(--background-secondary))',
+                            border:     '1px solid hsl(var(--border))',
+                          }}
+                        >
+                          <div
+                            className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5"
+                            style={{ background: 'hsl(var(--surface))', border: '1px solid hsl(var(--border))' }}
+                          >
+                            <Ruler size={14} style={{ color: 'hsl(var(--muted))' }} />
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold mb-1" style={{ color: 'hsl(var(--foreground))' }}>
+                              How to measure
+                            </p>
+                            <p className="text-xs leading-relaxed" style={{ color: 'hsl(var(--muted))', fontWeight: 300 }}>
+                              Measure your <strong style={{ fontWeight: 600 }}>chest</strong> around the fullest part,
+                              your <strong style={{ fontWeight: 600 }}>waist</strong> at the narrowest point, and
+                              your <strong style={{ fontWeight: 600 }}>hips</strong> at the widest point.
+                              Keep the tape measure snug but not tight.
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Size tables */}
+                        {[
+                          {
+                            label: "Women's",
+                            rows: [
+                              { size: 'XS',  chest: '79–82',  waist: '61–64',  hips: '87–90',   ref: 'US 0–2 / EU 32–34'   },
+                              { size: 'S',   chest: '83–86',  waist: '65–68',  hips: '91–94',   ref: 'US 4–6 / EU 36–38'   },
+                              { size: 'M',   chest: '87–91',  waist: '69–73',  hips: '95–99',   ref: 'US 8–10 / EU 40–42'  },
+                              { size: 'L',   chest: '92–97',  waist: '74–79',  hips: '100–105', ref: 'US 12–14 / EU 44–46' },
+                              { size: 'XL',  chest: '98–104', waist: '80–86',  hips: '106–112', ref: 'US 16–18 / EU 48–50' },
+                              { size: 'XXL', chest: '105–112',waist: '87–94',  hips: '113–120', ref: 'US 20–22 / EU 52–54' },
+                            ],
+                          },
+                          {
+                            label: "Men's",
+                            rows: [
+                              { size: 'XS',  chest: '84–87',  waist: '71–74',  hips: '87–90',  ref: 'US XS / EU 44'   },
+                              { size: 'S',   chest: '88–92',  waist: '75–79',  hips: '91–95',  ref: 'US S / EU 46–48' },
+                              { size: 'M',   chest: '93–98',  waist: '80–85',  hips: '96–101', ref: 'US M / EU 48–50' },
+                              { size: 'L',   chest: '99–105', waist: '86–92',  hips: '102–108',ref: 'US L / EU 50–52' },
+                              { size: 'XL',  chest: '106–113',waist: '93–100', hips: '109–116',ref: 'US XL / EU 54–56'},
+                              { size: 'XXL', chest: '114–122',waist: '101–109',hips: '117–125',ref: 'US XXL / EU 58'  },
+                            ],
+                          },
+                        ].map(({ label, rows }) => (
+                          <div key={label}>
+                            <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'hsl(var(--muted))' }}>
+                              {label}
+                            </p>
+                            <div
+                              className="overflow-x-auto scrollbar-hide rounded-[var(--radius-lg)]"
+                              style={{ border: '1px solid hsl(var(--border))' }}
+                            >
+                              <table className="w-full text-xs">
+                                <thead>
+                                  <tr style={{ background: 'hsl(var(--background-secondary))' }}>
+                                    {['Size', 'Chest (cm)', 'Waist (cm)', 'Hips (cm)', 'US / EU'].map((h) => (
+                                      <th
+                                        key={h}
+                                        className="px-4 py-3 text-left font-semibold whitespace-nowrap"
+                                        style={{ color: 'hsl(var(--foreground))' }}
+                                      >
+                                        {h}
+                                      </th>
+                                    ))}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {rows.map((row, i) => (
+                                    <tr
+                                      key={row.size}
+                                      style={{
+                                        background: i % 2 === 0
+                                          ? 'hsl(var(--surface-elevated))'
+                                          : 'hsl(var(--background-secondary) / 0.5)',
+                                        borderTop: '1px solid hsl(var(--border-subtle))',
+                                      }}
+                                    >
+                                      {/* Size column: foreground bold (was accent) */}
+                                      <td className="px-4 py-3 font-bold" style={{ color: 'hsl(var(--foreground))' }}>{row.size}</td>
+                                      <td className="px-4 py-3" style={{ color: 'hsl(var(--foreground))' }}>{row.chest}</td>
+                                      <td className="px-4 py-3" style={{ color: 'hsl(var(--foreground))' }}>{row.waist}</td>
+                                      <td className="px-4 py-3" style={{ color: 'hsl(var(--foreground))' }}>{row.hips}</td>
+                                      <td className="px-4 py-3" style={{ color: 'hsl(var(--muted))' }}>{row.ref}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        ))}
+                      </>
+                    )}
 
                     <p className="text-xs text-center pb-2" style={{ color: 'hsl(var(--muted))', fontWeight: 300 }}>
                       Between sizes? We recommend sizing up for a more comfortable fit.

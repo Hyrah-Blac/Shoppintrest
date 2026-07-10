@@ -415,7 +415,7 @@ export default function AdminSupportPage() {
               background: T.surface, borderRadius: 9, padding: '8px 13px',
               border: `0.5px solid ${T.border}`, transition: 'border-color 0.15s',
             }}
-              onFocusCapture={e => (e.currentTarget.style.borderColor = T.red)}
+              onFocusCapture={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.5)')}
               onBlurCapture={e  => (e.currentTarget.style.borderColor = T.border)}
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={T.textMeta} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
