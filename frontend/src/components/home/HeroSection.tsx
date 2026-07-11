@@ -15,9 +15,22 @@
  *  - Pause-on-hover: clearInterval guard — only restarts if products.length >= 2
  *
  * globals.css additions required:
- *   @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&display=swap');
- *   :root { --font-display: 'Cormorant Garamond', serif; }
+ *   @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=Inter:wght@400;500&display=swap');
+ *   :root {
+ *     --font-display: 'Cormorant Garamond', serif;
+ *     --font-utility: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+ *   }
  *   .can-hover #hero-section { cursor: none; }
+ *
+ * v5 → v6 (aesthetic pass):
+ *  - Introduced --font-utility (Inter) for tiny uppercase tracked labels —
+ *    Cormorant Garamond is a display serif and goes thin/hard to read under
+ *    12px; utility text now sits on a clean grotesk instead
+ *  - One accent color (muted brass) threaded through the active progress
+ *    dot and the CTA hover fill, instead of pure black/white throughout
+ *  - Added a barely-there film-grain overlay for filmic depth
+ *  - CTA circle is now magnetic: it pulls gently toward the cursor within
+ *    range, extending the custom-cursor language already built for the hero
  */
 
 import {
@@ -36,6 +49,8 @@ import {
   useScroll,
   useTransform,
   useReducedMotion,
+  useMotionValue,
+  useSpring,
 } from 'framer-motion'
 import { ArrowRight, ChevronDown, X, ArrowUpRight } from 'lucide-react'
 import { apiClient } from '@/lib/api'
@@ -78,6 +93,18 @@ const DISPLAY: React.CSSProperties = {
   fontFamily: 'var(--font-display, "Cormorant Garamond", Georgia, serif)',
 }
 
+// Utility face for tiny uppercase tracked labels — a display serif goes
+// thin and slightly hard to read under 12px, so small text gets a clean
+// grotesk instead. Reserve DISPLAY for headlines and titles.
+const UTILITY: React.CSSProperties = {
+  fontFamily: 'var(--font-utility, "Inter", -apple-system, BlinkMacSystemFont, sans-serif)',
+}
+
+// One accent, used sparingly: the active progress dot and the CTA hover
+// fill. Everything else in the hero stays black/white/gray.
+const ACCENT = '#C9A574'
+const ACCENT_INK = '#1a1410'
+
 // ─── ProgressRail ─────────────────────────────────────────────────────────────
 
 function ProgressRail({
@@ -108,7 +135,7 @@ function ProgressRail({
             {i === active && (
               <motion.span
                 className="absolute inset-y-0 left-0 block"
-                style={{ background: 'rgba(255,255,255,0.9)', width: '100%' }}
+                style={{ background: ACCENT, width: '100%' }}
                 initial={{ scaleX: 0, originX: 0 }}
                 animate={{ scaleX: 1 }}
                 transition={{ duration: KB_DURATION, ease: 'linear' }}
@@ -117,7 +144,7 @@ function ProgressRail({
             {i < active && (
               <span
                 className="absolute inset-0"
-                style={{ background: 'rgba(255,255,255,0.9)' }}
+                style={{ background: ACCENT }}
               />
             )}
           </span>
@@ -337,7 +364,7 @@ function QuickViewModal({
             <div>
               {product.brand && (
                 <p style={{
-                  ...DISPLAY,
+                  ...UTILITY,
                   fontSize: '9px',
                   letterSpacing: '0.38em',
                   textTransform: 'uppercase',
@@ -364,7 +391,7 @@ function QuickViewModal({
 
               {product.collection && (
                 <p style={{
-                  ...DISPLAY,
+                  ...UTILITY,
                   fontSize: '10px',
                   letterSpacing: '0.22em',
                   textTransform: 'uppercase',
@@ -392,7 +419,7 @@ function QuickViewModal({
                 href={`/product/${product._id}`}
                 className="inline-flex items-center gap-3 group"
                 style={{
-                  ...DISPLAY,
+                  ...UTILITY,
                   fontSize: '10px',
                   letterSpacing: '0.24em',
                   textTransform: 'uppercase',
@@ -575,7 +602,7 @@ function CustomCursor({ heroRef }: { heroRef: RefObject<HTMLElement | null> }) {
         <span
           ref={labelRef}
           style={{
-            ...DISPLAY,
+            ...UTILITY,
             fontSize: '8px',
             letterSpacing: '0.2em',
             textTransform: 'uppercase',
@@ -637,7 +664,7 @@ function ScrollCue() {
           aria-label="Scroll to shop the collection"
         >
           <span style={{
-            ...DISPLAY,
+            ...UTILITY,
             fontSize: '9px',
             letterSpacing: '0.3em',
             textTransform: 'uppercase',
@@ -695,6 +722,38 @@ function useSwipe(
   }, [ref])
 }
 
+// ─── Magnetic Circle ──────────────────────────────────────────────────────────
+// Wraps the CTA circle so it pulls gently toward the cursor as it approaches,
+// then springs back on leave. Extends the custom-cursor language already
+// built for this hero rather than adding an unrelated new interaction.
+// Inert on touch devices — there's no mousemove to react to.
+
+function MagneticCircle({ children }: { children: React.ReactNode }) {
+  const x = useMotionValue(0)
+  const y = useMotionValue(0)
+  const springX = useSpring(x, { stiffness: 150, damping: 15, mass: 0.4 })
+  const springY = useSpring(y, { stiffness: 150, damping: 15, mass: 0.4 })
+
+  const handleMove = (e: React.MouseEvent<HTMLElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    x.set((e.clientX - (rect.left + rect.width / 2)) * 0.35)
+    y.set((e.clientY - (rect.top + rect.height / 2)) * 0.35)
+  }
+  const handleLeave = () => { x.set(0); y.set(0) }
+
+  return (
+    <span
+      onMouseMove={handleMove}
+      onMouseLeave={handleLeave}
+      style={{ display: 'inline-flex', padding: '10px', margin: '-10px' }}
+    >
+      <motion.span style={{ x: springX, y: springY, display: 'inline-flex' }}>
+        {children}
+      </motion.span>
+    </span>
+  )
+}
+
 // ─── HeroSection ──────────────────────────────────────────────────────────────
 
 export function HeroSection() {
@@ -706,6 +765,7 @@ export function HeroSection() {
   const timerRef   = useRef<ReturnType<typeof setInterval> | null>(null)
   const sectionRef = useRef<HTMLElement>(null)
   const reduceMotion = useReducedMotion()
+  const grainId = useId()
 
   // Memoised hover-device check — not called on every mouse event
   const canHover = useRef(
@@ -865,10 +925,24 @@ export function HeroSection() {
           style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.42) 0%, transparent 100%)' }}
         />
 
+        {/* ── Film grain — barely visible, separates flat gradient from
+             photographic depth. Static SVG noise, no runtime cost. ── */}
+        <svg
+          aria-hidden
+          className="pointer-events-none absolute inset-0 z-[2] w-full h-full"
+          style={{ opacity: 0.035, mixBlendMode: 'overlay' }}
+        >
+          <filter id={grainId}>
+            <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch" />
+            <feColorMatrix type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.9 0" />
+          </filter>
+          <rect width="100%" height="100%" filter={`url(#${grainId})`} />
+        </svg>
+
         {/* ── Season label — top left ── */}
         <motion.p
           className="absolute top-8 left-8 md:top-10 md:left-12 z-10"
-          style={{ ...DISPLAY, fontSize: '9px', letterSpacing: '0.32em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.45)' }}
+          style={{ ...UTILITY, fontSize: '9px', letterSpacing: '0.32em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.45)' }}
           initial={{ opacity: 0, y: -6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.1 }}
@@ -887,7 +961,7 @@ export function HeroSection() {
             <AnimatePresence mode="wait">
               <motion.span
                 key={active}
-                style={{ ...DISPLAY, fontSize: '11px', color: 'rgba(255,255,255,0.85)', fontVariantNumeric: 'tabular-nums' }}
+                style={{ ...UTILITY, fontSize: '11px', color: 'rgba(255,255,255,0.85)', fontVariantNumeric: 'tabular-nums' }}
                 initial={{ opacity: 0, y: 5 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -5 }}
@@ -896,8 +970,8 @@ export function HeroSection() {
                 {pad(active + 1)}
               </motion.span>
             </AnimatePresence>
-            <span style={{ ...DISPLAY, fontSize: '10px', color: 'rgba(255,255,255,0.2)' }}>/</span>
-            <span style={{ ...DISPLAY, fontSize: '11px', color: 'rgba(255,255,255,0.2)', fontVariantNumeric: 'tabular-nums' }}>
+            <span style={{ ...UTILITY, fontSize: '10px', color: 'rgba(255,255,255,0.2)' }}>/</span>
+            <span style={{ ...UTILITY, fontSize: '11px', color: 'rgba(255,255,255,0.2)', fontVariantNumeric: 'tabular-nums' }}>
               {pad(products.length)}
             </span>
           </motion.div>
@@ -931,7 +1005,7 @@ export function HeroSection() {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0 }}
                       transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-                      style={{ ...DISPLAY, fontSize: '9px', letterSpacing: '0.36em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.38)', marginBottom: '16px' }}
+                      style={{ ...UTILITY, fontSize: '9px', letterSpacing: '0.36em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.38)', marginBottom: '16px' }}
                     >
                       {current.brand}
                     </motion.p>
@@ -968,7 +1042,7 @@ export function HeroSection() {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0 }}
                       transition={{ duration: 0.5, delay: reduceMotion ? 0 : 0.3, ease: [0.22, 1, 0.36, 1] }}
-                      style={{ ...DISPLAY, fontSize: '11px', letterSpacing: '0.22em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.38)', marginTop: '20px' }}
+                      style={{ ...UTILITY, fontSize: '11px', letterSpacing: '0.22em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.38)', marginTop: '20px' }}
                     >
                       {current.collection}
                     </motion.p>
@@ -996,26 +1070,38 @@ export function HeroSection() {
                 // clearer invitation than a hover-revealed cursor does.
               >
                 <span
-                  style={{ ...DISPLAY, letterSpacing: '0.24em', textTransform: 'uppercase', transition: 'opacity 0.35s' }}
+                  style={{ ...UTILITY, letterSpacing: '0.24em', textTransform: 'uppercase', transition: 'opacity 0.35s' }}
                   className="text-[11px] md:text-[10px] group-hover:opacity-50"
                 >
                   Shop now
                 </span>
-                <span
-                  className="inline-flex items-center justify-center rounded-full w-8 h-8 md:w-10 md:h-10 group-hover:bg-white group-hover:[color:black]"
-                  style={{
-                    border: '0.5px solid rgba(255,255,255,0.4)',
-                    color: 'rgba(255,255,255,0.9)',
-                    flexShrink: 0,
-                    transition: 'background 0.45s cubic-bezier(0.22,1,0.36,1), color 0.45s',
-                  }}
-                >
-                  <ArrowRight
-                    size={13}
-                    style={{ transition: 'transform 0.35s' }}
-                    className="group-hover:translate-x-[2px]"
-                  />
-                </span>
+                <MagneticCircle>
+                  <span
+                    className="inline-flex items-center justify-center rounded-full w-8 h-8 md:w-10 md:h-10"
+                    style={{
+                      border: '0.5px solid rgba(255,255,255,0.4)',
+                      color: 'rgba(255,255,255,0.9)',
+                      flexShrink: 0,
+                      transition: 'background 0.45s cubic-bezier(0.22,1,0.36,1), color 0.45s, border-color 0.45s',
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.background   = ACCENT
+                      e.currentTarget.style.color         = ACCENT_INK
+                      e.currentTarget.style.borderColor   = ACCENT
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.background   = 'transparent'
+                      e.currentTarget.style.color         = 'rgba(255,255,255,0.9)'
+                      e.currentTarget.style.borderColor   = 'rgba(255,255,255,0.4)'
+                    }}
+                  >
+                    <ArrowRight
+                      size={13}
+                      style={{ transition: 'transform 0.35s' }}
+                      className="group-hover:translate-x-[2px]"
+                    />
+                  </span>
+                </MagneticCircle>
               </Link>
             </motion.div>
           </div>
@@ -1065,7 +1151,7 @@ export function HeroSection() {
                   onClick={() => setQuickViewProduct(current)}
                   aria-label={`Quick view: ${current.title}`}
                   style={{
-                    ...DISPLAY,
+                    ...UTILITY,
                     fontSize: '9px',
                     letterSpacing: '0.26em',
                     textTransform: 'uppercase',
