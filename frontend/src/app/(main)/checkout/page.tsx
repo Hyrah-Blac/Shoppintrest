@@ -11,7 +11,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useAuth } from '@clerk/nextjs'
 import { toast } from 'sonner'
-import { useCartStore } from '@/store/useCartStore'
+import { useCartStore, getItemUnitPrice } from '@/store/useCartStore'
 import { apiClient } from '@/lib/api'
 import { formatPrice, cn } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
@@ -41,8 +41,13 @@ export default function CheckoutPage() {
   const [phone, setPhone] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
 
+  // Uses the selected size's own price when the product has one (e.g.
+  // framed art: A5 vs A1), falling back to the base product price otherwise.
+  // Must match the same logic the backend uses to compute the amount it
+  // actually charges via M-Pesa, or the displayed total and the real charge
+  // can disagree.
   const subtotal = items.reduce(
-    (s, i: any) => s + (i.product?.price || 0) * i.quantity, 0
+    (s, i: any) => s + getItemUnitPrice(i) * i.quantity, 0
   )
   const shippingCost = subtotal >= SHIPPING_FREE_THRESHOLD ? 0 : SHIPPING_COST
   const orderTotal = subtotal + shippingCost
@@ -350,7 +355,7 @@ export default function CheckoutPage() {
                         Size {item.size} · {item.product?.brand}
                       </p>
                       <p className="text-sm font-semibold mt-1">
-                        {formatPrice((item.product?.price || 0) * item.quantity, 'KES')}
+                        {formatPrice(getItemUnitPrice(item) * item.quantity, 'KES')}
                       </p>
                     </div>
                   </div>

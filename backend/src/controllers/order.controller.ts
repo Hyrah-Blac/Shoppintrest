@@ -85,7 +85,10 @@ export const initiateMpesaPayment = asyncHandler(
           product: product._id,
           title: product.title,
           image: product.images[0]?.url || '',
-          price: product.price,       // SERVER price — never trust frontend
+          // SERVER price — never trust frontend. Some sizes carry their own
+          // price (e.g. framed art: A5 vs A1) via the matched variant above;
+          // fall back to the product's base price when a size has no override.
+          price: variant.price ?? product.price,
           size: item.size,
           quantity: item.quantity,
         }
