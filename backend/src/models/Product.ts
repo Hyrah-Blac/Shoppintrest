@@ -9,7 +9,7 @@ export interface IProductDocument extends Document {
   category: string
   tags: string[]
   brand: string
-  variants: { size: string; inventory: number; sku: string }[]
+  variants: { size: string; inventory: number; sku: string; price?: number }[]
   totalInventory: number
   isFeatured: boolean
   isPublished: boolean
@@ -57,6 +57,10 @@ const ProductSchema = new Schema<IProductDocument>(
         size:      { type: String, required: true, maxlength: 20 },
         inventory: { type: Number, required: true, min: 0, default: 0 },
         sku:       { type: String, required: true, maxlength: 100 },
+        // Per-size price override. Optional — when omitted, the storefront
+        // falls back to the product's base `price`. Needed for items like
+        // framed art where each size (A5 vs A1) is priced differently.
+        price:     { type: Number, min: 0 },
       },
     ],
     totalInventory: { type: Number, default: 0, min: 0 },
