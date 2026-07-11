@@ -25,6 +25,16 @@ interface CartStore {
   reset: () => void
 }
 
+// A cart item's unit price. If the size the shopper picked has its own
+// price override (e.g. framed art: A5 vs A1), that wins; otherwise it
+// falls back to the product's base price. Exported so any component that
+// renders a line-item price (CartDrawer, /cart, /checkout, ...) uses the
+// exact same logic instead of quietly re-deriving it and drifting apart.
+export function getItemUnitPrice(item: CartItem): number {
+  const variant = item.product?.variants?.find((v: any) => v.size === item.size)
+  return variant?.price ?? item.product?.price ?? 0
+}
+
 export const useCartStore = create<CartStore>()((set, get) => ({
   items: [],
   isOpen: false,
@@ -35,7 +45,7 @@ export const useCartStore = create<CartStore>()((set, get) => ({
   computeTotals: () => {
     const { items } = get()
     const total = items.reduce(
-      (sum, item) => sum + (item.product?.price || 0) * item.quantity,
+      (sum, item) => sum + getItemUnitPrice(item) * item.quantity,
       0
     )
     const itemCount = items.reduce((sum, item) => sum + item.quantity, 0)

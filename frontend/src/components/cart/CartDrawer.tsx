@@ -5,7 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, ShoppingBag, Plus, Minus, Trash2, ArrowRight } from 'lucide-react'
-import { useCartStore } from '@/store/useCartStore'
+import { useCartStore, getItemUnitPrice } from '@/store/useCartStore'
 import { formatPrice } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import { toast } from 'sonner'
@@ -216,10 +216,12 @@ export function CartDrawer() {
                               </button>
                             </div>
 
-                            {/* Price */}
+                            {/* Price — uses the selected size's own price when
+                                the product has one (e.g. framed art), falling
+                                back to the base product price otherwise. */}
                             <span className="text-sm font-semibold text-foreground">
                               {formatPrice(
-                                (item.product?.price || 0) * item.quantity,
+                                getItemUnitPrice(item) * item.quantity,
                                 'KES'
                               )}
                             </span>
