@@ -51,6 +51,12 @@ export const addToCart = asyncHandler(
       if (existingIndex > -1) {
         const newQty = cart.items[existingIndex].quantity + quantity
         if (newQty > 10) return next(new AppError('Maximum 10 items per product', 400))
+        // FIX — the total requested quantity could now exceed stock even
+        // though the initial add-to-cart passed. Re-check against the same
+        // variant before committing the bump.
+        if (newQty > variant.inventory) {
+          return next(new AppError(`Only ${variant.inventory} items left in stock`, 400))
+        }
         cart.items[existingIndex].quantity = newQty
       } else {
         cart.items.push({ product: productId as any, size, quantity })
@@ -86,7 +92,23 @@ export const updateCartItem = asyncHandler(
     if (quantity <= 0) {
       cart.items.splice(itemIndex, 1)
     } else {
-      cart.items[itemIndex].quantity = Math.min(quantity, 10)
+      // FIX — this previously only capped quantity at 10 without checking
+      // whether that many units are actually still in stock. A customer
+      // could sit on a cart, stock could sell out or drop elsewhere, and
+      // bumping the quantity here wouldn't surface that until checkout
+      // failed. Re-check the same variant used by addToCart.
+      const product = await Product.findOne({ _id: productId, isPublished: true })
+      if (!product) return next(new AppError('Product is no longer available', 400))
+
+      const variant = product.variants.find((v) => v.size === size)
+      if (!variant) return next(new AppError('Size no longer available', 400))
+
+      const cappedQuantity = Math.min(quantity, 10)
+      if (cappedQuantity > variant.inventory) {
+        return next(new AppError(`Only ${variant.inventory} items left in stock`, 400))
+      }
+
+      cart.items[itemIndex].quantity = cappedQuantity
     }
 
     await cart.save()

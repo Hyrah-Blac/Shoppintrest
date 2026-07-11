@@ -21,7 +21,6 @@ export interface IOrderDocument extends Document {
   }
   subtotal: number
   shippingCost: number
-  tax: number
   total: number
   status: string
   // M-Pesa fields
@@ -64,7 +63,6 @@ const OrderSchema = new Schema<IOrderDocument>(
     },
     subtotal: { type: Number, required: true },
     shippingCost: { type: Number, required: true },
-    tax: { type: Number, required: true },
     total: { type: Number, required: true },
     status: {
       type: String,

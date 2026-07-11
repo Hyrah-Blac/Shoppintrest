@@ -39,12 +39,16 @@ const VALID_ORDER_STATUSES = new Set([
   'refunded',
 ])
 
+// No tax/VAT is charged — total is simply items + shipping.
 const calculateOrderTotals = (items: { price: number; quantity: number }[]) => {
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0)
   const shippingCost = 0
-  const tax = 0
-  const total = parseFloat((subtotal).toFixed(2))
-  return { subtotal, shippingCost, tax, total }
+  // FIX — previously this dropped shippingCost from the total entirely
+  // (`parseFloat(subtotal.toFixed(2))`), which happened to be harmless only
+  // because shippingCost was always 0. The moment real shipping costs are
+  // introduced, that bug would silently undercharge every order.
+  const total = parseFloat((subtotal + shippingCost).toFixed(2))
+  return { subtotal, shippingCost, total }
 }
 
 // Marks an order as paid, decrements stock, and clears the cart. Called from
@@ -122,6 +126,27 @@ export const initiateMpesaPayment = asyncHandler(
       return next(new AppError('Invalid phone number. Use format: 07XXXXXXXX or 254XXXXXXXXX', 400))
     }
 
+    // FIX — guard against double-submission. Without this, a slow response,
+    // a double-tap before React state disables the button, or a second
+    // browser tab could fire two STK pushes for the same cart — two prompts
+    // on the customer's phone, and a real risk of a duplicate charge if they
+    // approve both. If there's already an unresolved payment from the last
+    // 2 minutes, don't start another one.
+    const existingPending = await Order.findOne({
+      user: req.user._id,
+      status: 'awaiting_payment',
+      isPaid: false,
+      createdAt: { $gte: new Date(Date.now() - 2 * 60 * 1000) },
+    })
+    if (existingPending) {
+      return next(
+        new AppError(
+          'You already have a payment in progress. Check your phone, or wait a couple of minutes before trying again.',
+          409
+        )
+      )
+    }
+
     const cart = await Cart.findOne({ user: req.user._id }).populate('items.product')
     if (!cart || cart.items.length === 0) {
       return next(new AppError('Your cart is empty', 400))
@@ -160,7 +185,7 @@ export const initiateMpesaPayment = asyncHandler(
       })
     )
 
-    const { subtotal, shippingCost, tax, total } = calculateOrderTotals(orderItems)
+    const { subtotal, shippingCost, total } = calculateOrderTotals(orderItems)
 
     const order = await Order.create({
       user: req.user._id,
@@ -168,7 +193,6 @@ export const initiateMpesaPayment = asyncHandler(
       shippingAddress,
       subtotal,
       shippingCost,
-      tax,
       total,
       status: 'awaiting_payment',
       mpesaPhone: phone,
@@ -422,6 +446,16 @@ export const updateOrderStatus = asyncHandler(
       return next(new AppError(`Invalid status. Must be one of: ${[...VALID_ORDER_STATUSES].join(', ')}`, 400))
     }
 
+    // Note: this endpoint does NOT call Safaricom to actually reverse the
+    // M-Pesa payment — that still has to be done manually (Safaricom's B2C
+    // reversal API / the Daraja portal), same as before. What it DOES do now
+    // is restock inventory the moment an order transitions into 'refunded',
+    // since a refund means those items are back in your catalogue's stock.
+    const existingOrder = await Order.findById(req.params.id)
+    if (!existingOrder) return next(new AppError('Order not found', 404))
+
+    const isNewlyRefunded = status === 'refunded' && existingOrder.status !== 'refunded'
+
     const order = await Order.findByIdAndUpdate(
       req.params.id,
       {
@@ -436,6 +470,22 @@ export const updateOrderStatus = asyncHandler(
     )
 
     if (!order) return next(new AppError('Order not found', 404))
+
+    if (isNewlyRefunded) {
+      for (const item of order.items) {
+        await Product.findOneAndUpdate(
+          { _id: item.product, 'variants.size': item.size },
+          {
+            $inc: {
+              'variants.$.inventory': item.quantity,
+              totalInventory: item.quantity,
+            },
+          }
+        )
+      }
+      logger.info(`Order ${order._id} marked refunded — ${order.items.length} item line(s) restocked`)
+    }
+
     sendSuccess(res, order, 'Order status updated')
   }
 )

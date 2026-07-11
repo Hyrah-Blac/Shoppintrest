@@ -356,12 +356,7 @@ export default function OrderDetailPage({
                       : formatPrice(order.shippingCost, 'KES')}
                   </span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted">VAT (16%)</span>
-                  <span className="text-foreground">
-                    {formatPrice(order.tax, 'KES')}
-                  </span>
-                </div>
+                {/* No tax/VAT is charged, so no line item for it here. */}
                 <div className="border-t border-border pt-3 flex justify-between
                                 font-semibold text-base">
                   <span>Total</span>
