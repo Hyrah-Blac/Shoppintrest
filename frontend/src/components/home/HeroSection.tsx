@@ -287,7 +287,7 @@ function QuickViewModal({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.3 }}
-      onClick={e => { if (e.target === e.currentTarget) onClose() }}
+      onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-labelledby={`${modalId}-title`}
@@ -428,19 +428,21 @@ function QuickViewModal({
             width: '36px',
             height: '36px',
             borderRadius: '50%',
-            border: '0.5px solid rgba(255,255,255,0.2)',
-            background: 'rgba(255,255,255,0.06)',
-            color: 'rgba(255,255,255,0.7)',
+            border: '0.5px solid rgba(255,255,255,0.35)',
+            background: 'rgba(0,0,0,0.45)',
+            backdropFilter: 'blur(6px)',
+            WebkitBackdropFilter: 'blur(6px)',
+            color: '#fff',
             cursor: 'pointer',
             transition: 'background 0.25s, border-color 0.25s',
           }}
           onMouseEnter={e => {
-            e.currentTarget.style.background    = 'rgba(255,255,255,0.12)'
-            e.currentTarget.style.borderColor   = 'rgba(255,255,255,0.4)'
+            e.currentTarget.style.background    = 'rgba(0,0,0,0.65)'
+            e.currentTarget.style.borderColor   = 'rgba(255,255,255,0.6)'
           }}
           onMouseLeave={e => {
-            e.currentTarget.style.background    = 'rgba(255,255,255,0.06)'
-            e.currentTarget.style.borderColor   = 'rgba(255,255,255,0.2)'
+            e.currentTarget.style.background    = 'rgba(0,0,0,0.45)'
+            e.currentTarget.style.borderColor   = 'rgba(255,255,255,0.35)'
           }}
         >
           <X size={14} />
@@ -922,40 +924,56 @@ export function HeroSection() {
             {/* Left: editorial copy */}
             <div style={{ maxWidth: '680px' }}>
               <AnimatePresence mode="wait">
-                <motion.div
-                  key={active + '-copy'}
-                  initial={{ opacity: 0, y: 24 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -12 }}
-                  transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
-                >
+                <div key={active + '-copy'}>
                   {current?.brand && (
-                    <p style={{ ...DISPLAY, fontSize: '9px', letterSpacing: '0.36em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.38)', marginBottom: '16px' }}>
+                    <motion.p
+                      initial={{ opacity: 0, y: reduceMotion ? 0 : 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+                      style={{ ...DISPLAY, fontSize: '9px', letterSpacing: '0.36em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.38)', marginBottom: '16px' }}
+                    >
                       {current.brand}
-                    </p>
+                    </motion.p>
                   )}
 
-                  <h1
-                    aria-live="polite"
-                    style={{
-                      ...DISPLAY,
-                      fontWeight: 300,
-                      lineHeight: 0.9,
-                      letterSpacing: '-0.01em',
-                      color: '#fff',
-                      fontSize: 'clamp(2.15rem, 7.5vw, 7rem)',
-                      margin: 0,
-                    }}
-                  >
-                    {headline}
-                  </h1>
+                  {/* Masked reveal: the headline rises up through its own
+                      baseline like a curtain lifting, instead of just fading
+                      in place. This is the one deliberately showy motion in
+                      the hero — everything else stays quiet around it. */}
+                  <div style={{ overflow: 'hidden' }}>
+                    <motion.h1
+                      aria-live="polite"
+                      initial={reduceMotion ? { opacity: 0 } : { y: '105%' }}
+                      animate={{ y: '0%', opacity: 1 }}
+                      exit={reduceMotion ? { opacity: 0 } : { y: '-105%' }}
+                      transition={{ duration: 0.8, delay: reduceMotion ? 0 : 0.06, ease: [0.16, 1, 0.3, 1] }}
+                      style={{
+                        ...DISPLAY,
+                        fontWeight: 300,
+                        lineHeight: 0.9,
+                        letterSpacing: '-0.01em',
+                        color: '#fff',
+                        fontSize: 'clamp(2.15rem, 7.5vw, 7rem)',
+                        margin: 0,
+                      }}
+                    >
+                      {headline}
+                    </motion.h1>
+                  </div>
 
                   {current?.collection && (
-                    <p style={{ ...DISPLAY, fontSize: '11px', letterSpacing: '0.22em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.38)', marginTop: '20px' }}>
+                    <motion.p
+                      initial={{ opacity: 0, y: reduceMotion ? 0 : 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.5, delay: reduceMotion ? 0 : 0.3, ease: [0.22, 1, 0.36, 1] }}
+                      style={{ ...DISPLAY, fontSize: '11px', letterSpacing: '0.22em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.38)', marginTop: '20px' }}
+                    >
                       {current.collection}
-                    </p>
+                    </motion.p>
                   )}
-                </motion.div>
+                </div>
               </AnimatePresence>
             </div>
 
