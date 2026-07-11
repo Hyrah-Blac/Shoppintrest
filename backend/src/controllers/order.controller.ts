@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express'
-import Order from '../models/Order'
+import Order, { IOrderDocument } from '../models/Order'
 import Cart from '../models/Cart'
 import Product from '../models/Product'
 import { initiateStkPush, queryStkStatus } from '../config/mpesa'
@@ -45,6 +45,69 @@ const calculateOrderTotals = (items: { price: number; quantity: number }[]) => {
   const tax = 0
   const total = parseFloat((subtotal).toFixed(2))
   return { subtotal, shippingCost, tax, total }
+}
+
+// Marks an order as paid, decrements stock, and clears the cart. Called from
+// BOTH the M-Pesa callback (fast path) and the status-poll fallback (slow
+// path), so a payment gets fully recorded in the database no matter which
+// one notices it first — previously only the callback did this, so if the
+// callback was delayed or missed, the poll would tell the frontend "success"
+// while the order silently stayed 'awaiting_payment' forever and stock was
+// never decremented.
+//
+// Idempotent: if the order is already marked paid (e.g. the poll finalized
+// it and the callback arrives afterward, or vice versa), it will still
+// attach a receipt number / result code if one wasn't recorded yet, but it
+// will NOT decrement stock or clear the cart a second time.
+const finalizeSuccessfulPayment = async (
+  order: IOrderDocument,
+  opts: { mpesaReceiptNumber?: string; mpesaResultCode?: number; mpesaResultDesc?: string } = {}
+) => {
+  const alreadyFinalized = order.isPaid
+
+  if (!alreadyFinalized) {
+    order.isPaid = true
+    order.paidAt = new Date()
+    order.status = 'processing'
+  }
+  if (opts.mpesaReceiptNumber) order.mpesaReceiptNumber = opts.mpesaReceiptNumber
+  if (opts.mpesaResultCode != null) order.mpesaResultCode = opts.mpesaResultCode
+  if (opts.mpesaResultDesc) order.mpesaResultDesc = opts.mpesaResultDesc
+
+  await order.save()
+
+  if (alreadyFinalized) return // stock already decremented & cart already cleared — don't repeat it
+
+  for (const item of order.items) {
+    // Only decrement if there's still enough stock — guards against two
+    // customers both passing the initial check for the last unit and both
+    // paying before either one's inventory update lands.
+    const result = await Product.findOneAndUpdate(
+      {
+        _id: item.product,
+        variants: { $elemMatch: { size: item.size, inventory: { $gte: item.quantity } } },
+      },
+      {
+        $inc: {
+          'variants.$[v].inventory': -item.quantity,
+          totalInventory: -item.quantity,
+        },
+      },
+      { arrayFilters: [{ 'v.size': item.size }] }
+    )
+
+    if (!result) {
+      logger.error(
+        `Stock ran out before payment settled — Order ${order._id}, product ${item.product}, size ${item.size}. Flagging for manual review.`
+      )
+      order.trackingNumber = order.trackingNumber || 'NEEDS_REVIEW: oversold'
+    }
+  }
+
+  await order.save()
+  await Cart.findOneAndUpdate({ user: order.user }, { items: [] })
+
+  logger.info(`Order ${order._id} finalized as paid — stock decremented, cart cleared`)
 }
 
 // ─── INITIATE STK PUSH ────────────────────────────────────────────────────────
@@ -208,50 +271,14 @@ export const mpesaCallback = asyncHandler(
         metadata[item.Name] = item.Value
       })
 
-      order.isPaid = true
-      order.paidAt = new Date()
-      order.status = 'processing'
-      order.mpesaReceiptNumber = metadata['MpesaReceiptNumber']
-      order.mpesaResultCode = ResultCode
-      order.mpesaResultDesc = ResultDesc
-
-      await order.save()
-
-      for (const item of order.items) {
-        // Only decrement if there's still enough stock — guards against two
-        // customers both passing the initial check for the last unit and
-        // both paying before either one's inventory update lands.
-        const result = await Product.findOneAndUpdate(
-          {
-            _id: item.product,
-            variants: { $elemMatch: { size: item.size, inventory: { $gte: item.quantity } } },
-          },
-          {
-            $inc: {
-              'variants.$[v].inventory': -item.quantity,
-              totalInventory: -item.quantity,
-            },
-          },
-          { arrayFilters: [{ 'v.size': item.size }] }
-        )
-
-        if (!result) {
-          logger.error(
-            `Stock ran out before payment settled — Order ${order._id}, product ${item.product}, size ${item.size}. Flagging for manual review.`
-          )
-          // Payment already succeeded — don't strand the customer's money by
-          // cancelling. Keep the order moving and flag it for a human to sort
-          // out (refund, backorder, substitute, etc.).
-          order.trackingNumber = order.trackingNumber || 'NEEDS_REVIEW: oversold'
-        }
-      }
-
-      await order.save()
-
-      await Cart.findOneAndUpdate({ user: order.user }, { items: [] })
+      await finalizeSuccessfulPayment(order, {
+        mpesaReceiptNumber: metadata['MpesaReceiptNumber'],
+        mpesaResultCode: ResultCode,
+        mpesaResultDesc: ResultDesc,
+      })
 
       logger.info(
-        `M-Pesa payment confirmed — Order ${order._id} — Receipt: ${metadata['MpesaReceiptNumber']}`
+        `M-Pesa payment confirmed via callback — Order ${order._id} — Receipt: ${metadata['MpesaReceiptNumber']}`
       )
     } else {
       order.status = 'cancelled'
@@ -283,6 +310,24 @@ export const checkPaymentStatus = asyncHandler(
         const queryResult = await queryStkStatus(order.mpesaCheckoutRequestId)
 
         if (queryResult.ResultCode === '0') {
+          // Previously this just told the frontend "success" without ever
+          // updating the order — so the checkout page showed "Order
+          // Confirmed!" and cleared the cart, while the database order sat
+          // at 'awaiting_payment' forever and stock was never decremented
+          // (that only happened in the callback). Finalize it here too, the
+          // same way the callback does, so whichever path notices success
+          // first is the one that actually records it.
+          await finalizeSuccessfulPayment(order, {
+            mpesaResultCode: parseInt(queryResult.ResultCode, 10),
+            mpesaResultDesc: queryResult.ResultDesc,
+            // Note: the query endpoint doesn't return the M-Pesa receipt
+            // number — only the callback's CallbackMetadata does. If the
+            // callback arrives afterward, it'll attach the receipt number
+            // then (finalizeSuccessfulPayment won't re-decrement stock).
+          })
+
+          logger.info(`M-Pesa payment confirmed via poll fallback — Order ${order._id}`)
+
           sendSuccess(res, { status: 'processing', isPaid: true, orderId: order._id })
           return
         }

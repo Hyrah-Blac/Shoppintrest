@@ -1,0 +1,49 @@
+/* ── Chat / Support UI — Design Tokens ────────────────────────────────────────
+   Drop this into your globals.css (or a [data-theme] block).
+   Flip the values below for light mode — the components adapt automatically.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+:root,
+[data-theme="dark"] {
+  --chat-bg:               #000;
+  --chat-surface:          #0d0d0d;
+  --chat-surface-hi:       #141414;
+  --chat-border:           rgba(255, 255, 255, 0.08);
+
+  --chat-text-primary:     #ffffff;
+  --chat-text-secondary:   rgba(255, 255, 255, 0.55);
+  --chat-text-meta:        rgba(255, 255, 255, 0.28);
+
+  --chat-accent:           #e60023;   /* Pinterest red */
+  --chat-accent-hover:     #ff1a38;
+
+  --chat-bubble-out:       #e60023;   /* outgoing bubble = Pinterest red */
+  --chat-bubble-out-text:  #ffffff;   /* text on red bubble */
+
+  --chat-unread:           #3b82f6;   /* unread dot & badge */
+  --chat-online:           #22c55e;   /* online indicator */
+  --chat-tick-read:        #60a5fa;   /* double-tick read colour */
+  --chat-warn:             #fbbf24;   /* retry / error */
+}
+
+[data-theme="light"] {
+  --chat-bg:               #ffffff;
+  --chat-surface:          #f5f5f5;
+  --chat-surface-hi:       #ebebeb;
+  --chat-border:           rgba(0, 0, 0, 0.08);
+
+  --chat-text-primary:     #0a0a0a;
+  --chat-text-secondary:   rgba(0, 0, 0, 0.55);
+  --chat-text-meta:        rgba(0, 0, 0, 0.36);
+
+  --chat-accent:           #e60023;
+  --chat-accent-hover:     #c8001f;
+
+  --chat-bubble-out:       #e60023;
+  --chat-bubble-out-text:  #ffffff;
+
+  --chat-unread:           #2563eb;
+  --chat-online:           #16a34a;
+  --chat-tick-read:        #3b82f6;
+  --chat-warn:             #d97706;
+}

@@ -7,36 +7,33 @@ import { apiClient }        from '@/lib/api'
 import { useSupportChat }   from '@/hooks/useSupportChat'
 import { useStreamContext } from '@/components/providers/StreamProvider'
 
-// ── Design tokens ─────────────────────────────────────────────────────────────
-const T = {
-  bg:         '#000',
-  surface:    '#0d0d0d',   // bubbles, input, cards
-  surfaceHi:  '#141414',   // emoji picker, hover
-  border:     'rgba(255,255,255,0.08)',
-  red:        '#e60023',   // Pinterest red — the ONLY accent
-  textPri:    '#fff',
-  textSec:    'rgba(255,255,255,0.55)',
-  textMeta:   'rgba(255,255,255,0.38)',
-  online:     '#22c55e',
-  tickRead:   '#60a5fa',
-}
+/**
+ * All colours are CSS variables — define these in your global stylesheet
+ * (or in a [data-theme] / .dark / .light block) so dark/light mode just
+ * works by toggling the theme:
+ *
+ *  --chat-bg              Page / chat area background
+ *  --chat-surface         Bubble & input background (elevated)
+ *  --chat-surface-hi      Hover / active surface
+ *  --chat-border          Hairline borders
+ *  --chat-text-primary    Main text
+ *  --chat-text-secondary  Supporting text
+ *  --chat-text-meta       Timestamps, icons, placeholders
+ *  --chat-accent          Pinterest red — #e60023
+ *  --chat-accent-hover    Pinterest red hover — #ff1a38
+ *  --chat-bubble-out      Outgoing bubble bg  → var(--chat-accent)
+ *  --chat-bubble-out-text Outgoing bubble text → #fff
+ *  --chat-online          Online indicator dot
+ *  --chat-tick-read       Read receipt blue
+ */
 
 const DISPLAY: React.CSSProperties = {
   fontFamily: 'var(--font-serif, "Cormorant Garamond", Georgia, serif)',
 }
 
 interface AdminConversation {
-  _id:             string
-  streamChannelId: string
-  createdAt:       string
-  updatedAt:       string
-  userId: {
-    _id:          string
-    username:     string
-    email:        string
-    displayName?: string
-    avatar?:      string
-  } | null
+  _id: string; streamChannelId: string; createdAt: string; updatedAt: string
+  userId: { _id: string; username: string; email: string; displayName?: string; avatar?: string } | null
 }
 
 const EMOJI_GROUPS: { label: string; emojis: string[] }[] = [
@@ -50,7 +47,6 @@ function timeLabel(d?: string | Date) {
   if (!d) return ''
   return new Date(d as string).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
-
 function dayLabel(d?: string | Date) {
   if (!d) return ''
   const date = new Date(d as string)
@@ -66,15 +62,15 @@ function TypingDots() {
     <div style={{ display: 'flex', alignItems: 'flex-end', padding: '2px 0 4px' }}>
       <div style={{
         display: 'flex', alignItems: 'center', gap: 5,
-        background: T.surface,
-        border: `0.5px solid ${T.border}`,
+        background: 'var(--chat-surface)',
+        border: '0.5px solid var(--chat-border)',
         borderRadius: '10px 10px 10px 2px',
         padding: '11px 15px',
       }}>
         {[0, 0.18, 0.36].map((delay, i) => (
           <span key={i} style={{
             width: 6, height: 6, borderRadius: '50%',
-            background: T.textMeta,
+            background: 'var(--chat-text-meta)',
             display: 'block',
             animation: `typingBounce 1.2s ${delay}s infinite ease-in-out`,
           }} />
@@ -88,14 +84,16 @@ function TypingDots() {
 function Ticks({ status, isRead }: { status?: 'sending' | 'failed' | 'sent'; isRead?: boolean }) {
   if (status === 'sending') {
     return (
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={T.textMeta} strokeWidth="2.5" strokeLinecap="round" style={{ animation: 'spin 0.9s linear infinite', flexShrink: 0 }}>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+        stroke="var(--chat-text-meta)" strokeWidth="2.5" strokeLinecap="round"
+        style={{ animation: 'spin 0.9s linear infinite', flexShrink: 0 }}>
         <path d="M21 12a9 9 0 1 1-6.219-8.56" />
       </svg>
     )
   }
-  const col = isRead ? T.tickRead : T.textMeta
+  const col = isRead ? 'var(--chat-tick-read)' : 'var(--chat-bubble-out-text)'
   return (
-    <svg width="16" height="11" viewBox="0 0 16 11" fill="none" style={{ flexShrink: 0 }}>
+    <svg width="16" height="11" viewBox="0 0 16 11" fill="none" style={{ flexShrink: 0, opacity: 0.7 }}>
       <path d="M11.071.653a.457.457 0 0 0-.304-.102.493.493 0 0 0-.381.178l-6.19 7.636-2.405-2.272a.463.463 0 0 0-.336-.139.46.46 0 0 0-.336.139l-.32.323a.45.45 0 0 0 0 .646l2.926 2.926c.094.094.218.146.349.146h.013a.49.49 0 0 0 .363-.183l6.625-8.171a.453.453 0 0 0-.004-.62z" fill={col}/>
       <path d="M15.071.653a.457.457 0 0 0-.304-.102.493.493 0 0 0-.381.178l-6.19 7.636-.708-.668-.621.766 1.064 1.005c.094.094.218.146.349.146h.013a.49.49 0 0 0 .363-.183l6.625-8.171a.453.453 0 0 0-.21-.607z" fill={col}/>
     </svg>
@@ -112,9 +110,9 @@ function Bubble({ text, isMine, createdAt, isSystem, showTail, status, onRetry }
     return (
       <div style={{ textAlign: 'center', padding: '6px 0', margin: '4px 0' }}>
         <span style={{
-          fontSize: 11.5, color: T.textMeta,
-          background: T.surface,
-          border: `0.5px solid ${T.border}`,
+          fontSize: 11.5, color: 'var(--chat-text-meta)',
+          background: 'var(--chat-surface)',
+          border: '0.5px solid var(--chat-border)',
           padding: '5px 14px', borderRadius: 20,
           display: 'inline-block', lineHeight: 1.5,
         }}>
@@ -123,10 +121,6 @@ function Bubble({ text, isMine, createdAt, isSystem, showTail, status, onRetry }
       </div>
     )
   }
-
-  const bubbleBg    = isMine ? '#1a0008' : T.surface
-  const bubbleColor = isMine ? 'rgba(255,255,255,0.92)' : T.textPri
-  const metaColor   = isMine ? 'rgba(255,255,255,0.45)' : T.textMeta
 
   return (
     <div style={{
@@ -138,9 +132,11 @@ function Bubble({ text, isMine, createdAt, isSystem, showTail, status, onRetry }
         position: 'relative',
         maxWidth: 'min(74%, calc(100vw - 88px))',
         minWidth: 64,
-        background: bubbleBg,
-        color: bubbleColor,
-        border: `0.5px solid ${isMine ? 'rgba(255,255,255,0.12)' : T.border}`,
+        background: isMine ? 'var(--chat-bubble-out)' : 'var(--chat-surface)',
+        color: isMine ? 'var(--chat-bubble-out-text)' : 'var(--chat-text-primary)',
+        border: isMine
+          ? '0.5px solid rgba(255,255,255,0.12)'
+          : '0.5px solid var(--chat-border)',
         borderRadius: 12,
         borderTopRightRadius: isMine && showTail ? 3 : 12,
         borderTopLeftRadius:  !isMine && showTail ? 3 : 12,
@@ -160,12 +156,12 @@ function Bubble({ text, isMine, createdAt, isSystem, showTail, status, onRetry }
           }}>
             <path
               d="M1.533.012C.629.144 0 .997 0 2.012v8.149c0 1.13.916 2.046 2.046 2.046h.954c-1.31-1.873-2.16-4.318-2.16-6.85 0-1.99.516-3.86 1.408-5.345C2.395.04 2.04-.04 1.533.012z"
-              fill={bubbleBg}
+              fill={isMine ? 'var(--chat-bubble-out)' : 'var(--chat-surface)'}
             />
           </svg>
         )}
 
-        {/* Text + timestamp — flex-wrap keeps them from ever overlapping */}
+        {/* Text + timestamp — flex-wrap prevents overlap */}
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', columnGap: 8, rowGap: 3 }}>
           <span style={{ whiteSpace: 'pre-wrap', flex: '1 1 auto', minWidth: 0 }}>
             {text}
@@ -174,12 +170,13 @@ function Bubble({ text, isMine, createdAt, isSystem, showTail, status, onRetry }
             flexShrink: 0, marginLeft: 'auto',
             display: 'flex', alignItems: 'center', gap: 4,
             fontSize: 11, lineHeight: 1,
-            color: metaColor,
+            color: isMine ? 'var(--chat-bubble-out-text)' : 'var(--chat-text-meta)',
+            opacity: isMine ? 0.6 : 1,
             whiteSpace: 'nowrap', userSelect: 'none',
           }}>
             {status === 'failed' ? (
               <button onClick={onRetry} style={{
-                fontSize: 11, fontWeight: 600, color: '#fbbf24',
+                fontSize: 11, fontWeight: 600, color: 'var(--chat-warn, #fbbf24)',
                 background: 'none', border: 'none', cursor: 'pointer', padding: 0,
                 display: 'flex', alignItems: 'center', gap: 4,
               }}>
@@ -214,13 +211,13 @@ function EmojiPicker({ onPick, onClose }: { onPick: (e: string) => void; onClose
     <div ref={ref} style={{
       position: 'absolute', bottom: '100%', left: 8, marginBottom: 8,
       width: 'min(300px, calc(100vw - 48px))', maxHeight: 'min(280px, 50vh)',
-      overflowY: 'auto', background: T.surface,
-      border: `0.5px solid ${T.border}`, borderRadius: 14,
+      overflowY: 'auto', background: 'var(--chat-surface)',
+      border: '0.5px solid var(--chat-border)', borderRadius: 14,
       padding: '10px 8px', zIndex: 20,
     }}>
       {EMOJI_GROUPS.map(g => (
         <div key={g.label} style={{ marginBottom: 8 }}>
-          <p style={{ fontSize: 10, fontWeight: 600, color: T.textMeta, margin: '2px 4px 5px', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+          <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--chat-text-meta)', margin: '2px 4px 5px', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
             {g.label}
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
@@ -232,8 +229,8 @@ function EmojiPicker({ onPick, onClose }: { onPick: (e: string) => void; onClose
                 fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif',
                 transition: 'background 0.1s',
               }}
-              onMouseEnter={e => (e.currentTarget.style.background = T.surfaceHi)}
-              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                onMouseEnter={e => (e.currentTarget.style.background = 'var(--chat-surface-hi)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
               >
                 {emoji}
               </button>
@@ -247,8 +244,8 @@ function EmojiPicker({ onPick, onClose }: { onPick: (e: string) => void; onClose
 
 // ─── Composer ─────────────────────────────────────────────────────────────────
 function Composer({ onSend, onTyping }: { onSend: (t: string) => Promise<void>; onTyping?: () => void }) {
-  const [input, setInput]       = useState('')
-  const [sending, setSending]   = useState(false)
+  const [input,     setInput]     = useState('')
+  const [sending,   setSending]   = useState(false)
   const [showEmoji, setShowEmoji] = useState(false)
   const ref = useRef<HTMLTextAreaElement>(null)
 
@@ -279,38 +276,32 @@ function Composer({ onSend, onTyping }: { onSend: (t: string) => Promise<void>; 
   return (
     <div style={{
       display: 'flex', alignItems: 'flex-end', gap: 8,
-      padding: '10px 10px',
+      padding: '10px',
       paddingBottom: 'max(10px, env(safe-area-inset-bottom))',
-      background: T.bg,
-      borderTop: `0.5px solid ${T.border}`,
+      background: 'var(--chat-bg)',
+      borderTop: '0.5px solid var(--chat-border)',
       flexShrink: 0, position: 'relative',
     }}>
-      {/* Emoji */}
-      <button onClick={() => setShowEmoji(v => !v)} aria-label="Emoji"
-        style={{
-          width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
-          border: 'none', background: 'transparent', cursor: 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 22, lineHeight: 1, transition: 'background 0.12s',
-          fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif',
-        }}
-        onMouseEnter={e => (e.currentTarget.style.background = T.surfaceHi)}
+      <button onClick={() => setShowEmoji(v => !v)} aria-label="Emoji" style={{
+        width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
+        border: 'none', background: 'transparent', cursor: 'pointer',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 22, lineHeight: 1, transition: 'background 0.12s',
+        fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif',
+      }}
+        onMouseEnter={e => (e.currentTarget.style.background = 'var(--chat-surface-hi)')}
         onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
       >😊</button>
 
       {showEmoji && <EmojiPicker onPick={insertEmoji} onClose={() => setShowEmoji(false)} />}
 
-      {/* Input */}
-      <div style={{
+      <div className="chat-input-wrap" style={{
         flex: 1, display: 'flex', alignItems: 'flex-end',
-        background: T.surface,
-        border: `0.5px solid ${T.border}`,
+        background: 'var(--chat-surface)',
+        border: '0.5px solid var(--chat-border)',
         borderRadius: 22, padding: '0 6px 0 14px', minHeight: 42,
         transition: 'border-color 0.15s',
-      }}
-        onFocusCapture={e => (e.currentTarget.style.borderColor = T.red)}
-        onBlurCapture={e  => (e.currentTarget.style.borderColor = T.border)}
-      >
+      }}>
         <textarea ref={ref} value={input}
           onChange={e => { setInput(e.target.value); onTyping?.() }}
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
@@ -318,25 +309,23 @@ function Composer({ onSend, onTyping }: { onSend: (t: string) => Promise<void>; 
           style={{
             flex: 1, resize: 'none', border: 'none', outline: 'none',
             background: 'transparent', fontSize: 15, lineHeight: 1.5,
-            color: T.textPri, caretColor: T.red,
+            color: 'var(--chat-text-primary)', caretColor: 'var(--chat-accent)',
             fontFamily: 'var(--font-sans)',
             overflowY: 'hidden', padding: '9px 0', maxHeight: 130,
           }}
         />
       </div>
 
-      {/* Send */}
-      <button onClick={send} disabled={!canSend && !sending} aria-label="Send"
-        style={{
-          width: 42, height: 42, borderRadius: '50%', flexShrink: 0,
-          border: 'none', background: T.red, color: '#fff',
-          cursor: canSend ? 'pointer' : 'default',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          opacity: canSend || sending ? 1 : 0.4,
-          transition: 'opacity 0.15s, transform 0.12s',
-        }}
-        onMouseEnter={e => { if (canSend) e.currentTarget.style.transform = 'scale(1.06)' }}
-        onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)' }}
+      <button onClick={send} disabled={!canSend && !sending} aria-label="Send" style={{
+        width: 42, height: 42, borderRadius: '50%', flexShrink: 0,
+        border: 'none', background: 'var(--chat-accent)', color: '#fff',
+        cursor: canSend ? 'pointer' : 'default',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        opacity: canSend || sending ? 1 : 0.4,
+        transition: 'opacity 0.15s, transform 0.12s, background 0.12s',
+      }}
+        onMouseEnter={e => { if (canSend) { e.currentTarget.style.background = 'var(--chat-accent-hover)'; e.currentTarget.style.transform = 'scale(1.06)' } }}
+        onMouseLeave={e => { e.currentTarget.style.background = 'var(--chat-accent)'; e.currentTarget.style.transform = 'scale(1)' }}
         onMouseDown={e  => { if (canSend) e.currentTarget.style.transform = 'scale(0.93)' }}
         onMouseUp={e    => { if (canSend) e.currentTarget.style.transform = 'scale(1.06)' }}
       >
@@ -470,24 +459,24 @@ export default function AdminConversationPage() {
     return result
   }, [messages])
 
-  const spinner = (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={T.textMeta} strokeWidth="2.5" strokeLinecap="round" style={{ animation: 'spin 0.8s linear infinite' }}>
+  const Spinner = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--chat-text-meta)" strokeWidth="2.5" strokeLinecap="round" style={{ animation: 'spin 0.8s linear infinite' }}>
       <path d="M21 12a9 9 0 1 1-6.219-8.56" />
     </svg>
   )
 
   if (!loaded) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 'calc(100dvh - 64px)', background: T.bg }}>
-      {spinner}
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 'calc(100dvh - 64px)', background: 'var(--chat-bg)' }}>
+      <Spinner />
       <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
     </div>
   )
 
   if (!convo) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 'calc(100dvh - 64px)', background: T.bg }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 'calc(100dvh - 64px)', background: 'var(--chat-bg)' }}>
       <div style={{ textAlign: 'center' }}>
-        <p style={{ ...DISPLAY, fontSize: 22, fontWeight: 300, color: T.textPri, margin: '0 0 14px' }}>Conversation not found</p>
-        <Link href="/admin/support" style={{ fontSize: 12, color: T.textMeta, textDecoration: 'underline' }}>← Back to inbox</Link>
+        <p style={{ ...DISPLAY, fontSize: 22, fontWeight: 300, color: 'var(--chat-text-primary)', margin: '0 0 14px' }}>Conversation not found</p>
+        <Link href="/admin/support" style={{ fontSize: 12, color: 'var(--chat-text-meta)', textDecoration: 'underline' }}>← Back to inbox</Link>
       </div>
     </div>
   )
@@ -499,36 +488,35 @@ export default function AdminConversationPage() {
       maxWidth: 760, margin: '0 auto',
       display: 'flex', flexDirection: 'column',
       height: 'calc(100dvh - 64px)',
-      background: T.bg, position: 'relative',
+      background: 'var(--chat-bg)', position: 'relative',
     }}>
 
       {/* ── Header ── */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 12,
         padding: '10px 16px',
-        borderBottom: `0.5px solid ${T.border}`,
-        background: T.bg, flexShrink: 0, zIndex: 2,
+        borderBottom: '0.5px solid var(--chat-border)',
+        background: 'var(--chat-bg)', flexShrink: 0, zIndex: 2,
       }}>
         <Link href="/admin/support" style={{
           display: 'flex', alignItems: 'center',
-          color: T.textMeta, textDecoration: 'none',
-          padding: '6px', borderRadius: 8, transition: 'color 0.12s',
+          color: 'var(--chat-text-meta)', textDecoration: 'none',
+          padding: 6, borderRadius: 8, transition: 'color 0.12s',
         }}
-          onMouseEnter={e => (e.currentTarget.style.color = T.textPri)}
-          onMouseLeave={e => (e.currentTarget.style.color = T.textMeta)}
+          onMouseEnter={e => (e.currentTarget.style.color = 'var(--chat-text-primary)')}
+          onMouseLeave={e => (e.currentTarget.style.color = 'var(--chat-text-meta)')}
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M19 12H5M12 19l-7-7 7-7"/>
           </svg>
         </Link>
 
-        {/* Avatar */}
         <div style={{ position: 'relative', flexShrink: 0 }}>
           <div style={{
             width: 40, height: 40, borderRadius: '50%',
-            background: T.surface, border: `0.5px solid ${T.border}`,
+            background: 'var(--chat-surface)', border: '0.5px solid var(--chat-border)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 15, fontWeight: 700, color: T.textSec,
+            fontSize: 15, fontWeight: 700, color: 'var(--chat-text-secondary)',
             overflow: 'hidden',
           }}>
             {user?.avatar
@@ -539,18 +527,18 @@ export default function AdminConversationPage() {
           <span style={{
             position: 'absolute', bottom: 0, right: 0,
             width: 10, height: 10, borderRadius: '50%',
-            background: T.online, border: `2px solid ${T.bg}`,
+            background: 'var(--chat-online)', border: '2px solid var(--chat-bg)',
           }} />
         </div>
 
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ fontSize: 15, fontWeight: 600, color: T.textPri, margin: 0, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--chat-text-primary)', margin: 0, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {user?.displayName ?? user?.username ?? 'Unknown user'}
           </p>
           <p style={{ fontSize: 12, margin: '1px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {isTyping
-              ? <span style={{ color: T.red }}>typing…</span>
-              : <span style={{ color: T.textSec }}>{user?.email ?? '—'}</span>
+              ? <span style={{ color: 'var(--chat-accent)' }}>typing…</span>
+              : <span style={{ color: 'var(--chat-text-secondary)' }}>{user?.email ?? '—'}</span>
             }
           </p>
         </div>
@@ -558,13 +546,13 @@ export default function AdminConversationPage() {
         {user?.username && (
           <Link href={`/profile/${user.username}`} style={{
             fontSize: 10.5, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase',
-            color: T.textMeta, textDecoration: 'none',
+            color: 'var(--chat-text-meta)', textDecoration: 'none',
             padding: '5px 12px',
-            border: `0.5px solid ${T.border}`,
+            border: '0.5px solid var(--chat-border)',
             borderRadius: 8, flexShrink: 0, transition: 'all 0.12s',
           }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = T.textSec; e.currentTarget.style.color = T.textPri }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = T.border;  e.currentTarget.style.color = T.textMeta }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--chat-text-secondary)'; e.currentTarget.style.color = 'var(--chat-text-primary)' }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--chat-border)';          e.currentTarget.style.color = 'var(--chat-text-meta)' }}
           >
             Profile
           </Link>
@@ -576,42 +564,40 @@ export default function AdminConversationPage() {
         flex: 1, overflowY: 'auto',
         padding: '12px 0 8px',
         display: 'flex', flexDirection: 'column',
-        background: T.bg,
+        background: 'var(--chat-bg)',
         overflowAnchor: 'none',
         WebkitOverflowScrolling: 'touch',
         overscrollBehaviorY: 'contain',
       }}>
         {isLoading && (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}>{spinner}</div>
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}><Spinner /></div>
         )}
 
         {!isLoading && messages.length === 0 && optimistic.length === 0 && (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: '3rem 2rem', textAlign: 'center' }}>
-            <div style={{ width: 60, height: 60, borderRadius: '50%', background: T.surface, border: `0.5px solid ${T.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26 }}>💬</div>
+            <div style={{ width: 60, height: 60, borderRadius: '50%', background: 'var(--chat-surface)', border: '0.5px solid var(--chat-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26 }}>💬</div>
             <div>
-              <p style={{ ...DISPLAY, fontSize: 22, fontWeight: 300, margin: '0 0 6px', color: T.textPri }}>No messages yet</p>
-              <p style={{ fontSize: 13, margin: 0, color: T.textSec, lineHeight: 1.7 }}>The customer hasn't sent anything yet.</p>
+              <p style={{ ...DISPLAY, fontSize: 22, fontWeight: 300, margin: '0 0 6px', color: 'var(--chat-text-primary)' }}>No messages yet</p>
+              <p style={{ fontSize: 13, margin: 0, color: 'var(--chat-text-secondary)', lineHeight: 1.7 }}>The customer hasn't sent anything yet.</p>
             </div>
           </div>
         )}
 
         {grouped.map(({ day, msgs }) => (
           <div key={day}>
-            {/* Day separator */}
             <div style={{ display: 'flex', justifyContent: 'center', margin: '16px 0 10px' }}>
               <span style={{
-                fontSize: 10.5, color: T.textMeta,
+                fontSize: 10.5, color: 'var(--chat-text-meta)',
                 padding: '4px 14px', borderRadius: 20,
                 fontWeight: 500, letterSpacing: '0.08em',
-                border: `0.5px solid ${T.border}`,
+                border: '0.5px solid var(--chat-border)',
                 textTransform: 'uppercase',
               }}>
                 {day}
               </span>
             </div>
-
             {msgs.map((msg, idx) => {
-              const isMine = msg.user?.id === client?.userID
+              const isMine  = msg.user?.id === client?.userID
               const isFirst = !msgs[idx - 1] || msgs[idx - 1].user?.id !== msg.user?.id
               const isLast  = !msgs[idx + 1] || msgs[idx + 1].user?.id !== msg.user?.id
               return (
@@ -639,17 +625,15 @@ export default function AdminConversationPage() {
         {isTyping && <div style={{ padding: '4px 8px 2px' }}><TypingDots /></div>}
       </div>
 
-      {/* New messages pill */}
       {showNew && (
         <button onClick={scrollToBottom} style={{
           position: 'absolute',
           bottom: 'calc(72px + env(safe-area-inset-bottom))',
           left: '50%', transform: 'translateX(-50%)',
           padding: '7px 18px', borderRadius: 20, fontSize: 12.5, fontWeight: 600,
-          background: T.red, color: '#fff',
+          background: 'var(--chat-accent)', color: '#fff',
           border: 'none', cursor: 'pointer',
-          display: 'flex', alignItems: 'center', gap: 6,
-          zIndex: 5,
+          display: 'flex', alignItems: 'center', gap: 6, zIndex: 5,
         }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M12 5v14M5 12l7 7 7-7"/>
@@ -664,21 +648,14 @@ export default function AdminConversationPage() {
         @keyframes spin         { to { transform: rotate(360deg) } }
         @keyframes typingBounce { 0%,60%,100%{transform:translateY(0);opacity:.3} 30%{transform:translateY(-6px);opacity:1} }
 
-        /* Scrollbar */
+        .chat-input-wrap:focus-within { border-color: var(--chat-accent) !important; }
+
         div::-webkit-scrollbar       { width: 4px }
         div::-webkit-scrollbar-track { background: transparent }
-        div::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 99px }
-        div::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.14) }
+        div::-webkit-scrollbar-thumb { background: var(--chat-border); border-radius: 99px }
 
-        /* Textarea reset */
-        textarea { scrollbar-width: none }
-        textarea::placeholder { color: rgba(255,255,255,0.22) !important }
-        textarea:focus { outline: none !important; box-shadow: none !important }
-
-        @media (max-width: 480px) {
-          .wa-header  { padding: 8px 12px }
-          .wa-composer { padding: 6px }
-        }
+        textarea::placeholder { color: var(--chat-text-meta) !important }
+        textarea:focus        { outline: none !important; box-shadow: none !important }
       `}</style>
     </div>
   )

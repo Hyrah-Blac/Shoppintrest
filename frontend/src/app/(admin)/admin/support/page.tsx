@@ -7,18 +7,23 @@ import { useStreamContext } from '@/components/providers/StreamProvider'
 import { apiClient }        from '@/lib/api'
 import { useSupportChat, ChannelPreview } from '@/hooks/useSupportChat'
 
-// ── Design tokens ─────────────────────────────────────────────────────────────
-const T = {
-  bg:        '#000',
-  surface:   '#0d0d0d',
-  surfaceHi: '#141414',
-  border:    'rgba(255,255,255,0.08)',
-  red:       '#e60023',
-  blue:      '#3b82f6',
-  textPri:   '#fff',
-  textSec:   'rgba(255,255,255,0.55)',
-  textMeta:  'rgba(255,255,255,0.28)',
-}
+/**
+ * All colours reference CSS variables — no hardcoded values.
+ * Define these alongside your --chat-* tokens in global CSS:
+ *
+ *  --chat-bg              Page background
+ *  --chat-surface         Elevated surface (cards, inputs, avatars)
+ *  --chat-surface-hi      Hover / active surface
+ *  --chat-border          Hairline borders
+ *  --chat-text-primary    Main text
+ *  --chat-text-secondary  Supporting text
+ *  --chat-text-meta       Timestamps, labels, placeholders
+ *  --chat-accent          Pinterest red — #e60023
+ *  --chat-accent-hover    Pinterest red hover — #ff1a38
+ *  --chat-unread          Unread indicator — e.g. #3b82f6
+ *  --chat-bubble-out      Outgoing bubble bg → var(--chat-accent)
+ *  --chat-bubble-out-text Outgoing bubble text → #fff
+ */
 
 const DISPLAY: React.CSSProperties = {
   fontFamily: 'var(--font-display, "Cormorant Garamond", Georgia, serif)',
@@ -49,9 +54,9 @@ function Avatar({ user, size = 40 }: { user: AdminConversation['userId']; size?:
   return (
     <div style={{
       width: size, height: size, borderRadius: '50%', flexShrink: 0,
-      background: T.surface, border: `0.5px solid ${T.border}`,
+      background: 'var(--chat-surface)', border: '0.5px solid var(--chat-border)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: size * 0.38, fontWeight: 700, color: T.textSec,
+      fontSize: size * 0.38, fontWeight: 700, color: 'var(--chat-text-secondary)',
       overflow: 'hidden',
     }}>
       {user?.avatar
@@ -66,13 +71,13 @@ function Avatar({ user, size = 40 }: { user: AdminConversation['userId']; size?:
 function SkeletonRow({ delay }: { delay: number }) {
   const skel = (w: string | number, h = 9): React.CSSProperties => ({
     width: w, height: h, borderRadius: 5,
-    background: 'rgba(255,255,255,0.06)',
+    background: 'var(--chat-surface)',
     animation: `pulse 1.6s ${delay}s ease-in-out infinite`,
   })
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 13, padding: '14px 18px', borderBottom: `0.5px solid ${T.border}` }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 13, padding: '14px 18px', borderBottom: '0.5px solid var(--chat-border)' }}>
       <span style={{ width: 8, flexShrink: 0 }} />
-      <div style={{ width: 40, height: 40, borderRadius: '50%', flexShrink: 0, ...skel(40, 40), borderRadius: '50%' }} />
+      <div style={{ width: 40, height: 40, borderRadius: '50%', flexShrink: 0, ...skel(40, 40) }} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 9 }}>
           <div style={skel('38%')} /><div style={skel(40)} />
@@ -96,27 +101,31 @@ function ConversationRow({ convo, isSelected, isFocused, onSelect, style, innerR
     <div ref={innerRef} onClick={() => onSelect(convo)} style={{
       display: 'flex', alignItems: 'center', gap: 13,
       padding: '14px 18px',
-      borderBottom: `0.5px solid ${T.border}`,
+      borderBottom: '0.5px solid var(--chat-border)',
       cursor: 'pointer', position: 'relative',
-      background: isSelected ? T.surfaceHi : 'transparent',
-      outline: isFocused && !isSelected ? `1.5px solid rgba(255,255,255,0.1)` : 'none',
+      background: isSelected ? 'var(--chat-surface-hi)' : 'transparent',
+      outline: isFocused && !isSelected ? '1.5px solid var(--chat-border)' : 'none',
       outlineOffset: -1,
       transition: 'background 0.1s',
       ...style,
     }}
-      onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = T.surface }}
+      onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = 'var(--chat-surface)' }}
       onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent' }}
     >
-      {/* Red selected bar */}
+      {/* Accent selected bar */}
       {isSelected && (
-        <div style={{ position: 'absolute', left: 0, top: 10, bottom: 10, width: 2.5, borderRadius: '0 2px 2px 0', background: T.red }} />
+        <div style={{
+          position: 'absolute', left: 0, top: 10, bottom: 10,
+          width: 2.5, borderRadius: '0 2px 2px 0',
+          background: 'var(--chat-accent)',
+        }} />
       )}
 
       {/* Unread dot */}
       {hasUnread ? (
         <span style={{ position: 'relative', width: 8, height: 8, flexShrink: 0 }}>
-          <span style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: T.blue, animation: 'unreadPulse 2.4s ease-in-out infinite' }} />
-          <span style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: T.blue }} />
+          <span style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: 'var(--chat-unread)', animation: 'unreadPulse 2.4s ease-in-out infinite' }} />
+          <span style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: 'var(--chat-unread)' }} />
         </span>
       ) : (
         <span style={{ width: 8, flexShrink: 0 }} />
@@ -129,14 +138,14 @@ function ConversationRow({ convo, isSelected, isFocused, onSelect, style, innerR
           <span style={{
             fontSize: 13.5,
             fontWeight: hasUnread ? 600 : 400,
-            color: hasUnread ? T.textPri : 'rgba(255,255,255,0.7)',
+            color: hasUnread ? 'var(--chat-text-primary)' : 'var(--chat-text-secondary)',
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
           }}>
             {convo.userId?.displayName ?? convo.userId?.username ?? 'Unknown user'}
           </span>
           <span style={{
             fontSize: 11, flexShrink: 0,
-            color: hasUnread ? T.blue : T.textMeta,
+            color: hasUnread ? 'var(--chat-unread)' : 'var(--chat-text-meta)',
             fontWeight: hasUnread ? 600 : 400,
           }}>
             {displayTime}
@@ -144,7 +153,7 @@ function ConversationRow({ convo, isSelected, isFocused, onSelect, style, innerR
         </div>
         <p style={{
           fontSize: 12, margin: 0,
-          color: hasUnread ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.22)',
+          color: hasUnread ? 'var(--chat-text-secondary)' : 'var(--chat-text-meta)',
           fontWeight: hasUnread ? 500 : 400,
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         }}>
@@ -155,7 +164,7 @@ function ConversationRow({ convo, isSelected, isFocused, onSelect, style, innerR
       {convo.unreadCount > 0 && (
         <span style={{
           minWidth: 19, height: 19, borderRadius: 10, padding: '0 5px',
-          background: T.blue, color: '#fff',
+          background: 'var(--chat-unread)', color: '#fff',
           fontSize: 10, fontWeight: 700, flexShrink: 0,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           letterSpacing: '-0.02em',
@@ -175,71 +184,77 @@ function PreviewPane({ convo, onClose }: { convo: MergedConversation; onClose: (
   return (
     <div style={{
       width: 272, flexShrink: 0,
-      borderLeft: `0.5px solid ${T.border}`,
+      borderLeft: '0.5px solid var(--chat-border)',
       display: 'flex', flexDirection: 'column',
-      background: T.surface,
+      background: 'var(--chat-surface)',
       animation: 'slideInRight 0.16s ease both',
     }}>
-      {/* Pane header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 16px', borderBottom: `0.5px solid ${T.border}`, flexShrink: 0 }}>
-        <span style={{ flex: 1, fontSize: 9, fontWeight: 600, letterSpacing: '0.22em', textTransform: 'uppercase', color: T.textMeta }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        padding: '13px 16px', borderBottom: '0.5px solid var(--chat-border)', flexShrink: 0,
+      }}>
+        <span style={{ flex: 1, fontSize: 9, fontWeight: 600, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--chat-text-meta)' }}>
           Details
         </span>
         <button onClick={onClose} aria-label="Close" style={{
           background: 'none', border: 'none', cursor: 'pointer',
-          color: T.textMeta, padding: 5, display: 'flex', alignItems: 'center',
-          borderRadius: 6, transition: 'color 0.12s, background 0.12s',
+          color: 'var(--chat-text-meta)', padding: 5,
+          display: 'flex', alignItems: 'center', borderRadius: 6,
+          transition: 'color 0.12s, background 0.12s',
         }}
-          onMouseEnter={e => { e.currentTarget.style.color = T.textPri; e.currentTarget.style.background = T.surfaceHi }}
-          onMouseLeave={e => { e.currentTarget.style.color = T.textMeta; e.currentTarget.style.background = 'none' }}
+          onMouseEnter={e => { e.currentTarget.style.color = 'var(--chat-text-primary)'; e.currentTarget.style.background = 'var(--chat-surface-hi)' }}
+          onMouseLeave={e => { e.currentTarget.style.color = 'var(--chat-text-meta)';    e.currentTarget.style.background = 'none' }}
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+            <path d="M18 6 6 18M6 6l12 12"/>
+          </svg>
         </button>
       </div>
 
-      {/* User section */}
-      <div style={{ padding: '20px 16px', borderBottom: `0.5px solid ${T.border}` }}>
+      <div style={{ padding: '20px 16px', borderBottom: '0.5px solid var(--chat-border)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
           <Avatar user={user} size={48} />
           <div style={{ minWidth: 0 }}>
-            <p style={{ ...DISPLAY, fontSize: 18, fontWeight: 400, color: T.textPri, margin: '0 0 3px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <p style={{ ...DISPLAY, fontSize: 18, fontWeight: 400, color: 'var(--chat-text-primary)', margin: '0 0 3px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {user?.displayName ?? user?.username ?? '—'}
             </p>
-            <p style={{ fontSize: 11, color: T.textMeta, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <p style={{ fontSize: 11, color: 'var(--chat-text-meta)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {user?.email ?? '—'}
             </p>
           </div>
         </div>
 
-        {/* Last message card */}
         {convo.lastMessage && (
-          <div style={{ padding: '10px 12px', background: T.surfaceHi, borderRadius: 10, border: `0.5px solid ${T.border}`, marginBottom: 14 }}>
-            <p style={{ fontSize: 9, letterSpacing: '0.18em', textTransform: 'uppercase', color: T.textMeta, margin: '0 0 6px', fontWeight: 600 }}>
+          <div style={{
+            padding: '10px 12px', marginBottom: 14,
+            background: 'var(--chat-surface-hi)',
+            borderRadius: 10, border: '0.5px solid var(--chat-border)',
+          }}>
+            <p style={{ fontSize: 9, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--chat-text-meta)', margin: '0 0 6px', fontWeight: 600 }}>
               Last message
             </p>
-            <p style={{ fontSize: 12.5, color: T.textSec, margin: 0, lineHeight: 1.65 }}>
+            <p style={{ fontSize: 12.5, color: 'var(--chat-text-secondary)', margin: 0, lineHeight: 1.65 }}>
               {convo.lastMessage}
             </p>
           </div>
         )}
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 11.5, color: T.textMeta }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 11.5, color: 'var(--chat-text-meta)' }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
             </svg>
             Started {formatDate(convo.createdAt)}
           </div>
           {convo.unreadCount > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 11.5, color: T.blue, fontWeight: 500 }}>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: T.blue, flexShrink: 0 }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 11.5, color: 'var(--chat-unread)', fontWeight: 500 }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--chat-unread)', flexShrink: 0 }} />
               {convo.unreadCount} unread {convo.unreadCount === 1 ? 'message' : 'messages'}
             </div>
           )}
         </div>
       </div>
 
-      {/* CTA */}
       <div style={{ padding: '16px', marginTop: 'auto' }}>
         <Link href={`/admin/support/${convo._id}`}
           onMouseEnter={() => setHover(true)}
@@ -248,8 +263,9 @@ function PreviewPane({ convo, onClose }: { convo: MergedConversation; onClose: (
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             width: '100%', padding: '11px',
             fontSize: 11, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase',
-            background: hover ? '#ff1a38' : T.red,
-            color: '#fff', borderRadius: 9, textDecoration: 'none',
+            background: hover ? 'var(--chat-accent-hover)' : 'var(--chat-accent)',
+            color: 'var(--chat-bubble-out-text)',
+            borderRadius: 9, textDecoration: 'none',
             transition: 'background 0.12s',
           }}
         >
@@ -270,14 +286,14 @@ function EmptyState({ icon, title, body }: { icon: React.ReactNode; title: strin
     <div style={{ textAlign: 'center', padding: '5rem 1.5rem' }}>
       <div style={{
         width: 46, height: 46, borderRadius: 12, margin: '0 auto 1.5rem',
-        border: `0.5px solid ${T.border}`, background: T.surface,
+        border: '0.5px solid var(--chat-border)', background: 'var(--chat-surface)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        color: T.textMeta,
+        color: 'var(--chat-text-meta)',
       }}>
         {icon}
       </div>
-      <p style={{ ...DISPLAY, fontSize: 22, fontWeight: 300, color: T.textPri, margin: '0 0 8px' }}>{title}</p>
-      <p style={{ fontSize: 12.5, color: T.textSec, margin: 0, maxWidth: 260, marginInline: 'auto', lineHeight: 1.7 }}>{body}</p>
+      <p style={{ ...DISPLAY, fontSize: 22, fontWeight: 300, color: 'var(--chat-text-primary)', margin: '0 0 8px' }}>{title}</p>
+      <p style={{ fontSize: 12.5, color: 'var(--chat-text-secondary)', margin: 0, maxWidth: 260, marginInline: 'auto', lineHeight: 1.7 }}>{body}</p>
     </div>
   )
 }
@@ -317,7 +333,9 @@ export default function AdminSupportPage() {
       if (inInput && document.activeElement === searchRef.current && e.key !== 'Enter') return
       if (e.key === 'ArrowDown') { e.preventDefault(); setFocusedIndex(i => Math.min(i + 1, filteredRef.current.length - 1)) }
       if (e.key === 'ArrowUp')   { e.preventDefault(); setFocusedIndex(i => Math.max(i - 1, 0)) }
-      if (e.key === 'Enter' && focusedIndexRef.current >= 0) { const c = filteredRef.current[focusedIndexRef.current]; if (c) handleSelect(c) }
+      if (e.key === 'Enter' && focusedIndexRef.current >= 0) {
+        const c = filteredRef.current[focusedIndexRef.current]; if (c) handleSelect(c)
+      }
     }
     document.addEventListener('keydown', handler); return () => document.removeEventListener('keydown', handler)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -368,7 +386,11 @@ export default function AdminSupportPage() {
   }, [isMobile, router])
 
   const Kbd = ({ children }: { children: React.ReactNode }) => (
-    <kbd style={{ background: T.surface, border: `0.5px solid ${T.border}`, borderRadius: 4, padding: '1px 5px', fontSize: 10, fontFamily: 'inherit', color: T.textSec }}>
+    <kbd style={{
+      background: 'var(--chat-surface)', border: '0.5px solid var(--chat-border)',
+      borderRadius: 4, padding: '1px 5px', fontSize: 10,
+      fontFamily: 'inherit', color: 'var(--chat-text-secondary)',
+    }}>
       {children}
     </kbd>
   )
@@ -376,20 +398,19 @@ export default function AdminSupportPage() {
   return (
     <div style={{ maxWidth: selected ? '100%' : 820, margin: '0 auto', padding: selected ? '0' : '3rem 1.25rem 6rem' }}>
 
-      {/* Page header */}
       {!selected && (
         <div style={{ marginBottom: '2rem' }}>
-          <p style={{ fontSize: 9, letterSpacing: '0.36em', textTransform: 'uppercase', color: T.textMeta, margin: '0 0 10px', fontWeight: 600 }}>
+          <p style={{ fontSize: 9, letterSpacing: '0.36em', textTransform: 'uppercase', color: 'var(--chat-text-meta)', margin: '0 0 10px', fontWeight: 600 }}>
             Admin
           </p>
-          <h1 style={{ ...DISPLAY, fontSize: 'clamp(2rem, 5vw, 3rem)', fontWeight: 300, color: T.textPri, margin: '0 0 10px', lineHeight: 0.95 }}>
+          <h1 style={{ ...DISPLAY, fontSize: 'clamp(2rem, 5vw, 3rem)', fontWeight: 300, color: 'var(--chat-text-primary)', margin: '0 0 10px', lineHeight: 0.95 }}>
             Messages
           </h1>
-          <p style={{ fontSize: 13, color: T.textSec, margin: 0 }}>
+          <p style={{ fontSize: 13, color: 'var(--chat-text-secondary)', margin: 0 }}>
             {loading ? 'Loading…' : (
               <>
                 {merged.length} {merged.length === 1 ? 'conversation' : 'conversations'}
-                {unreadTotal > 0 && <> · <span style={{ color: T.blue, fontWeight: 500 }}>{unreadTotal} need{unreadTotal === 1 ? 's' : ''} a reply</span></>}
+                {unreadTotal > 0 && <> · <span style={{ color: 'var(--chat-unread)', fontWeight: 500 }}>{unreadTotal} need{unreadTotal === 1 ? 's' : ''} a reply</span></>}
                 {unreadTotal === 0 && ' · all caught up'}
               </>
             )}
@@ -397,46 +418,42 @@ export default function AdminSupportPage() {
         </div>
       )}
 
-      {/* Card */}
       <div style={{
         display: 'flex',
-        border: `0.5px solid ${T.border}`,
+        border: '0.5px solid var(--chat-border)',
         borderRadius: selected ? 0 : 14,
         overflow: 'hidden',
-        background: T.bg,
+        background: 'var(--chat-bg)',
         minHeight: selected ? 'calc(100dvh - 64px)' : undefined,
       }}>
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
 
           {/* Search */}
-          <div style={{ padding: '11px 14px', borderBottom: `0.5px solid ${T.border}` }}>
-            <div style={{
+          <div style={{ padding: '11px 14px', borderBottom: '0.5px solid var(--chat-border)' }}>
+            <div className="inbox-search-wrap" style={{
               display: 'flex', alignItems: 'center', gap: 9,
-              background: T.surface, borderRadius: 9, padding: '8px 13px',
-              border: `0.5px solid ${T.border}`, transition: 'border-color 0.15s',
-            }}
-              onFocusCapture={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.5)')}
-              onBlurCapture={e  => (e.currentTarget.style.borderColor = T.border)}
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={T.textMeta} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              background: 'var(--chat-surface)', borderRadius: 9, padding: '8px 13px',
+              border: '0.5px solid var(--chat-border)', transition: 'border-color 0.15s',
+            }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--chat-text-meta)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
               </svg>
               <input ref={searchRef} value={search} onChange={e => setSearch(e.target.value)}
                 placeholder="Search by name, email or message…"
-                style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 13, color: T.textPri, fontFamily: 'var(--font-sans)' }}
+                style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 13, color: 'var(--chat-text-primary)', fontFamily: 'var(--font-sans)' }}
               />
               {search ? (
-                <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.textMeta, padding: 0, display: 'flex' }}>
+                <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--chat-text-meta)', padding: 0, display: 'flex' }}>
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
                 </button>
               ) : (
-                <kbd style={{ fontSize: 10, color: T.textMeta, background: T.surfaceHi, border: `0.5px solid ${T.border}`, borderRadius: 4, padding: '1px 5px', fontFamily: 'inherit' }}>/</kbd>
+                <kbd style={{ fontSize: 10, color: 'var(--chat-text-meta)', background: 'var(--chat-surface-hi)', border: '0.5px solid var(--chat-border)', borderRadius: 4, padding: '1px 5px', fontFamily: 'inherit' }}>/</kbd>
               )}
             </div>
           </div>
 
           {/* Filter tabs */}
-          <div style={{ display: 'flex', gap: 4, padding: '9px 14px', borderBottom: `0.5px solid ${T.border}` }}>
+          <div style={{ display: 'flex', gap: 4, padding: '9px 14px', borderBottom: '0.5px solid var(--chat-border)' }}>
             {([
               { key: 'all',    label: 'All',    count: merged.length },
               { key: 'unread', label: 'Unread', count: unreadTotal   },
@@ -447,17 +464,17 @@ export default function AdminSupportPage() {
                   display: 'flex', alignItems: 'center', gap: 7,
                   padding: '5px 12px', borderRadius: 8,
                   fontSize: 12.5, fontWeight: active ? 600 : 400,
-                  color: active ? T.textPri : T.textSec,
-                  background: active ? T.surface : 'transparent',
-                  border: `0.5px solid ${active ? T.border : 'transparent'}`,
+                  color: active ? 'var(--chat-text-primary)' : 'var(--chat-text-secondary)',
+                  background: active ? 'var(--chat-surface)' : 'transparent',
+                  border: `0.5px solid ${active ? 'var(--chat-border)' : 'transparent'}`,
                   cursor: 'pointer', transition: 'all 0.1s',
                 }}
-                  onMouseEnter={e => { if (!active) e.currentTarget.style.background = T.surface }}
+                  onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'var(--chat-surface)' }}
                   onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}
                 >
                   {tab.label}
                   {tab.count > 0 && (
-                    <span style={{ fontSize: 11, fontWeight: 600, color: tab.key === 'unread' ? T.blue : T.textMeta }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: tab.key === 'unread' ? 'var(--chat-unread)' : 'var(--chat-text-meta)' }}>
                       {tab.count}
                     </span>
                   )}
@@ -493,9 +510,8 @@ export default function AdminSupportPage() {
         {selected && !isMobile && <PreviewPane convo={selected} onClose={() => setSelected(null)} />}
       </div>
 
-      {/* Keyboard hint */}
       {!search && !selected && (
-        <p style={{ fontSize: 10.5, color: T.textMeta, textAlign: 'center', marginTop: 14, letterSpacing: '0.04em' }}>
+        <p style={{ fontSize: 10.5, color: 'var(--chat-text-meta)', textAlign: 'center', marginTop: 14, letterSpacing: '0.04em' }}>
           <Kbd>/</Kbd> search
           {!isMobile && <> · <Kbd>↑↓</Kbd> navigate · <Kbd>↵</Kbd> open · </>}
           {isMobile && ' · '}
@@ -504,7 +520,6 @@ export default function AdminSupportPage() {
       )}
 
       <style>{`
-        @keyframes spin      { to { transform: rotate(360deg) } }
         @keyframes pulse     { 0%,100%{opacity:.2} 50%{opacity:.55} }
         @keyframes fadeInUp  { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
         @keyframes slideInRight { from{opacity:0;transform:translateX(8px)} to{opacity:1;transform:translateX(0)} }
@@ -513,8 +528,9 @@ export default function AdminSupportPage() {
           70%  { transform: scale(2.5); opacity: 0   }
           100% { transform: scale(2.5); opacity: 0   }
         }
-        input::placeholder { color: rgba(255,255,255,0.2) !important }
-        input:focus         { outline: none }
+        .inbox-search-wrap:focus-within { border-color: var(--chat-accent) !important; }
+        input::placeholder { color: var(--chat-text-meta) !important }
+        input:focus        { outline: none }
       `}</style>
     </div>
   )
