@@ -98,24 +98,29 @@ function ProgressRail({
           aria-selected={i === active}
           aria-label={`Go to slide ${i + 1}`}
           onClick={() => onSelect(i)}
-          className="relative h-[1px] flex-1 overflow-hidden"
-          style={{ background: 'rgba(255,255,255,0.18)' }}
+          className="relative flex-1 flex items-center py-3 -my-3"
+          style={{ background: 'none', border: 'none', cursor: 'pointer' }}
         >
-          {i === active && (
-            <motion.span
-              className="absolute inset-y-0 left-0 block"
-              style={{ background: 'rgba(255,255,255,0.9)', width: '100%' }}
-              initial={{ scaleX: 0, originX: 0 }}
-              animate={{ scaleX: 1 }}
-              transition={{ duration: KB_DURATION, ease: 'linear' }}
-            />
-          )}
-          {i < active && (
-            <span
-              className="absolute inset-0"
-              style={{ background: 'rgba(255,255,255,0.9)' }}
-            />
-          )}
+          <span
+            className="relative h-[1px] w-full overflow-hidden block"
+            style={{ background: 'rgba(255,255,255,0.18)' }}
+          >
+            {i === active && (
+              <motion.span
+                className="absolute inset-y-0 left-0 block"
+                style={{ background: 'rgba(255,255,255,0.9)', width: '100%' }}
+                initial={{ scaleX: 0, originX: 0 }}
+                animate={{ scaleX: 1 }}
+                transition={{ duration: KB_DURATION, ease: 'linear' }}
+              />
+            )}
+            {i < active && (
+              <span
+                className="absolute inset-0"
+                style={{ background: 'rgba(255,255,255,0.9)' }}
+              />
+            )}
+          </span>
         </button>
       ))}
     </div>
@@ -593,8 +598,12 @@ function ScrollCue() {
   const reduceMotion = useReducedMotion()
 
   useEffect(() => {
-    const t = setTimeout(() => setVisible(true), 2200)
-    const onScroll = () => { if (window.scrollY > 50) setVisible(false) }
+    // Shows quickly (was 2200ms) — on mobile the hero is the whole screen,
+    // so the cue is the only signal that products live below the fold.
+    const t = setTimeout(() => setVisible(true), 700)
+    // Slightly higher threshold than before so a small accidental nudge
+    // doesn't hide it before the visitor has actually started scrolling.
+    const onScroll = () => { if (window.scrollY > 80) setVisible(false) }
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => { clearTimeout(t); window.removeEventListener('scroll', onScroll) }
   }, [])
@@ -602,35 +611,45 @@ function ScrollCue() {
   return (
     <AnimatePresence initial={false}>
       {visible && (
-        <motion.div
-          className="absolute left-1/2 z-20 flex flex-col items-center gap-[5px]"
-          // safe-area-aware via inline calc; avoids brittle JIT arbitrary value
+        <motion.button
+          type="button"
+          onClick={() => {
+            document.getElementById('hero-section')
+              ?.scrollIntoView({ block: 'end', behavior: 'smooth' })
+          }}
+          className="absolute left-1/2 z-20 flex flex-col items-center gap-[6px]"
+          // Generous invisible hit area — a real tap target, not just a label,
+          // and a click here scrolls straight past the fold for anyone stuck.
           style={{
-            bottom: 'max(2.5rem, calc(env(safe-area-inset-bottom, 0px) + 1.5rem))',
+            bottom: 'max(2rem, calc(env(safe-area-inset-bottom, 0px) + 1rem))',
             translateX: '-50%',
+            padding: '14px 20px',
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
           }}
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 4 }}
           transition={{ duration: 0.6 }}
-          aria-hidden
+          aria-label="Scroll to shop the collection"
         >
           <span style={{
             ...DISPLAY,
-            fontSize: '8px',
+            fontSize: '9px',
             letterSpacing: '0.3em',
             textTransform: 'uppercase',
-            color: 'rgba(255,255,255,0.3)',
+            color: 'rgba(255,255,255,0.45)',
           }}>
-            Keep going
+            Scroll to shop
           </span>
           <motion.div
             animate={reduceMotion ? {} : { y: [0, 4, 0] }}
             transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
           >
-            <ChevronDown size={11} style={{ color: 'rgba(255,255,255,0.3)' }} />
+            <ChevronDown size={13} style={{ color: 'rgba(255,255,255,0.45)' }} />
           </motion.div>
-        </motion.div>
+        </motion.button>
       )}
     </AnimatePresence>
   )
@@ -652,10 +671,17 @@ function useSwipe(
     const el = ref.current
     if (!el) return
     let startX = 0
-    const onTouchStart = (e: TouchEvent) => { startX = e.touches[0].clientX }
+    let startY = 0
+    const onTouchStart = (e: TouchEvent) => {
+      startX = e.touches[0].clientX
+      startY = e.touches[0].clientY
+    }
     const onTouchEnd   = (e: TouchEvent) => {
       const dx = e.changedTouches[0].clientX - startX
-      if (Math.abs(dx) < 40) return
+      const dy = e.changedTouches[0].clientY - startY
+      // Ignore gestures that are more vertical than horizontal — those are
+      // the visitor trying to scroll down to the rest of the page, not swipe.
+      if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy)) return
       dx < 0 ? onLeftRef.current() : onRightRef.current()
     }
     el.addEventListener('touchstart', onTouchStart, { passive: true })
@@ -751,8 +777,8 @@ export function HeroSection() {
   if (!loaded) {
     return (
       <section
-        className="relative w-full overflow-hidden"
-        style={{ height: '100dvh', minHeight: '600px' }}
+        className="relative w-full overflow-hidden h-[90dvh] md:h-[100dvh] rounded-b-[28px] md:rounded-b-[40px]"
+        style={{ minHeight: '520px' }}
         aria-label="Featured collection"
         aria-busy="true"
       >
@@ -783,8 +809,8 @@ export function HeroSection() {
       <section
         id="hero-section"
         ref={sectionRef}
-        className="relative w-full overflow-hidden"
-        style={{ height: '100dvh', minHeight: '600px' }}
+        className="relative w-full overflow-hidden h-[90dvh] md:h-[100dvh] rounded-b-[28px] md:rounded-b-[40px]"
+        style={{ minHeight: '520px' }}
         aria-label="Featured collection"
         onMouseEnter={() => { if (canHover.current) stopTimer() }}
         onMouseLeave={() => { if (canHover.current) startTimer(advance, products.length) }}
@@ -917,7 +943,7 @@ export function HeroSection() {
                       lineHeight: 0.9,
                       letterSpacing: '-0.01em',
                       color: '#fff',
-                      fontSize: 'clamp(2.5rem, 7.5vw, 7rem)',
+                      fontSize: 'clamp(2.15rem, 7.5vw, 7rem)',
                       margin: 0,
                     }}
                   >
@@ -942,21 +968,26 @@ export function HeroSection() {
             >
               <Link
                 href="/explore"
-                className="group inline-flex items-center gap-4"
-                style={{ color: 'rgba(255,255,255,0.85)', textDecoration: 'none' }}
+                className="group inline-flex items-center justify-center gap-3 md:gap-4 w-full md:w-auto rounded-full md:rounded-none px-6 py-4 md:px-0 md:py-0 bg-white/[0.08] md:bg-transparent"
+                style={{
+                  color: 'rgba(255,255,255,0.9)',
+                  textDecoration: 'none',
+                }}
+                // Mobile gets a filled pill: a bigger, more obvious tap target
+                // than the desktop text+circle pairing, since thumbs need a
+                // clearer invitation than a hover-revealed cursor does.
               >
                 <span
-                  style={{ ...DISPLAY, fontSize: '10px', letterSpacing: '0.24em', textTransform: 'uppercase', transition: 'opacity 0.35s' }}
-                  className="group-hover:opacity-50"
+                  style={{ ...DISPLAY, letterSpacing: '0.24em', textTransform: 'uppercase', transition: 'opacity 0.35s' }}
+                  className="text-[11px] md:text-[10px] group-hover:opacity-50"
                 >
                   Shop now
                 </span>
                 <span
-                  className="inline-flex items-center justify-center rounded-full group-hover:bg-white group-hover:[color:black]"
+                  className="inline-flex items-center justify-center rounded-full w-8 h-8 md:w-10 md:h-10 group-hover:bg-white group-hover:[color:black]"
                   style={{
-                    width: '40px', height: '40px',
-                    border: '0.5px solid rgba(255,255,255,0.32)',
-                    color: 'rgba(255,255,255,0.85)',
+                    border: '0.5px solid rgba(255,255,255,0.4)',
+                    color: 'rgba(255,255,255,0.9)',
                     flexShrink: 0,
                     transition: 'background 0.45s cubic-bezier(0.22,1,0.36,1), color 0.45s',
                   }}
