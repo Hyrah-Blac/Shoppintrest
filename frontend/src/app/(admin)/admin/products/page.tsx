@@ -21,19 +21,24 @@ const PAGE_LIMIT = 20
 const emptyForm = {
   title: '', brand: '', description: '',
   price: '', comparePrice: '', category: '',
-  sizes: [] as { size: string; inventory: number }[],
+  sizes: [] as { size: string; inventory: number; price?: number }[],
   stockQty: '' as string | number,
   images: [] as string[],
   isPublished: false,
 }
 
-// Categories that use a size picker, and which size set each one uses.
-// Everything else (bags, jewelry, accessories, beauty, home) gets a single
-// stock-quantity field instead.
+// Every category gets a size picker. Clothing and shoes use their natural
+// scales; everything else (bags, jewelry, accessories, beauty, home) uses a
+// generic Small/Medium/Large set.
 const CATEGORY_SIZES: Record<string, string[]> = {
-  womenswear: ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
-  menswear:   ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
-  shoes:      ['36', '37', '38', '39', '40', '41', '42', '43', '44', '45'], // EU
+  womenswear:  ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
+  menswear:    ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
+  shoes:       ['36', '37', '38', '39', '40', '41', '42', '43', '44', '45'], // EU
+  bags:        ['Small', 'Medium', 'Large'],
+  jewelry:     ['Small', 'Medium', 'Large'],
+  accessories: ['Small', 'Medium', 'Large'],
+  beauty:      ['Small', 'Medium', 'Large'],
+  home:        ['Small', 'Medium', 'Large'],
 }
 const SIZED_CATEGORIES = Object.keys(CATEGORY_SIZES)
 
@@ -53,6 +58,7 @@ export default function AdminProductsPage() {
   const [isSaving, setIsSaving]         = useState(false)
   const [imageUrl, setImageUrl]         = useState('')
   const [isUploading, setIsUploading]   = useState(false)
+  const [customSizeLabel, setCustomSizeLabel] = useState('')
   const [deletingId, setDeletingId]     = useState<string | null>(null)
   const [togglingId, setTogglingId]     = useState<string | null>(null)
   const [errors, setErrors]             = useState<Record<string, string>>({})
@@ -88,12 +94,17 @@ export default function AdminProductsPage() {
   }
 
   const openAdd = () => {
-    setEditProduct(null); setForm(emptyForm); setImageUrl(''); setErrors({}); setShowModal(true)
+    setEditProduct(null); setForm(emptyForm); setImageUrl(''); setCustomSizeLabel(''); setErrors({}); setShowModal(true)
   }
 
   const openEdit = (product: any) => {
     setEditProduct(product)
-    const variants = product.variants?.map((v: any) => ({ size: v.size, inventory: v.inventory })) || []
+    const variants = product.variants?.map((v: any) => ({
+      size: v.size,
+      inventory: v.inventory,
+      // Per-size price override — undefined means "use the base price"
+      ...(v.price != null ? { price: v.price } : {}),
+    })) || []
     const isSized = SIZED_CATEGORIES.includes(product.category)
     setForm({
       title:        product.title || '',
@@ -108,7 +119,7 @@ export default function AdminProductsPage() {
       images:       product.images?.map((i: any) => i.url || i) || [],
       isPublished:  product.isPublished || false,
     })
-    setImageUrl(''); setErrors({}); setShowModal(true)
+    setImageUrl(''); setCustomSizeLabel(''); setErrors({}); setShowModal(true)
   }
 
   const handleAddImageUrl = () => {
@@ -157,6 +168,31 @@ export default function AdminProductsPage() {
       sizes: f.sizes.map((s) => s.size === size ? { ...s, inventory: Math.max(0, inventory) } : s),
     }))
 
+  // Per-size price override. Passing undefined clears it, which means the
+  // storefront falls back to the product's base price for that size.
+  const updateSizePrice = (size: string, price: number | undefined) =>
+    setForm((f) => ({
+      ...f,
+      sizes: f.sizes.map((s) => s.size === size ? { ...s, price } : s),
+    }))
+
+  const removeSize = (size: string) =>
+    setForm((f) => ({ ...f, sizes: f.sizes.filter((s) => s.size !== size) }))
+
+  // Adds a size that isn't in the category's preset list (e.g. "Canvas
+  // 100x150cm" for framed art). Falls through to the same sizes array as
+  // the preset picker, so it saves and edits identically.
+  const handleAddCustomSize = () => {
+    const label = customSizeLabel.trim()
+    if (!label) return
+    if (form.sizes.some((s) => s.size.toLowerCase() === label.toLowerCase())) {
+      toast.error('That size already exists')
+      return
+    }
+    setForm((f) => ({ ...f, sizes: [...f.sizes, { size: label, inventory: 10 }] }))
+    setCustomSizeLabel('')
+  }
+
   const isSizedCategory = SIZED_CATEGORIES.includes(form.category)
 
   const validate = () => {
@@ -181,13 +217,16 @@ export default function AdminProductsPage() {
 
   // Builds the variants array sent to the API. Sized categories use the
   // size/inventory pairs from the picker; everything else gets a single
-  // "One Size" variant carrying the stock quantity.
+  // "One Size" variant carrying the stock quantity. A size with its own
+  // price (e.g. framed art: A5 vs A1) carries that override through;
+  // sizes without one simply omit the field and fall back to the base price.
   const buildVariants = () => {
     if (isSizedCategory) {
       return form.sizes.map((s) => ({
         size: s.size,
         inventory: s.inventory,
         sku: `${slugify(form.brand)}-${slugify(form.title)}-${slugify(s.size)}`,
+        ...(s.price != null && s.price > 0 ? { price: s.price } : {}),
       }))
     }
     return [{
@@ -708,7 +747,7 @@ export default function AdminProductsPage() {
                   {errors.description && <FieldError message={errors.description} />}
                 </div>
 
-                {/* Sizes (apparel/footwear) or stock quantity (everything else) */}
+                {/* Sizes (apparel/footwear/art etc.) or stock quantity (everything else) */}
                 {isSizedCategory ? (
                   <div className="space-y-2">
                     <label className="text-[11px] font-medium" style={{ color: 'hsl(var(--muted))' }}>
@@ -736,8 +775,42 @@ export default function AdminProductsPage() {
                       })}
                     </div>
 
+                    {/* Custom size — for anything that doesn't fit the preset scale,
+                        e.g. a canvas print size not in the A5–A1 list. */}
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={customSizeLabel}
+                        onChange={(e) => setCustomSizeLabel(e.target.value)}
+                        placeholder="Custom size label (e.g. Canvas 100x150cm)"
+                        className="flex-1 h-8 px-3 rounded-lg text-xs min-w-0
+                                   placeholder:text-[hsl(var(--muted))] focus:outline-none"
+                        style={{
+                          border:     '0.5px solid hsl(var(--border))',
+                          background: 'hsl(var(--background))',
+                          color:      'hsl(var(--foreground))',
+                        }}
+                        onFocus={focusRing}
+                        onBlur={blurRing}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddCustomSize() } }}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddCustomSize}
+                        className="px-3 h-8 rounded-lg text-xs font-medium shrink-0
+                                   transition-all duration-[var(--duration-hover)]"
+                        style={{
+                          background: 'hsl(var(--surface))',
+                          border:     '0.5px solid hsl(var(--border))',
+                          color:      'hsl(var(--foreground))',
+                        }}
+                      >
+                        Add size
+                      </button>
+                    </div>
+
                     {form.sizes.length > 0 && (
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
+                      <div className="space-y-2 mt-2">
                         {form.sizes.map((s) => (
                           <div
                             key={s.size}
@@ -748,27 +821,66 @@ export default function AdminProductsPage() {
                             }}
                           >
                             <span
-                              className="text-[11px] font-medium w-12 shrink-0"
+                              className="text-[11px] font-medium w-[4.5rem] shrink-0 truncate"
                               style={{ color: 'hsl(var(--foreground))' }}
+                              title={s.size}
                             >
                               {s.size}
                             </span>
-                            <input
-                              type="number"
-                              min={0}
-                              inputMode="numeric"
-                              value={s.inventory}
-                              onChange={(e) => updateInventory(s.size, parseInt(e.target.value) || 0)}
-                              className="flex-1 h-7 px-2 rounded-lg text-xs focus:outline-none min-w-0"
-                              style={{
-                                border:     '0.5px solid hsl(var(--border))',
-                                background: 'hsl(var(--background))',
-                                color:      'hsl(var(--foreground))',
-                              }}
-                            />
-                            <span className="text-[10px] shrink-0" style={{ color: 'hsl(var(--muted))' }}>pcs</span>
+
+                            <div className="flex items-center gap-1 shrink-0">
+                              <input
+                                type="number"
+                                min={0}
+                                inputMode="numeric"
+                                value={s.inventory}
+                                onChange={(e) => updateInventory(s.size, parseInt(e.target.value) || 0)}
+                                className="w-14 h-7 px-2 rounded-lg text-xs focus:outline-none"
+                                style={{
+                                  border:     '0.5px solid hsl(var(--border))',
+                                  background: 'hsl(var(--background))',
+                                  color:      'hsl(var(--foreground))',
+                                }}
+                              />
+                              <span className="text-[10px]" style={{ color: 'hsl(var(--muted))' }}>pcs</span>
+                            </div>
+
+                            <div className="flex items-center gap-1 flex-1 min-w-0">
+                              <span className="text-[10px] shrink-0" style={{ color: 'hsl(var(--muted))' }}>KES</span>
+                              <input
+                                type="number"
+                                min={0}
+                                inputMode="decimal"
+                                value={s.price ?? ''}
+                                onChange={(e) => {
+                                  const val = e.target.value
+                                  updateSizePrice(s.size, val === '' ? undefined : Math.max(0, parseFloat(val) || 0))
+                                }}
+                                placeholder={form.price ? `${form.price} (base)` : 'Base price'}
+                                className="flex-1 h-7 px-2 rounded-lg text-xs focus:outline-none min-w-0"
+                                style={{
+                                  border:     '0.5px solid hsl(var(--border))',
+                                  background: 'hsl(var(--background))',
+                                  color:      'hsl(var(--foreground))',
+                                }}
+                              />
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => removeSize(s.size)}
+                              className="p-1 rounded-md shrink-0 transition-colors duration-[var(--duration-hover)]"
+                              style={{ color: 'hsl(var(--muted))' }}
+                              aria-label={`Remove ${s.size}`}
+                            >
+                              <X size={12} />
+                            </button>
                           </div>
                         ))}
+                        <p className="text-[11px]" style={{ color: 'hsl(var(--muted))' }}>
+                          Leave a size's price blank to use the base price above. Set one to override
+                          it for that size only — e.g. framed art where A5 and A1 are priced differently.
+                        </p>
                       </div>
                     )}
                   </div>

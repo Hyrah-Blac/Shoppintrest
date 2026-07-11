@@ -54,6 +54,7 @@ interface ProductImage {
 interface ProductVariant {
   size:      string
   inventory: number
+  price?:    number  // overrides the product's base price for this size only
 }
 
 interface Seller {
@@ -178,7 +179,16 @@ export function ProductDetail({ id }: Props) {
 
   const selectedVariant = product?.variants?.find((v) => v.size === selectedSize)
   const isOutOfStock    = !selectedVariant || selectedVariant.inventory === 0
-  const discount        = product?.comparePrice && product.comparePrice > product.price
+
+  // Some categories (e.g. framed art: A5 vs A1) price each size differently.
+  // When any variant carries its own price, the selected size's price wins;
+  // otherwise everything shares the product's base price as before.
+  const hasPerSizePricing = product?.variants?.some((v) => v.price != null) ?? false
+  const effectivePrice    = selectedVariant?.price ?? product?.price ?? 0
+
+  // "Compare at" pricing only makes sense against a single base price — a
+  // per-size override doesn't carry its own compare price in this schema.
+  const discount = !hasPerSizePricing && product?.comparePrice && product.comparePrice > product.price
     ? Math.round(((product.comparePrice - product.price) / product.comparePrice) * 100)
     : null
 
@@ -466,35 +476,42 @@ export function ProductDetail({ id }: Props) {
           )}
 
           {/* Price */}
-          <div className="flex items-baseline gap-3">
-            {discount ? (
-              <>
+          <div className="space-y-1">
+            <div className="flex items-baseline gap-3">
+              {discount ? (
+                <>
+                  <span
+                    className="font-display font-bold tracking-[-0.03em]"
+                    style={{ fontSize: 'clamp(1.5rem, 3vw, 2.1rem)', color: 'hsl(var(--foreground))' }}
+                  >
+                    {formatPrice(product.price, 'KES')}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: '1.05rem', fontWeight: 400,
+                      color: 'hsl(var(--muted))',
+                      textDecoration: 'line-through',
+                      textDecorationColor: 'hsl(var(--muted) / 0.5)',
+                      letterSpacing: '-0.01em',
+                    }}
+                  >
+                    {formatPrice(product.comparePrice, 'KES')}
+                  </span>
+                  <span className="badge badge-red">−{discount}%</span>
+                </>
+              ) : (
                 <span
                   className="font-display font-bold tracking-[-0.03em]"
-                  style={{ fontSize: 'clamp(1.5rem, 3vw, 2.1rem)', color: 'hsl(var(--foreground))' }}
+                  style={{ fontSize: 'clamp(1.5rem, 3vw, 2.1rem)' }}
                 >
-                  {formatPrice(product.price, 'KES')}
+                  {formatPrice(effectivePrice, 'KES')}
                 </span>
-                <span
-                  style={{
-                    fontSize: '1.05rem', fontWeight: 400,
-                    color: 'hsl(var(--muted))',
-                    textDecoration: 'line-through',
-                    textDecorationColor: 'hsl(var(--muted) / 0.5)',
-                    letterSpacing: '-0.01em',
-                  }}
-                >
-                  {formatPrice(product.comparePrice, 'KES')}
-                </span>
-                <span className="badge badge-red">−{discount}%</span>
-              </>
-            ) : (
-              <span
-                className="font-display font-bold tracking-[-0.03em]"
-                style={{ fontSize: 'clamp(1.5rem, 3vw, 2.1rem)' }}
-              >
-                {formatPrice(product.price, 'KES')}
-              </span>
+              )}
+            </div>
+            {hasPerSizePricing && (
+              <p className="text-xs" style={{ color: 'hsl(var(--muted))', fontWeight: 300 }}>
+                Price shown is for {selectedSize || 'the selected size'}
+              </p>
             )}
           </div>
 
@@ -543,7 +560,8 @@ export function ProductDetail({ id }: Props) {
                       onClick={() => inStock && setSelectedSize(variant.size)}
                       disabled={!inStock}
                       className={cn(
-                        'relative h-11 min-w-[3rem] px-4 text-sm font-medium',
+                        'relative min-w-[3rem] px-4 text-sm font-medium',
+                        hasPerSizePricing ? 'h-auto min-h-11 py-2' : 'h-11',
                         'transition-all duration-[var(--duration-hover)]',
                         !inStock && 'cursor-not-allowed',
                       )}
@@ -564,7 +582,19 @@ export function ProductDetail({ id }: Props) {
                         textDecoration: !inStock ? 'line-through' : 'none',
                       }}
                     >
-                      {variant.size}
+                      {hasPerSizePricing ? (
+                        <span className="flex flex-col items-center leading-tight">
+                          <span>{variant.size}</span>
+                          <span
+                            className="text-[10px] font-normal mt-0.5"
+                            style={{ opacity: 0.75, textDecoration: 'none' }}
+                          >
+                            {formatPrice(variant.price ?? product.price, 'KES')}
+                          </span>
+                        </span>
+                      ) : (
+                        variant.size
+                      )}
                       {inStock && variant.inventory <= 3 && (
                         <span
                           className="badge badge-red absolute -top-1.5 -right-1.5"
