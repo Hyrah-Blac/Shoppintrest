@@ -8,8 +8,24 @@ const getBaseUrl = () => {
     : 'https://sandbox.safaricom.co.ke'
 }
 
-// ─── GET OAUTH TOKEN ──────────────────────────────────────────────────────────
+// Every request to Safaricom gets a hard timeout so a hung sandbox call
+// fails fast instead of leaving a checkout looking stuck indefinitely.
+const REQUEST_TIMEOUT_MS = 15_000
+
+// ─── OAUTH TOKEN (cached) ─────────────────────────────────────────────────────
+// Previously this fetched a brand-new token on every single call — including
+// every 5-second status poll from the checkout page. That added a full extra
+// round-trip to Safaricom's OAuth endpoint before the real request even went
+// out, and repeatedly hammering that endpoint risks Safaricom throttling it.
+// Tokens are valid ~3600s; cache it and only refetch a little before expiry.
+let cachedToken: { token: string; expiresAt: number } | null = null
+
 export const getMpesaToken = async (): Promise<string> => {
+  const now = Date.now()
+  if (cachedToken && cachedToken.expiresAt > now) {
+    return cachedToken.token
+  }
+
   const consumerKey = process.env.MPESA_CONSUMER_KEY!
   const consumerSecret = process.env.MPESA_CONSUMER_SECRET!
 
@@ -21,10 +37,17 @@ export const getMpesaToken = async (): Promise<string> => {
       headers: {
         Authorization: `Basic ${credentials}`,
       },
+      timeout: REQUEST_TIMEOUT_MS,
     }
   )
 
-  return response.data.access_token
+  const token = response.data.access_token
+  // expires_in is seconds (Safaricom default 3600). Refresh 60s early so we
+  // never hand out a token that's about to expire mid-request.
+  const expiresInMs = (parseInt(response.data.expires_in, 10) || 3600) * 1000
+  cachedToken = { token, expiresAt: now + expiresInMs - 60_000 }
+
+  return token
 }
 
 // ─── GENERATE PASSWORD ────────────────────────────────────────────────────────
@@ -55,7 +78,14 @@ export const initiateStkPush = async ({
   description: string
 }) => {
   const shortcode = process.env.MPESA_SHORTCODE!
-  const callbackUrl = process.env.MPESA_CALLBACK_URL!
+  // A secret token is appended to the callback URL rather than relying on
+  // Safaricom's source IP — hosting platforms that proxy requests through
+  // their own internal network (Render, etc.) can make req.ip show an
+  // internal hop's address instead of Safaricom's real IP, which would
+  // otherwise cause every legitimate callback to be rejected.
+  const baseCallbackUrl = process.env.MPESA_CALLBACK_URL!
+  const callbackSecret = process.env.MPESA_CALLBACK_SECRET!
+  const callbackUrl = `${baseCallbackUrl}${baseCallbackUrl.includes('?') ? '&' : '?'}secret=${encodeURIComponent(callbackSecret)}`
 
   const token = await getMpesaToken()
   const { password, timestamp } = getMpesaPassword()
@@ -86,6 +116,7 @@ export const initiateStkPush = async ({
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
+      timeout: REQUEST_TIMEOUT_MS,
     }
   )
 
@@ -111,6 +142,7 @@ export const queryStkStatus = async (checkoutRequestId: string) => {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
+      timeout: REQUEST_TIMEOUT_MS,
     }
   )
 

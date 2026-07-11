@@ -8,8 +8,10 @@ import AppError from '../utils/AppError'
 import { sendSuccess, sendPaginated } from '../utils/apiResponse'
 import logger from '../utils/logger'
 
-// FIX 1 — Safaricom IP allowlist for the callback endpoint.
-// Requests not from these IPs are rejected before any DB work happens.
+// FIX 1 (superseded) — this used to allowlist Safaricom's known IPs, but
+// req.ip proved unreliable behind our hosting platform's proxy layer (see
+// the secret-token check in mpesaCallback below). Kept here as a reference
+// list in case IP-level logging/alerting is ever wanted alongside the token.
 // Source: https://developer.safaricom.co.ke/APIs/MpesaExpressSimulate
 const SAFARICOM_IPS = new Set([
   '196.201.214.200',
@@ -158,16 +160,24 @@ export const initiateMpesaPayment = asyncHandler(
 // ─── M-PESA CALLBACK (Safaricom calls this) ───────────────────────────────────
 export const mpesaCallback = asyncHandler(
   async (req: Request, res: Response) => {
-    // FIX 1 — reject requests not from Safaricom's known IP ranges.
-    // req.ip is reliable here because app.ts sets trust proxy: 1.
+    // A shared secret in the callback URL verifies this request is really
+    // from Safaricom, without depending on source IP — which is unreliable
+    // behind hosting platforms that proxy requests through their own
+    // internal network (Render, etc.). req.ip can end up showing an
+    // internal hop's private address instead of Safaricom's real IP,
+    // silently rejecting every legitimate callback. The IP is still logged
+    // for visibility, just no longer used to reject the request.
     const clientIp = req.ip || ''
     const normalizedIp = clientIp.replace('::ffff:', '') // strip IPv6 prefix
+    const providedSecret = req.query.secret as string | undefined
 
-    if (process.env.NODE_ENV === 'production' && !SAFARICOM_IPS.has(normalizedIp)) {
-      logger.warn(`[M-Pesa] Callback rejected — unknown IP: ${normalizedIp}`)
+    if (process.env.NODE_ENV === 'production' && providedSecret !== process.env.MPESA_CALLBACK_SECRET) {
+      logger.warn(`[M-Pesa] Callback rejected — invalid/missing secret. Source IP: ${normalizedIp}`)
       // Still return 200 so we don't leak that we rejected it
       return res.status(200).json({ ResultCode: 0, ResultDesc: 'Accepted' })
     }
+
+    logger.info(`[M-Pesa] Callback verified — source IP: ${normalizedIp}`)
 
     logger.info('M-Pesa callback received:', JSON.stringify(req.body, null, 2))
 
