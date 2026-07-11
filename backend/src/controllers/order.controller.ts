@@ -208,16 +208,35 @@ export const mpesaCallback = asyncHandler(
       await order.save()
 
       for (const item of order.items) {
-        await Product.findOneAndUpdate(
-          { _id: item.product, 'variants.size': item.size },
+        // Only decrement if there's still enough stock — guards against two
+        // customers both passing the initial check for the last unit and
+        // both paying before either one's inventory update lands.
+        const result = await Product.findOneAndUpdate(
+          {
+            _id: item.product,
+            variants: { $elemMatch: { size: item.size, inventory: { $gte: item.quantity } } },
+          },
           {
             $inc: {
-              'variants.$.inventory': -item.quantity,
+              'variants.$[v].inventory': -item.quantity,
               totalInventory: -item.quantity,
             },
-          }
+          },
+          { arrayFilters: [{ 'v.size': item.size }] }
         )
+
+        if (!result) {
+          logger.error(
+            `Stock ran out before payment settled — Order ${order._id}, product ${item.product}, size ${item.size}. Flagging for manual review.`
+          )
+          // Payment already succeeded — don't strand the customer's money by
+          // cancelling. Keep the order moving and flag it for a human to sort
+          // out (refund, backorder, substitute, etc.).
+          order.trackingNumber = order.trackingNumber || 'NEEDS_REVIEW: oversold'
+        }
       }
+
+      await order.save()
 
       await Cart.findOneAndUpdate({ user: order.user }, { items: [] })
 
