@@ -4,7 +4,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Minus, Plus, Trash2, ShoppingBag, ArrowRight } from 'lucide-react'
-import { useCartStore } from '@/store/useCartStore'
+import { useCartStore, getItemUnitPrice } from '@/store/useCartStore'
 import { formatPrice } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import { toast } from 'sonner'
@@ -15,8 +15,11 @@ const SHIPPING_COST =0
 export default function CartPage() {
   const { items, updateItem, removeItem, isLoading } = useCartStore()
 
+  // Uses the selected size's own price when the product has one (e.g.
+  // framed art: A5 vs A1), falling back to the base product price otherwise.
+  // Same helper used by CartDrawer and checkout so all three never drift.
   const subtotal = items.reduce(
-    (s, i: any) => s + (i.product?.price || 0) * i.quantity, 0
+    (s, i: any) => s + getItemUnitPrice(i) * i.quantity, 0
   )
   const shippingCost = subtotal >= SHIPPING_FREE_THRESHOLD ? 0 : SHIPPING_COST
   const total = subtotal + shippingCost
@@ -134,7 +137,7 @@ export default function CartPage() {
                           </button>
                         </div>
                         <p className="font-semibold text-foreground">
-                          {formatPrice((item.product?.price || 0) * item.quantity, 'KES')}
+                          {formatPrice(getItemUnitPrice(item) * item.quantity, 'KES')}
                         </p>
                       </div>
                     </div>
