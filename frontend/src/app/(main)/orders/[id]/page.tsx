@@ -153,7 +153,7 @@ export default function OrderDetailPage({
               </h1>
               <button
                 onClick={() => copyToClipboard(order._id.slice(-8).toUpperCase(), 'Order number')}
-                className="p-1.5 rounded-lg text-muted hover:text-foreground
+                className="p-1.5 rounded-lg text-muted hover:text-[#E60023]
                            hover:bg-accent transition-all duration-200"
                 aria-label="Copy order number"
               >
@@ -197,7 +197,7 @@ export default function OrderDetailPage({
 
                   {/* Progress fill */}
                   <div
-                    className="absolute top-5 left-5 h-px bg-foreground
+                    className="absolute top-5 left-5 h-px bg-[#E60023]
                                transition-all duration-700 ease-out"
                     style={{
                       width:
@@ -224,7 +224,7 @@ export default function OrderDetailPage({
                               `w-10 h-10 rounded-full flex items-center
                                justify-center border-2 transition-all duration-500`,
                               isDone
-                                ? 'bg-foreground border-foreground shadow-sm'
+                                ? 'bg-[#E60023] border-[#E60023] shadow-sm'
                                 : 'bg-background border-border'
                             )}
                           >
@@ -334,7 +334,7 @@ export default function OrderDetailPage({
                                dark:hover:bg-amber-900/40 transition-colors
                                disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <RefreshCw size={12} className={isRefreshing ? 'animate-spin' : ''} />
+                    <RefreshCw size={12} className={isRefreshing ? 'animate-spin text-[#E60023]' : ''} />
                     {isRefreshing ? 'Checking…' : 'Refresh status'}
                   </button>
                 </div>
@@ -410,9 +410,10 @@ export default function OrderDetailPage({
                           href={`/product/${item.product}#reviews`}
                           className="inline-flex items-center gap-1 text-xs
                                      font-medium text-foreground mt-2
-                                     hover:opacity-70 transition-opacity"
+                                     hover:text-[#E60023] transition-colors
+                                     duration-200 group"
                         >
-                          <Star size={11} />
+                          <Star size={11} className="text-[#E60023] group-hover:fill-[#E60023]" />
                           Write a review
                         </Link>
                       )}
@@ -477,10 +478,10 @@ export default function OrderDetailPage({
                   <button
                     onClick={() => copyToClipboard(order._id.slice(-8).toUpperCase(), 'Order number')}
                     className="flex items-center gap-1 font-mono text-xs text-foreground
-                               hover:opacity-70 transition-opacity"
+                               hover:text-[#E60023] transition-colors duration-200 group"
                   >
                     #{order._id.slice(-8).toUpperCase()}
-                    <Copy size={10} className="text-muted" />
+                    <Copy size={10} className="text-muted group-hover:text-[#E60023]" />
                   </button>
                 </div>
                 <div className="flex justify-between">
