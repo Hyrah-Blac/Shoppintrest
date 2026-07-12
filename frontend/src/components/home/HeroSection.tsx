@@ -1,34 +1,21 @@
 'use client'
 
 /**
- * HeroSection — v13 · Shoppin
+ * HeroSection — v14 · Shoppin
  *
- * This project's globals.css already imports and uses Playfair Display
- * (headline face, weight 600 sitewide) + DM Sans (body/utility face), plus
- * a real --accent HSL token for Pinterest red that adapts between the
- * Paper (light) and Void (dark) themes.
+ * v13 → v14 (Parisienne accent):
+ *  - "Scroll to shop" (the scroll cue) and "See it" (Quick View button)
+ *    now use Parisienne, a connecting modern-calligraphy script, loaded
+ *    via next/font/google like Great Vibes/Inter — no globals.css edit
+ *    needed, and no risk of the earlier silent-cursive-fallback issue.
+ *  - Dropped the uppercase transform + wide letter-spacing on both: a
+ *    connecting script needs its natural case and unbroken letterforms to
+ *    read as handwriting rather than as garbled tracked caps. Sized up
+ *    slightly too (9px tracked caps and 17px script read very differently).
  *
- * globals.css addition still needed:
- *   Ultra, for the one "Fresh Drop" flourish badge:
- *   append '&family=Ultra' to the existing Google Fonts @import, and add
- *     --font-flourish: 'Ultra', serif;
- *   to :root.
- *
- * v12 → v13 (Great Vibes fix):
- *  - The changing headline was rendering in the browser's generic
- *    'cursive' fallback (a bold bubble/marker font, not Great Vibes) —
- *    the manual @import approach depends on globals.css actually being
- *    edited correctly, and silently falls back if it's missing, mistyped,
- *    or blocked by a CSP rule. No error is thrown either way.
- *  - Fixed by switching Great Vibes + Inter to next/font/google, which
- *    self-hosts the font and applies it via a generated className instead
- *    of a raw font-family string — no globals.css edit required for
- *    either of these two, and it can no longer silently fail this way.
- *  - Important: HERO_TITLE/HERO_SUBTITLE no longer set fontFamily inline
- *    — an inline fontFamily would out-rank the next/font className on
- *    specificity and quietly undo this fix, so font-family now comes
- *    from className={greatVibes.className} / className={interFont.className}
- *    on the actual elements instead.
+ * Still needed in globals.css: Ultra, for the "Fresh Drop" flourish badge
+ * (append '&family=Ultra' to the Google Fonts @import, add
+ * --font-flourish: 'Ultra', serif; to :root).
  */
 
 import {
@@ -41,7 +28,7 @@ import {
 } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Great_Vibes, Inter } from 'next/font/google'
+import { Great_Vibes, Inter, Parisienne } from 'next/font/google'
 import {
   motion,
   AnimatePresence,
@@ -59,6 +46,7 @@ import { apiClient } from '@/lib/api'
 // if an import is missing, mistyped, or blocked by a CSP rule.
 const greatVibes = Great_Vibes({ weight: '400', subsets: ['latin'], display: 'swap' })
 const interFont  = Inter({ weight: ['400', '500', '700'], subsets: ['latin'], display: 'swap' })
+const parisienne = Parisienne({ weight: '400', subsets: ['latin'], display: 'swap' })
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -695,13 +683,14 @@ function ScrollCue() {
           transition={{ duration: 0.6 }}
           aria-label="Scroll to shop the collection"
         >
-          <span style={{
-            ...UTILITY,
-            fontSize: '9px',
-            letterSpacing: '0.3em',
-            textTransform: 'uppercase',
-            color: 'rgba(255,255,255,0.45)',
-          }}>
+          <span
+            className={parisienne.className}
+            style={{
+              fontSize: '17px',
+              color: 'rgba(255,255,255,0.65)',
+              textShadow: '0 1px 6px rgba(0,0,0,0.5)',
+            }}
+          >
             Scroll to shop
           </span>
           <motion.div
@@ -1213,12 +1202,10 @@ export function HeroSection() {
                   type="button"
                   onClick={() => setQuickViewProduct(current)}
                   aria-label={`Quick view: ${current.title}`}
+                  className={parisienne.className}
                   style={{
-                    ...UTILITY,
-                    fontSize: '9px',
-                    letterSpacing: '0.26em',
-                    textTransform: 'uppercase',
-                    color: 'rgba(255,255,255,0.35)',
+                    fontSize: '16px',
+                    color: 'rgba(255,255,255,0.55)',
                     background: 'none',
                     border: 'none',
                     padding: 0,

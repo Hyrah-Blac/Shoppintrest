@@ -2,6 +2,7 @@
 
 import { Navbar } from '@/components/layout/Navbar'
 import { Footer } from '@/components/layout/Footer'
+import { WhatsAppFloat } from '@/components/layout/WhatsAppFloat'
 import { CartDrawer } from '@/components/cart/CartDrawer'
 import { NovuProvider } from '@/components/providers/NovuProvider'
 import { StreamProvider } from '@/components/providers/StreamProvider'
@@ -19,6 +20,7 @@ export default function MainLayout({
           <main className="flex-1">{children}</main>
           <Footer />
           <CartDrawer />
+          <WhatsAppFloat />
         </div>
       </StreamProvider>
     </NovuProvider>
