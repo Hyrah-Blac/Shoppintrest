@@ -1,4 +1,36 @@
 'use client'
+
+/**
+ * HeroSection — v13 · Shoppin
+ *
+ * This project's globals.css already imports and uses Playfair Display
+ * (headline face, weight 600 sitewide) + DM Sans (body/utility face), plus
+ * a real --accent HSL token for Pinterest red that adapts between the
+ * Paper (light) and Void (dark) themes.
+ *
+ * globals.css addition still needed:
+ *   Ultra, for the one "Fresh Drop" flourish badge:
+ *   append '&family=Ultra' to the existing Google Fonts @import, and add
+ *     --font-flourish: 'Ultra', serif;
+ *   to :root.
+ *
+ * v12 → v13 (Great Vibes fix):
+ *  - The changing headline was rendering in the browser's generic
+ *    'cursive' fallback (a bold bubble/marker font, not Great Vibes) —
+ *    the manual @import approach depends on globals.css actually being
+ *    edited correctly, and silently falls back if it's missing, mistyped,
+ *    or blocked by a CSP rule. No error is thrown either way.
+ *  - Fixed by switching Great Vibes + Inter to next/font/google, which
+ *    self-hosts the font and applies it via a generated className instead
+ *    of a raw font-family string — no globals.css edit required for
+ *    either of these two, and it can no longer silently fail this way.
+ *  - Important: HERO_TITLE/HERO_SUBTITLE no longer set fontFamily inline
+ *    — an inline fontFamily would out-rank the next/font className on
+ *    specificity and quietly undo this fix, so font-family now comes
+ *    from className={greatVibes.className} / className={interFont.className}
+ *    on the actual elements instead.
+ */
+
 import {
   useEffect,
   useRef,
@@ -9,6 +41,7 @@ import {
 } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import { Great_Vibes, Inter } from 'next/font/google'
 import {
   motion,
   AnimatePresence,
@@ -20,6 +53,12 @@ import {
 } from 'framer-motion'
 import { ArrowRight, ChevronDown, X, ArrowUpRight } from 'lucide-react'
 import { apiClient } from '@/lib/api'
+
+// Self-hosted via next/font — no globals.css @import needed, and no risk
+// of silently falling back to the browser's generic 'cursive'/'sans-serif'
+// if an import is missing, mistyped, or blocked by a CSP rule.
+const greatVibes = Great_Vibes({ weight: '400', subsets: ['latin'], display: 'swap' })
+const interFont  = Inter({ weight: ['400', '500', '700'], subsets: ['latin'], display: 'swap' })
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -56,7 +95,13 @@ const BLANK_PLACEHOLDER =
 const pad = (n: number) => String(n).padStart(2, '0')
 
 const DISPLAY: React.CSSProperties = {
-  fontFamily: 'var(--font-display, "Cormorant Garamond", Georgia, serif)',
+  fontFamily: '"Playfair Display", var(--font-display, Georgia), serif',
+}
+
+// Matches the sitewide body font — was wrongly guessed as Inter earlier;
+// the real project already loads DM Sans for exactly this purpose.
+const UTILITY: React.CSSProperties = {
+  fontFamily: '"DM Sans", system-ui, sans-serif',
 }
 
 // Flourish face for the one accent badge — a bold vintage slab serif
@@ -66,10 +111,30 @@ const FLOURISH: React.CSSProperties = {
   fontFamily: 'var(--font-flourish, "Ultra", serif)',
 }
 
-// One accent, used sparingly: the active progress dot and the CTA hover
-// fill. Everything else in the hero stays black/white/gray.
-const ACCENT = '#E60023'
-const ACCENT_INK = '#ffffff'
+// The real --accent token (Pinterest red), theme-aware via HSL — not a
+// frozen hex value. Falls back to a literal red if the variable is ever
+// missing so the hero never silently loses its one accent color. Used
+// sparingly: the active progress dot and the CTA hover fill only.
+const ACCENT = 'hsl(var(--accent, 0 78% 54%))'
+const ACCENT_INK = 'hsl(var(--accent-foreground, 0 0% 100%))'
+
+// Exact spec as given: Great Vibes for the changing per-slide headline
+// ("The pieces people keep.", etc), Inter for the line beneath it.
+// Font-family itself comes from the next/font className applied on the
+// elements below — not from these style objects — so it can't silently
+// fall back to the browser's generic cursive/sans-serif again.
+const HERO_TITLE: React.CSSProperties = {
+  fontWeight: 400,
+  lineHeight: 1.1,
+  color: '#fff',
+  textShadow: '0 4px 20px rgba(0,0,0,.25)',
+}
+const HERO_SUBTITLE: React.CSSProperties = {
+  fontSize: '1.2rem',
+  letterSpacing: '0.08em',
+  textTransform: 'uppercase',
+  color: 'rgba(255,255,255,.85)',
+}
 
 // ─── ProgressRail ─────────────────────────────────────────────────────────────
 
@@ -330,7 +395,7 @@ function QuickViewModal({
             <div>
               {product.brand && (
                 <p style={{
-                  ...DISPLAY,
+                  ...UTILITY,
                   fontSize: '9px',
                   letterSpacing: '0.38em',
                   textTransform: 'uppercase',
@@ -345,9 +410,10 @@ function QuickViewModal({
                 id={`${modalId}-title`}
                 style={{
                   ...DISPLAY,
-                  fontSize: 'clamp(1.5rem, 4vw, 2.25rem)',
-                  fontWeight: 300,
-                  lineHeight: 1.05,
+                  fontSize: 'var(--text-section, clamp(1.625rem, 3vw, 2.25rem))',
+                  fontWeight: 600,
+                  letterSpacing: '-0.025em',
+                  lineHeight: 1.08,
                   color: '#fff',
                   margin: '0 0 16px',
                 }}
@@ -357,7 +423,7 @@ function QuickViewModal({
 
               {product.collection && (
                 <p style={{
-                  ...DISPLAY,
+                  ...UTILITY,
                   fontSize: '10px',
                   letterSpacing: '0.22em',
                   textTransform: 'uppercase',
@@ -385,7 +451,7 @@ function QuickViewModal({
                 href={`/product/${product._id}`}
                 className="inline-flex items-center gap-3 group"
                 style={{
-                  ...DISPLAY,
+                  ...UTILITY,
                   fontSize: '10px',
                   letterSpacing: '0.24em',
                   textTransform: 'uppercase',
@@ -568,7 +634,7 @@ function CustomCursor({ heroRef }: { heroRef: RefObject<HTMLElement | null> }) {
         <span
           ref={labelRef}
           style={{
-            ...DISPLAY,
+            ...UTILITY,
             fontSize: '8px',
             letterSpacing: '0.2em',
             textTransform: 'uppercase',
@@ -630,7 +696,7 @@ function ScrollCue() {
           aria-label="Scroll to shop the collection"
         >
           <span style={{
-            ...DISPLAY,
+            ...UTILITY,
             fontSize: '9px',
             letterSpacing: '0.3em',
             textTransform: 'uppercase',
@@ -919,7 +985,7 @@ export function HeroSection() {
         >
           <p
             style={{
-              ...DISPLAY,
+              ...UTILITY,
               fontSize: '9px',
               letterSpacing: '0.32em',
               textTransform: 'uppercase',
@@ -952,7 +1018,7 @@ export function HeroSection() {
               textShadow: '0 1px 4px rgba(0,0,0,0.4)',
             }}
           >
-            Featured
+            Fresh Drop
           </motion.span>
         </motion.div>
 
@@ -968,7 +1034,7 @@ export function HeroSection() {
             <AnimatePresence mode="wait">
               <motion.span
                 key={active}
-                style={{ ...DISPLAY, fontSize: '11px', color: 'rgba(255,255,255,0.95)', fontVariantNumeric: 'tabular-nums' }}
+                style={{ ...UTILITY, fontSize: '11px', color: 'rgba(255,255,255,0.95)', fontVariantNumeric: 'tabular-nums' }}
                 initial={{ opacity: 0, y: 5 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -5 }}
@@ -977,8 +1043,8 @@ export function HeroSection() {
                 {pad(active + 1)}
               </motion.span>
             </AnimatePresence>
-            <span style={{ ...DISPLAY, fontSize: '10px', color: 'rgba(255,255,255,0.4)' }}>/</span>
-            <span style={{ ...DISPLAY, fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontVariantNumeric: 'tabular-nums' }}>
+            <span style={{ ...UTILITY, fontSize: '10px', color: 'rgba(255,255,255,0.4)' }}>/</span>
+            <span style={{ ...UTILITY, fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontVariantNumeric: 'tabular-nums' }}>
               {pad(products.length)}
             </span>
           </motion.div>
@@ -1012,7 +1078,7 @@ export function HeroSection() {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0 }}
                       transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-                      style={{ ...DISPLAY, fontSize: '9px', letterSpacing: '0.36em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.38)', marginBottom: '16px' }}
+                      style={{ ...UTILITY, fontSize: '9px', letterSpacing: '0.36em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.38)', marginBottom: '16px' }}
                     >
                       {current.brand}
                     </motion.p>
@@ -1025,17 +1091,14 @@ export function HeroSection() {
                   <div style={{ overflow: 'hidden' }}>
                     <motion.h1
                       aria-live="polite"
+                      className={greatVibes.className}
                       initial={reduceMotion ? { opacity: 0 } : { y: '105%' }}
                       animate={{ y: '0%', opacity: 1 }}
                       exit={reduceMotion ? { opacity: 0 } : { y: '-105%' }}
                       transition={{ duration: 0.8, delay: reduceMotion ? 0 : 0.06, ease: [0.16, 1, 0.3, 1] }}
                       style={{
-                        ...DISPLAY,
-                        fontWeight: 300,
-                        lineHeight: 0.9,
-                        letterSpacing: '-0.01em',
-                        color: '#fff',
-                        fontSize: 'clamp(1.9rem, 6.5vw, 6rem)',
+                        ...HERO_TITLE,
+                        fontSize: 'clamp(4rem, 10vw, 7rem)',
                         margin: 0,
                       }}
                     >
@@ -1045,11 +1108,12 @@ export function HeroSection() {
 
                   {current?.collection && (
                     <motion.p
+                      className={interFont.className}
                       initial={{ opacity: 0, y: reduceMotion ? 0 : 8 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0 }}
                       transition={{ duration: 0.5, delay: reduceMotion ? 0 : 0.3, ease: [0.22, 1, 0.36, 1] }}
-                      style={{ ...DISPLAY, fontSize: '11px', letterSpacing: '0.22em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.38)', marginTop: '20px' }}
+                      style={{ ...HERO_SUBTITLE, marginTop: '20px' }}
                     >
                       {current.collection}
                     </motion.p>
@@ -1058,60 +1122,50 @@ export function HeroSection() {
               </AnimatePresence>
             </div>
 
-            {/* Right: CTA */}
+            {/* Right: CTA — simple bordered rectangle, per reference:
+                thin hairline border, small tracked caps, no icon, no pill.
+                Magnetic pull kept on the whole button since it's a nice
+                touch that doesn't depend on the old circle shape. */}
             <motion.div
               className="shrink-0"
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.65, delay: 0.28, ease: [0.22, 1, 0.36, 1] }}
             >
-              <Link
-                href="/explore"
-                className="group inline-flex items-center justify-center gap-3 md:gap-4 w-full md:w-auto rounded-full md:rounded-none px-6 py-4 md:px-0 md:py-0 bg-white/[0.08] md:bg-transparent"
-                style={{
-                  color: 'rgba(255,255,255,0.9)',
-                  textDecoration: 'none',
-                }}
-                // Mobile gets a filled pill: a bigger, more obvious tap target
-                // than the desktop text+circle pairing, since thumbs need a
-                // clearer invitation than a hover-revealed cursor does.
-              >
-                <span
-                  style={{ ...DISPLAY, letterSpacing: '0.24em', textTransform: 'uppercase', transition: 'opacity 0.35s' }}
-                  className="text-[11px] md:text-[10px] group-hover:opacity-50"
+              <MagneticCircle>
+                <Link
+                  href="/explore"
+                  className={interFont.className}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '11px',
+                    letterSpacing: '0.2em',
+                    textTransform: 'uppercase',
+                    color: '#fff',
+                    textDecoration: 'none',
+                    border: '1px solid rgba(255,255,255,0.55)',
+                    padding: '14px 32px',
+                    whiteSpace: 'nowrap',
+                    transition: 'background 0.35s ease, color 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease',
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.background   = ACCENT
+                    e.currentTarget.style.color         = ACCENT_INK
+                    e.currentTarget.style.borderColor   = ACCENT
+                    e.currentTarget.style.boxShadow     = 'var(--shadow-red-hover)'
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.background   = 'transparent'
+                    e.currentTarget.style.color         = '#fff'
+                    e.currentTarget.style.borderColor   = 'rgba(255,255,255,0.55)'
+                    e.currentTarget.style.boxShadow     = 'none'
+                  }}
                 >
-                  Shop now
-                </span>
-                <MagneticCircle>
-                  <span
-                    className="inline-flex items-center justify-center rounded-full w-8 h-8 md:w-10 md:h-10"
-                    style={{
-                      border: '0.5px solid rgba(255,255,255,0.4)',
-                      color: 'rgba(255,255,255,0.9)',
-                      flexShrink: 0,
-                      transition: 'background 0.45s cubic-bezier(0.22,1,0.36,1), color 0.45s, border-color 0.45s, box-shadow 0.45s',
-                    }}
-                    onMouseEnter={e => {
-                      e.currentTarget.style.background   = ACCENT
-                      e.currentTarget.style.color         = ACCENT_INK
-                      e.currentTarget.style.borderColor   = ACCENT
-                      e.currentTarget.style.boxShadow     = '0 4px 20px rgba(230,0,35,0.35)'
-                    }}
-                    onMouseLeave={e => {
-                      e.currentTarget.style.background   = 'transparent'
-                      e.currentTarget.style.color         = 'rgba(255,255,255,0.9)'
-                      e.currentTarget.style.borderColor   = 'rgba(255,255,255,0.4)'
-                      e.currentTarget.style.boxShadow     = 'none'
-                    }}
-                  >
-                    <ArrowRight
-                      size={13}
-                      style={{ transition: 'transform 0.35s' }}
-                      className="group-hover:translate-x-[2px]"
-                    />
-                  </span>
-                </MagneticCircle>
-              </Link>
+                  Shop Now
+                </Link>
+              </MagneticCircle>
             </motion.div>
           </div>
 
@@ -1160,7 +1214,7 @@ export function HeroSection() {
                   onClick={() => setQuickViewProduct(current)}
                   aria-label={`Quick view: ${current.title}`}
                   style={{
-                    ...DISPLAY,
+                    ...UTILITY,
                     fontSize: '9px',
                     letterSpacing: '0.26em',
                     textTransform: 'uppercase',
