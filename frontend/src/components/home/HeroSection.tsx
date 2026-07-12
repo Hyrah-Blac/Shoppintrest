@@ -1,38 +1,4 @@
 'use client'
-
-/**
- * HeroSection — v5 · Shoppin
- *
- * v4 → v5 (polish):
- *  - Removed isMounted pattern — useScroll accepts sectionRef directly;
- *    Framer Motion handles null element gracefully
- *  - matchMedia('hover') memoized once at component level, not on every mouse event
- *  - restartTimer helper centralises interval logic — no stale closure risk
- *  - QuickViewModal: md:rounded-xl on desktop sheet, slide-up only on mobile
- *  - HeroMedia blur placeholder: unoptimized prop (data URI, no Next opt needed)
- *  - Progress rail: w-full max-w-[260px] (replaces fragile inline min())
- *  - Safe-area bottom: CSS custom property via style tag, not JIT arbitrary value
- *  - Pause-on-hover: clearInterval guard — only restarts if products.length >= 2
- *
- * globals.css additions required:
- *   @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Inter:wght@400;500&family=Ultra&display=swap');
- *   :root {
- *     --font-display: 'Playfair Display', Georgia, serif;
- *     --font-utility: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
- *     --font-flourish: 'Ultra', serif;
- *   }
- *   .can-hover #hero-section { cursor: none; }
- *
- * v8 → v9 (headline face swapped):
- *  - Cormorant Garamond → Playfair Display for the main headline + modal
- *    title. Cormorant only goes to weight 400, so at bold sizes browsers
- *    were likely falling back toward Georgia's default weight — which is
- *    probably why the rendered headline looked heavier/more Didone than
- *    intended. Playfair Display actually has Bold/Black cuts built for
- *    this, plus the ball terminals visible in the reference screenshot.
- *  - Headline weight bumped 300 → 700 to match
- */
-
 import {
   useEffect,
   useRef,
@@ -90,14 +56,7 @@ const BLANK_PLACEHOLDER =
 const pad = (n: number) => String(n).padStart(2, '0')
 
 const DISPLAY: React.CSSProperties = {
-  fontFamily: 'var(--font-display, "Playfair Display", Georgia, serif)',
-}
-
-// Utility face for tiny uppercase tracked labels — a display serif goes
-// thin and slightly hard to read under 12px, so small text gets a clean
-// grotesk instead. Reserve DISPLAY for headlines and titles.
-const UTILITY: React.CSSProperties = {
-  fontFamily: 'var(--font-utility, "Inter", -apple-system, BlinkMacSystemFont, sans-serif)',
+  fontFamily: 'var(--font-display, "Cormorant Garamond", Georgia, serif)',
 }
 
 // Flourish face for the one accent badge — a bold vintage slab serif
@@ -371,7 +330,7 @@ function QuickViewModal({
             <div>
               {product.brand && (
                 <p style={{
-                  ...UTILITY,
+                  ...DISPLAY,
                   fontSize: '9px',
                   letterSpacing: '0.38em',
                   textTransform: 'uppercase',
@@ -387,7 +346,7 @@ function QuickViewModal({
                 style={{
                   ...DISPLAY,
                   fontSize: 'clamp(1.5rem, 4vw, 2.25rem)',
-                  fontWeight: 700,
+                  fontWeight: 300,
                   lineHeight: 1.05,
                   color: '#fff',
                   margin: '0 0 16px',
@@ -398,7 +357,7 @@ function QuickViewModal({
 
               {product.collection && (
                 <p style={{
-                  ...UTILITY,
+                  ...DISPLAY,
                   fontSize: '10px',
                   letterSpacing: '0.22em',
                   textTransform: 'uppercase',
@@ -426,7 +385,7 @@ function QuickViewModal({
                 href={`/product/${product._id}`}
                 className="inline-flex items-center gap-3 group"
                 style={{
-                  ...UTILITY,
+                  ...DISPLAY,
                   fontSize: '10px',
                   letterSpacing: '0.24em',
                   textTransform: 'uppercase',
@@ -609,7 +568,7 @@ function CustomCursor({ heroRef }: { heroRef: RefObject<HTMLElement | null> }) {
         <span
           ref={labelRef}
           style={{
-            ...UTILITY,
+            ...DISPLAY,
             fontSize: '8px',
             letterSpacing: '0.2em',
             textTransform: 'uppercase',
@@ -671,7 +630,7 @@ function ScrollCue() {
           aria-label="Scroll to shop the collection"
         >
           <span style={{
-            ...UTILITY,
+            ...DISPLAY,
             fontSize: '9px',
             letterSpacing: '0.3em',
             textTransform: 'uppercase',
@@ -960,7 +919,7 @@ export function HeroSection() {
         >
           <p
             style={{
-              ...UTILITY,
+              ...DISPLAY,
               fontSize: '9px',
               letterSpacing: '0.32em',
               textTransform: 'uppercase',
@@ -1009,7 +968,7 @@ export function HeroSection() {
             <AnimatePresence mode="wait">
               <motion.span
                 key={active}
-                style={{ ...UTILITY, fontSize: '11px', color: 'rgba(255,255,255,0.95)', fontVariantNumeric: 'tabular-nums' }}
+                style={{ ...DISPLAY, fontSize: '11px', color: 'rgba(255,255,255,0.95)', fontVariantNumeric: 'tabular-nums' }}
                 initial={{ opacity: 0, y: 5 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -5 }}
@@ -1018,8 +977,8 @@ export function HeroSection() {
                 {pad(active + 1)}
               </motion.span>
             </AnimatePresence>
-            <span style={{ ...UTILITY, fontSize: '10px', color: 'rgba(255,255,255,0.4)' }}>/</span>
-            <span style={{ ...UTILITY, fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontVariantNumeric: 'tabular-nums' }}>
+            <span style={{ ...DISPLAY, fontSize: '10px', color: 'rgba(255,255,255,0.4)' }}>/</span>
+            <span style={{ ...DISPLAY, fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontVariantNumeric: 'tabular-nums' }}>
               {pad(products.length)}
             </span>
           </motion.div>
@@ -1053,7 +1012,7 @@ export function HeroSection() {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0 }}
                       transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-                      style={{ ...UTILITY, fontSize: '9px', letterSpacing: '0.36em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.38)', marginBottom: '16px' }}
+                      style={{ ...DISPLAY, fontSize: '9px', letterSpacing: '0.36em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.38)', marginBottom: '16px' }}
                     >
                       {current.brand}
                     </motion.p>
@@ -1072,11 +1031,11 @@ export function HeroSection() {
                       transition={{ duration: 0.8, delay: reduceMotion ? 0 : 0.06, ease: [0.16, 1, 0.3, 1] }}
                       style={{
                         ...DISPLAY,
-                        fontWeight: 700,
+                        fontWeight: 300,
                         lineHeight: 0.9,
                         letterSpacing: '-0.01em',
                         color: '#fff',
-                        fontSize: 'clamp(2.15rem, 7.5vw, 7rem)',
+                        fontSize: 'clamp(1.9rem, 6.5vw, 6rem)',
                         margin: 0,
                       }}
                     >
@@ -1090,7 +1049,7 @@ export function HeroSection() {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0 }}
                       transition={{ duration: 0.5, delay: reduceMotion ? 0 : 0.3, ease: [0.22, 1, 0.36, 1] }}
-                      style={{ ...UTILITY, fontSize: '11px', letterSpacing: '0.22em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.38)', marginTop: '20px' }}
+                      style={{ ...DISPLAY, fontSize: '11px', letterSpacing: '0.22em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.38)', marginTop: '20px' }}
                     >
                       {current.collection}
                     </motion.p>
@@ -1118,7 +1077,7 @@ export function HeroSection() {
                 // clearer invitation than a hover-revealed cursor does.
               >
                 <span
-                  style={{ ...UTILITY, letterSpacing: '0.24em', textTransform: 'uppercase', transition: 'opacity 0.35s' }}
+                  style={{ ...DISPLAY, letterSpacing: '0.24em', textTransform: 'uppercase', transition: 'opacity 0.35s' }}
                   className="text-[11px] md:text-[10px] group-hover:opacity-50"
                 >
                   Shop now
@@ -1201,7 +1160,7 @@ export function HeroSection() {
                   onClick={() => setQuickViewProduct(current)}
                   aria-label={`Quick view: ${current.title}`}
                   style={{
-                    ...UTILITY,
+                    ...DISPLAY,
                     fontSize: '9px',
                     letterSpacing: '0.26em',
                     textTransform: 'uppercase',
