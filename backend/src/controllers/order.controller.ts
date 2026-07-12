@@ -461,6 +461,12 @@ export const updateOrderStatus = asyncHandler(
       {
         status,
         ...(trackingNumber && { trackingNumber }),
+        // Only set shippedAt the first time an order becomes 'shipped' —
+        // don't overwrite it if the status is touched again afterward
+        // (e.g. adding/correcting a tracking number later).
+        ...(status === 'shipped' && !existingOrder.shippedAt && {
+          shippedAt: new Date(),
+        }),
         ...(status === 'delivered' && {
           isDelivered: true,
           deliveredAt: new Date(),

@@ -33,6 +33,7 @@ export interface IOrderDocument extends Document {
   isPaid: boolean
   paidAt?: Date
   isDelivered: boolean
+  shippedAt?: Date
   deliveredAt?: Date
   trackingNumber?: string
   createdAt: Date
@@ -79,6 +80,7 @@ const OrderSchema = new Schema<IOrderDocument>(
     isPaid: { type: Boolean, default: false },
     paidAt: { type: Date },
     isDelivered: { type: Boolean, default: false },
+    shippedAt: { type: Date },
     deliveredAt: { type: Date },
     trackingNumber: { type: String },
   },

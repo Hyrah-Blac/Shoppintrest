@@ -6,7 +6,7 @@ import Image from 'next/image'
 import { motion } from 'framer-motion'
 import {
   ArrowLeft, Package, MapPin, CreditCard,
-  CheckCircle2, Truck,
+  CheckCircle2, Truck, Copy, Star, RefreshCw,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { use } from 'react'
@@ -16,10 +16,17 @@ import { Badge } from '@/components/ui/Badge'
 import { Skeleton } from '@/components/ui/Skeleton'
 
 const statusSteps = [
-  { key: 'processing', label: 'Confirmed', icon: CheckCircle2 },
-  { key: 'shipped', label: 'Shipped', icon: Truck },
-  { key: 'delivered', label: 'Delivered', icon: Package },
+  { key: 'processing', label: 'Confirmed', icon: CheckCircle2, dateField: 'paidAt' as const },
+  { key: 'shipped', label: 'Shipped', icon: Truck, dateField: 'shippedAt' as const },
+  { key: 'delivered', label: 'Delivered', icon: Package, dateField: 'deliveredAt' as const },
 ]
+
+// A simple, honest estimate — not a guarantee — shown only while an order
+// is in transit and not yet marked delivered. Research on post-purchase
+// anxiety (Narvar, Baymard) consistently finds that concrete, dated
+// progress reduces "where is my order" uncertainty far more than a status
+// label alone, even when nothing about actual shipping speed changes.
+const ESTIMATED_DELIVERY_DAYS = 3
 
 const statusVariant: Record<string, any> = {
   pending: 'warning',
@@ -39,14 +46,37 @@ export default function OrderDetailPage({
   const { id } = use(params)
   const [order, setOrder] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+
+  const fetchOrder = (opts: { silent?: boolean } = {}) => {
+    if (!opts.silent) setIsLoading(true)
+    return apiClient.orders.getOne(id)
+      .then(({ data }) => setOrder(data.data))
+      .catch(() => toast.error('Order not found'))
+      .finally(() => {
+        setIsLoading(false)
+        setIsRefreshing(false)
+      })
+  }
 
   useEffect(() => {
     if (!id) return
-    apiClient.orders.getOne(id)
-      .then(({ data }) => setOrder(data.data))
-      .catch(() => toast.error('Order not found'))
-      .finally(() => setIsLoading(false))
+    fetchOrder()
   }, [id])
+
+  const handleRefreshStatus = () => {
+    setIsRefreshing(true)
+    fetchOrder({ silent: true })
+  }
+
+  const copyToClipboard = async (text: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      toast.success(`${label} copied`)
+    } catch {
+      toast.error('Could not copy')
+    }
+  }
 
   if (isLoading) {
     return (
@@ -109,12 +139,27 @@ export default function OrderDetailPage({
         </Link>
 
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center
-                        justify-between gap-4 mb-8">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="flex flex-col sm:flex-row sm:items-center
+                        justify-between gap-4 mb-8"
+        >
           <div>
-            <h1 className="font-display text-2xl font-semibold tracking-tight">
-              Order #{order._id.slice(-8).toUpperCase()}
-            </h1>
+            <div className="flex items-center gap-2">
+              <h1 className="font-display text-2xl font-semibold tracking-tight">
+                Order #{order._id.slice(-8).toUpperCase()}
+              </h1>
+              <button
+                onClick={() => copyToClipboard(order._id.slice(-8).toUpperCase(), 'Order number')}
+                className="p-1.5 rounded-lg text-muted hover:text-foreground
+                           hover:bg-accent transition-all duration-200"
+                aria-label="Copy order number"
+              >
+                <Copy size={13} />
+              </button>
+            </div>
             <p className="text-sm text-muted mt-1">
               Placed on {formatDate(order.createdAt)}
             </p>
@@ -125,7 +170,7 @@ export default function OrderDetailPage({
           >
             {order.status.replace(/_/g, ' ')}
           </Badge>
-        </div>
+        </motion.div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
@@ -202,6 +247,11 @@ export default function OrderDetailPage({
                           >
                             {step.label}
                           </p>
+                          {isDone && order[step.dateField] && (
+                            <p className="text-[10px] text-muted">
+                              {formatDate(order[step.dateField])}
+                            </p>
+                          )}
                         </div>
                       )
                     })}
@@ -214,6 +264,20 @@ export default function OrderDetailPage({
                     <p className="text-sm font-mono font-bold tracking-wider">
                       {order.trackingNumber}
                     </p>
+                  </div>
+                )}
+
+                {order.status === 'shipped' && order.shippedAt && (
+                  <div className="mt-3 flex items-center gap-2 text-xs text-muted">
+                    <Truck size={12} />
+                    <span>
+                      Estimated delivery: {formatDate(
+                        new Date(
+                          new Date(order.shippedAt).getTime() +
+                            ESTIMATED_DELIVERY_DAYS * 24 * 60 * 60 * 1000
+                        )
+                      )}
+                    </span>
                   </div>
                 )}
               </motion.div>
@@ -240,8 +304,50 @@ export default function OrderDetailPage({
               </div>
             )}
 
+            {/* Awaiting Payment — previously this status showed nothing at
+                all here (the tracker deliberately excludes it). Give it its
+                own panel with a real action instead of leaving the page
+                looking stuck with no explanation. */}
+            {order.status === 'awaiting_payment' && (
+              <div className="bg-amber-50 dark:bg-amber-900/20 border
+                              border-amber-200 dark:border-amber-800
+                              rounded-2xl p-5 flex items-start gap-3">
+                <div className="w-8 h-8 rounded-full bg-amber-500/20 flex
+                                items-center justify-center shrink-0">
+                  <CreditCard size={15} className="text-amber-700 dark:text-amber-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                    Waiting for M-Pesa payment
+                  </p>
+                  <p className="text-xs text-amber-600 dark:text-amber-500 mt-0.5">
+                    If you already entered your M-Pesa PIN, this can take a
+                    little while to confirm. Refresh to check the latest status.
+                  </p>
+                  <button
+                    onClick={handleRefreshStatus}
+                    disabled={isRefreshing}
+                    className="mt-3 inline-flex items-center gap-1.5 text-xs
+                               font-medium text-amber-800 dark:text-amber-300
+                               border border-amber-300 dark:border-amber-700
+                               rounded-lg px-3 py-1.5 hover:bg-amber-100
+                               dark:hover:bg-amber-900/40 transition-colors
+                               disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <RefreshCw size={12} className={isRefreshing ? 'animate-spin' : ''} />
+                    {isRefreshing ? 'Checking…' : 'Refresh status'}
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Items */}
-            <div className="bg-background rounded-2xl border border-border p-6">
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.05 }}
+              className="bg-background rounded-2xl border border-border p-6"
+            >
               <h2 className="font-medium text-foreground mb-5">
                 Items ({order.items.length})
               </h2>
@@ -299,14 +405,30 @@ export default function OrderDetailPage({
                       <p className="text-xs text-muted">
                         {formatPrice(item.price, 'KES')} each
                       </p>
+                      {order.status === 'delivered' && (
+                        <Link
+                          href={`/product/${item.product}#reviews`}
+                          className="inline-flex items-center gap-1 text-xs
+                                     font-medium text-foreground mt-2
+                                     hover:opacity-70 transition-opacity"
+                        >
+                          <Star size={11} />
+                          Write a review
+                        </Link>
+                      )}
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
+            </motion.div>
 
             {/* Shipping Address */}
-            <div className="bg-background rounded-2xl border border-border p-6">
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.1 }}
+              className="bg-background rounded-2xl border border-border p-6"
+            >
               <div className="flex items-center gap-2 mb-4">
                 <MapPin size={15} className="text-muted" />
                 <h2 className="font-medium text-foreground">
@@ -328,20 +450,56 @@ export default function OrderDetailPage({
                 </p>
                 <p className="text-muted">{order.shippingAddress.country}</p>
               </div>
-            </div>
+            </motion.div>
           </div>
 
           {/* ── Right Column ── */}
-          <div className="space-y-5">
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.15 }}
+            className="space-y-5"
+          >
 
-            {/* Payment Summary */}
-            <div className="bg-background rounded-2xl border border-border p-6">
-              <div className="flex items-center gap-2 mb-5">
+            {/* Summary — order info + payment breakdown together, so
+                everything about the order lives in one place instead of
+                being split across three separate cards. */}
+            <div className="bg-background rounded-2xl border border-border p-6
+                            lg:sticky lg:top-28 space-y-5">
+              <div className="flex items-center gap-2">
                 <CreditCard size={15} className="text-muted" />
-                <h2 className="font-medium text-foreground">Payment</h2>
+                <h2 className="font-medium text-foreground">Order Summary</h2>
               </div>
 
-              <div className="space-y-3 text-sm">
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted">Order ID</span>
+                  <button
+                    onClick={() => copyToClipboard(order._id.slice(-8).toUpperCase(), 'Order number')}
+                    className="flex items-center gap-1 font-mono text-xs text-foreground
+                               hover:opacity-70 transition-opacity"
+                  >
+                    #{order._id.slice(-8).toUpperCase()}
+                    <Copy size={10} className="text-muted" />
+                  </button>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted">Date</span>
+                  <span className="text-foreground">{formatDate(order.createdAt)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted">Payment method</span>
+                  <span className="text-foreground">M-Pesa</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted">Items</span>
+                  <span className="text-foreground">{order.items.length}</span>
+                </div>
+              </div>
+
+              <div className="border-t border-border" />
+
+              <div className="space-y-2.5 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted">Subtotal</span>
                   <span className="text-foreground">
@@ -357,7 +515,7 @@ export default function OrderDetailPage({
                   </span>
                 </div>
                 {/* No tax/VAT is charged, so no line item for it here. */}
-                <div className="border-t border-border pt-3 flex justify-between
+                <div className="border-t border-border pt-2.5 flex justify-between
                                 font-semibold text-base">
                   <span>Total</span>
                   <span>{formatPrice(order.total, 'KES')}</span>
@@ -366,12 +524,12 @@ export default function OrderDetailPage({
 
               {/* M-Pesa Receipt */}
               {order.mpesaReceiptNumber && (
-                <div className="mt-5 p-4 bg-green-50 dark:bg-green-900/20
+                <div className="p-4 bg-green-50 dark:bg-green-900/20
                                 rounded-xl border border-green-200
                                 dark:border-green-800">
                   <div className="flex items-center gap-2 mb-2">
                     <div className="w-5 h-5 rounded-full bg-green-500 flex
-                                    items-center justify-center">
+                                    items-center justify-center shrink-0">
                       <CheckCircle2 size={12} className="text-white" />
                     </div>
                     <p className="text-xs font-medium text-green-700
@@ -379,10 +537,16 @@ export default function OrderDetailPage({
                       M-Pesa Payment Confirmed
                     </p>
                   </div>
-                  <p className="font-mono font-bold text-base text-green-800
-                                dark:text-green-300 tracking-wider">
-                    {order.mpesaReceiptNumber}
-                  </p>
+                  <button
+                    onClick={() => copyToClipboard(order.mpesaReceiptNumber, 'Receipt number')}
+                    className="flex items-center gap-1.5 hover:opacity-70 transition-opacity"
+                  >
+                    <span className="font-mono font-bold text-base text-green-800
+                                     dark:text-green-300 tracking-wider">
+                      {order.mpesaReceiptNumber}
+                    </span>
+                    <Copy size={12} className="text-green-700 dark:text-green-400" />
+                  </button>
                   {order.paidAt && (
                     <p className="text-xs text-green-600 dark:text-green-500 mt-1">
                       Paid on {formatDate(order.paidAt)}
@@ -390,93 +554,8 @@ export default function OrderDetailPage({
                   )}
                 </div>
               )}
-
-              {/* Awaiting payment */}
-              {order.status === 'awaiting_payment' && (
-                <div className="mt-5 p-4 bg-amber-50 dark:bg-amber-900/20
-                                rounded-xl border border-amber-200
-                                dark:border-amber-800">
-                  <p className="text-xs font-medium text-amber-700
-                                dark:text-amber-400">
-                    Awaiting M-Pesa Payment
-                  </p>
-                  <p className="text-xs text-amber-600 dark:text-amber-500 mt-1">
-                    Complete your payment to confirm this order
-                  </p>
-                </div>
-              )}
             </div>
-
-            {/* Order Info */}
-            <div className="bg-background rounded-2xl border border-border p-6
-                            space-y-3">
-              <h2 className="font-medium text-foreground">Order Info</h2>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted">Order ID</span>
-                  <span className="font-mono text-xs text-foreground">
-                    #{order._id.slice(-8).toUpperCase()}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted">Date</span>
-                  <span className="text-foreground">
-                    {formatDate(order.createdAt)}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted">Payment</span>
-                  <span className="text-foreground">M-Pesa</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted">Items</span>
-                  <span className="text-foreground">
-                    {order.items.length}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Help */}
-            <div className="bg-background rounded-2xl border border-border p-6">
-              <h2 className="font-medium text-foreground mb-4">Need Help?</h2>
-              <div className="space-y-2.5">
-                <Link
-                  href="/help"
-                  className="flex items-center justify-between text-sm
-                             text-muted hover:text-foreground transition-colors
-                             group"
-                >
-                  <span>Contact support</span>
-                  <span className="group-hover:translate-x-0.5 transition-transform">
-                    →
-                  </span>
-                </Link>
-                <Link
-                  href="/returns"
-                  className="flex items-center justify-between text-sm
-                             text-muted hover:text-foreground transition-colors
-                             group"
-                >
-                  <span>Return policy</span>
-                  <span className="group-hover:translate-x-0.5 transition-transform">
-                    →
-                  </span>
-                </Link>
-                <Link
-                  href="/shipping"
-                  className="flex items-center justify-between text-sm
-                             text-muted hover:text-foreground transition-colors
-                             group"
-                >
-                  <span>Shipping info</span>
-                  <span className="group-hover:translate-x-0.5 transition-transform">
-                    →
-                  </span>
-                </Link>
-              </div>
-            </div>
-          </div>
+          </motion.div>
         </div>
       </div>
     </div>
