@@ -60,7 +60,8 @@ export default function OrdersPage() {
             <Link
               href="/explore"
               className="text-sm font-medium text-foreground underline
-                         underline-offset-4 hover:opacity-70 transition-opacity"
+                         underline-offset-4 hover:text-[#E60023] transition-colors
+                         duration-200"
             >
               Start shopping
             </Link>
@@ -74,9 +75,9 @@ export default function OrdersPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05 }}
               >
-                <Link href={`/orders/${order._id}`}>
+                <Link href={`/orders/${order._id}`} className="group">
                   <div className="p-5 bg-background rounded-2xl border border-border
-                                  hover:border-foreground/20 hover:shadow-sm
+                                  hover:border-[#E60023]/40 hover:shadow-sm
                                   transition-all duration-200 flex items-center gap-4">
                     <div className="w-12 h-12 rounded-xl bg-surface flex items-center
                                     justify-center shrink-0">
@@ -111,7 +112,11 @@ export default function OrdersPage() {
                       <p className="font-semibold text-foreground">
                         {formatPrice(order.total, 'KES')}
                       </p>
-                      <ChevronRight size={16} className="text-muted ml-auto mt-1" />
+                      <ChevronRight
+                        size={16}
+                        className="text-muted ml-auto mt-1 group-hover:text-[#E60023]
+                                   group-hover:translate-x-0.5 transition-all duration-200"
+                      />
                     </div>
                   </div>
                 </Link>

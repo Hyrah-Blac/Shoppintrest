@@ -15,22 +15,22 @@
  *  - Pause-on-hover: clearInterval guard — only restarts if products.length >= 2
  *
  * globals.css additions required:
- *   @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=Inter:wght@400;500&display=swap');
+ *   @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Inter:wght@400;500&family=Ultra&display=swap');
  *   :root {
- *     --font-display: 'Cormorant Garamond', serif;
+ *     --font-display: 'Playfair Display', Georgia, serif;
  *     --font-utility: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+ *     --font-flourish: 'Ultra', serif;
  *   }
  *   .can-hover #hero-section { cursor: none; }
  *
- * v5 → v6 (aesthetic pass):
- *  - Introduced --font-utility (Inter) for tiny uppercase tracked labels —
- *    Cormorant Garamond is a display serif and goes thin/hard to read under
- *    12px; utility text now sits on a clean grotesk instead
- *  - One accent color (muted brass) threaded through the active progress
- *    dot and the CTA hover fill, instead of pure black/white throughout
- *  - Added a barely-there film-grain overlay for filmic depth
- *  - CTA circle is now magnetic: it pulls gently toward the cursor within
- *    range, extending the custom-cursor language already built for the hero
+ * v8 → v9 (headline face swapped):
+ *  - Cormorant Garamond → Playfair Display for the main headline + modal
+ *    title. Cormorant only goes to weight 400, so at bold sizes browsers
+ *    were likely falling back toward Georgia's default weight — which is
+ *    probably why the rendered headline looked heavier/more Didone than
+ *    intended. Playfair Display actually has Bold/Black cuts built for
+ *    this, plus the ball terminals visible in the reference screenshot.
+ *  - Headline weight bumped 300 → 700 to match
  */
 
 import {
@@ -90,7 +90,7 @@ const BLANK_PLACEHOLDER =
 const pad = (n: number) => String(n).padStart(2, '0')
 
 const DISPLAY: React.CSSProperties = {
-  fontFamily: 'var(--font-display, "Cormorant Garamond", Georgia, serif)',
+  fontFamily: 'var(--font-display, "Playfair Display", Georgia, serif)',
 }
 
 // Utility face for tiny uppercase tracked labels — a display serif goes
@@ -100,10 +100,17 @@ const UTILITY: React.CSSProperties = {
   fontFamily: 'var(--font-utility, "Inter", -apple-system, BlinkMacSystemFont, sans-serif)',
 }
 
+// Flourish face for the one accent badge — a bold vintage slab serif
+// (think rodeo posters, muscle-car decals) matching the automotive-badge
+// lettering style in the product photography, rather than a script.
+const FLOURISH: React.CSSProperties = {
+  fontFamily: 'var(--font-flourish, "Ultra", serif)',
+}
+
 // One accent, used sparingly: the active progress dot and the CTA hover
 // fill. Everything else in the hero stays black/white/gray.
-const ACCENT = '#C9A574'
-const ACCENT_INK = '#1a1410'
+const ACCENT = '#E60023'
+const ACCENT_INK = '#ffffff'
 
 // ─── ProgressRail ─────────────────────────────────────────────────────────────
 
@@ -130,12 +137,12 @@ function ProgressRail({
         >
           <span
             className="relative h-[1px] w-full overflow-hidden block"
-            style={{ background: 'rgba(255,255,255,0.18)' }}
+            style={{ background: 'rgba(255,255,255,0.14)' }}
           >
             {i === active && (
               <motion.span
                 className="absolute inset-y-0 left-0 block"
-                style={{ background: ACCENT, width: '100%' }}
+                style={{ background: ACCENT, width: '100%', opacity: 0.55 }}
                 initial={{ scaleX: 0, originX: 0 }}
                 animate={{ scaleX: 1 }}
                 transition={{ duration: KB_DURATION, ease: 'linear' }}
@@ -144,7 +151,7 @@ function ProgressRail({
             {i < active && (
               <span
                 className="absolute inset-0"
-                style={{ background: ACCENT }}
+                style={{ background: ACCENT, opacity: 0.4 }}
               />
             )}
           </span>
@@ -380,7 +387,7 @@ function QuickViewModal({
                 style={{
                   ...DISPLAY,
                   fontSize: 'clamp(1.5rem, 4vw, 2.25rem)',
-                  fontWeight: 300,
+                  fontWeight: 700,
                   lineHeight: 1.05,
                   color: '#fff',
                   margin: '0 0 16px',
@@ -881,7 +888,7 @@ export function HeroSection() {
         {/* ── Background — parallax + crossfade ── */}
         <motion.div
           className="absolute inset-0"
-          style={{ y: reduceMotion ? 0 : bgY, top: '-6%', bottom: '-6%' }}
+          style={{ y: reduceMotion ? 0 : bgY, top: '-6%', bottom: '-6%', filter: 'contrast(1.07) saturate(1.05)' }}
         >
           <AnimatePresence mode="sync">
             <motion.div
@@ -924,6 +931,11 @@ export function HeroSection() {
           className="pointer-events-none absolute inset-x-0 top-0 h-44 z-[1]"
           style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.42) 0%, transparent 100%)' }}
         />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 z-[1]"
+          style={{ background: 'radial-gradient(120% 90% at 50% 45%, transparent 55%, rgba(0,0,0,0.28) 100%)' }}
+        />
 
         {/* ── Film grain — barely visible, separates flat gradient from
              photographic depth. Static SVG noise, no runtime cost. ── */}
@@ -939,21 +951,57 @@ export function HeroSection() {
           <rect width="100%" height="100%" filter={`url(#${grainId})`} />
         </svg>
 
-        {/* ── Season label — top left ── */}
-        <motion.p
-          className="absolute top-8 left-8 md:top-10 md:left-12 z-10"
-          style={{ ...UTILITY, fontSize: '9px', letterSpacing: '0.32em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.45)' }}
+        {/* ── Season label — top left, with a small hand-tagged flourish ── */}
+        <motion.div
+          className="absolute top-8 left-8 md:top-10 md:left-12 z-10 flex items-center gap-3"
           initial={{ opacity: 0, y: -6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.1 }}
         >
-          {SEASON_LABEL}
-        </motion.p>
+          <p
+            style={{
+              ...UTILITY,
+              fontSize: '9px',
+              letterSpacing: '0.32em',
+              textTransform: 'uppercase',
+              color: 'rgba(255,255,255,0.85)',
+              textShadow: '0 1px 10px rgba(0,0,0,0.6), 0 1px 3px rgba(0,0,0,0.45)',
+            }}
+          >
+            {SEASON_LABEL}
+          </p>
+          {/* One deliberate accent — a small stamped-badge chip in a bold
+              vintage slab, echoing the automotive-decal lettering style
+              rather than a typography overhaul. */}
+          <motion.span
+            aria-hidden
+            initial={{ opacity: 0, scale: 0.85, rotate: -10 }}
+            animate={{ opacity: 1, scale: 1, rotate: -5 }}
+            transition={{ duration: 0.6, delay: 0.55, type: 'spring', stiffness: 200, damping: 16 }}
+            style={{
+              ...FLOURISH,
+              fontSize: '10px',
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              color: ACCENT,
+              padding: '5px 9px',
+              border: `1px solid ${ACCENT}`,
+              borderRadius: '3px',
+              lineHeight: 1,
+              display: 'inline-block',
+              transformOrigin: '50% 50%',
+              textShadow: '0 1px 4px rgba(0,0,0,0.4)',
+            }}
+          >
+            Featured
+          </motion.span>
+        </motion.div>
 
         {/* ── Slide counter — top right ── */}
         {products.length > 1 && (
           <motion.div
             className="absolute top-8 right-8 md:top-10 md:right-12 z-10 flex items-center gap-[7px]"
+            style={{ textShadow: '0 1px 10px rgba(0,0,0,0.6), 0 1px 3px rgba(0,0,0,0.45)' }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.8, delay: 0.2 }}
@@ -961,7 +1009,7 @@ export function HeroSection() {
             <AnimatePresence mode="wait">
               <motion.span
                 key={active}
-                style={{ ...UTILITY, fontSize: '11px', color: 'rgba(255,255,255,0.85)', fontVariantNumeric: 'tabular-nums' }}
+                style={{ ...UTILITY, fontSize: '11px', color: 'rgba(255,255,255,0.95)', fontVariantNumeric: 'tabular-nums' }}
                 initial={{ opacity: 0, y: 5 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -5 }}
@@ -970,8 +1018,8 @@ export function HeroSection() {
                 {pad(active + 1)}
               </motion.span>
             </AnimatePresence>
-            <span style={{ ...UTILITY, fontSize: '10px', color: 'rgba(255,255,255,0.2)' }}>/</span>
-            <span style={{ ...UTILITY, fontSize: '11px', color: 'rgba(255,255,255,0.2)', fontVariantNumeric: 'tabular-nums' }}>
+            <span style={{ ...UTILITY, fontSize: '10px', color: 'rgba(255,255,255,0.4)' }}>/</span>
+            <span style={{ ...UTILITY, fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontVariantNumeric: 'tabular-nums' }}>
               {pad(products.length)}
             </span>
           </motion.div>
@@ -982,7 +1030,7 @@ export function HeroSection() {
           className="absolute bottom-0 inset-x-0 z-10 px-5 md:px-12 md:pb-16"
           style={{
             y: reduceMotion ? 0 : copyY,
-            paddingBottom: 'max(3.5rem, calc(env(safe-area-inset-bottom, 0px) + 3.5rem))',
+            paddingBottom: 'max(4.25rem, calc(env(safe-area-inset-bottom, 0px) + 4.25rem))',
           }}
         >
           {/* Progress rail — full width on mobile, max 260px on desktop */}
@@ -1024,7 +1072,7 @@ export function HeroSection() {
                       transition={{ duration: 0.8, delay: reduceMotion ? 0 : 0.06, ease: [0.16, 1, 0.3, 1] }}
                       style={{
                         ...DISPLAY,
-                        fontWeight: 300,
+                        fontWeight: 700,
                         lineHeight: 0.9,
                         letterSpacing: '-0.01em',
                         color: '#fff',
@@ -1082,17 +1130,19 @@ export function HeroSection() {
                       border: '0.5px solid rgba(255,255,255,0.4)',
                       color: 'rgba(255,255,255,0.9)',
                       flexShrink: 0,
-                      transition: 'background 0.45s cubic-bezier(0.22,1,0.36,1), color 0.45s, border-color 0.45s',
+                      transition: 'background 0.45s cubic-bezier(0.22,1,0.36,1), color 0.45s, border-color 0.45s, box-shadow 0.45s',
                     }}
                     onMouseEnter={e => {
                       e.currentTarget.style.background   = ACCENT
                       e.currentTarget.style.color         = ACCENT_INK
                       e.currentTarget.style.borderColor   = ACCENT
+                      e.currentTarget.style.boxShadow     = '0 4px 20px rgba(230,0,35,0.35)'
                     }}
                     onMouseLeave={e => {
                       e.currentTarget.style.background   = 'transparent'
                       e.currentTarget.style.color         = 'rgba(255,255,255,0.9)'
                       e.currentTarget.style.borderColor   = 'rgba(255,255,255,0.4)'
+                      e.currentTarget.style.boxShadow     = 'none'
                     }}
                   >
                     <ArrowRight
@@ -1111,7 +1161,7 @@ export function HeroSection() {
             {current && (
               <motion.div
                 key={current._id + '-strip'}
-                className="mt-10 pt-5 flex items-center justify-between"
+                className="mt-7 pt-4 flex items-center justify-between"
                 style={{ borderTop: '0.5px solid rgba(255,255,255,0.1)' }}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}

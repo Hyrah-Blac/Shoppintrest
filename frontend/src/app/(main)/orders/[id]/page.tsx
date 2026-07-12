@@ -231,7 +231,14 @@ export default function OrderDetailPage({
                             <step.icon
                               size={16}
                               className={
-                                isDone ? 'text-background' : 'text-muted'
+                                // Fixed white, not text-background — the icon
+                                // sits on a FIXED red circle now (not a
+                                // theme-relative foreground color), so tying
+                                // its color to the theme's background
+                                // variable would go near-black-on-dark-red in
+                                // dark mode: technically "themed" but far
+                                // lower contrast than intended.
+                                isDone ? 'text-white' : 'text-muted'
                               }
                             />
                           </motion.div>
