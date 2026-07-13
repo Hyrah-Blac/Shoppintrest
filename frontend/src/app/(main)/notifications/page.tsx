@@ -1,8 +1,36 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+/**
+ * NotificationsPage — v2 · aligned to HeroSection (v14) conventions
+ *
+ * Changes made to bring this page up to the same bar as the hero:
+ *  - Respects prefers-reduced-motion. The hero disables its kenburns/parallax
+ *    for reduced-motion users; this page now does the same for row entrance,
+ *    the refresh spin, the cursor spotlight, and the per-row magnetic tilt.
+ *  - CSS custom properties now carry literal fallback values (e.g.
+ *    `hsl(var(--foreground, 0 0% 9%))`), same reasoning as the hero's ACCENT
+ *    token: if a theme variable is ever renamed or missing, the UI degrades
+ *    to a sane default instead of silently rendering invisible/transparent.
+ *  - Hover-capability is detected once via a memoised ref (mirrors the
+ *    hero's `canHover` ref) instead of calling `window.matchMedia` inside
+ *    every mousemove/mouseenter handler.
+ *  - Typography now matches the hero's approach: self-hosted via
+ *    next/font/google rather than a CSS-file @import, so nothing silently
+ *    falls back to the browser's generic serif/sans/cursive. Playfair
+ *    Display carries the two big display moments (the page title and the
+ *    "all caught up" empty state), Inter carries every small tracked-caps
+ *    label, and Parisienne — the same script used for the hero's "Scroll
+ *    to shop" / "See it" — gets one deliberate, sparing appearance on the
+ *    "New" section label.
+ */
+
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
-import { motion, AnimatePresence, useMotionValue, useMotionTemplate, useSpring } from 'framer-motion'
+import { Playfair_Display, Parisienne, Inter } from 'next/font/google'
+import {
+  motion, AnimatePresence, useMotionValue, useMotionTemplate, useSpring,
+  useReducedMotion,
+} from 'framer-motion'
 import {
   Bell, Check, RefreshCw, ChevronRight,
   UserPlus, Heart, Package, MessageCircle, Star, Bookmark,
@@ -12,6 +40,12 @@ import { useNotificationStore } from '@/store/useNotificationStore'
 import api from '@/lib/api'
 import { Avatar } from '@/components/ui/Avatar'
 import { formatRelativeTime, cn } from '@/lib/utils'
+
+// Self-hosted via next/font — same reasoning as the hero: no @import in
+// globals.css to go stale, no silent fallback to generic serif/cursive.
+const playfair   = Playfair_Display({ weight: ['500', '600', '700'], style: ['normal', 'italic'], subsets: ['latin'], display: 'swap' })
+const parisienne = Parisienne({ weight: '400', subsets: ['latin'], display: 'swap' })
+const interFont  = Inter({ weight: ['400', '500', '600'], subsets: ['latin'], display: 'swap' })
 
 interface NotificationItem {
   _id:       string
@@ -38,6 +72,20 @@ const typeConfig: Record<string, { icon: LucideIcon; label: string }> = {
 const fallbackConfig = { icon: Bell, label: 'Activity' }
 
 const ease = [0.16, 1, 0.3, 1] as const
+
+// ─── Fallback-safe design tokens ───────────────────────────────────────────
+// Same pattern as the hero's ACCENT constant: every var(--x) carries a
+// literal fallback so a renamed/missing theme token degrades gracefully
+// instead of rendering transparent/invisible content.
+const BG            = 'hsl(var(--background, 0 0% 100%))'
+const FG             = 'hsl(var(--foreground, 0 0% 9%))'
+const FG_SECONDARY   = 'hsl(var(--foreground-secondary, 0 0% 30%))'
+const MUTED          = 'hsl(var(--muted, 0 0% 45%))'
+const MUTED_FG       = 'hsl(var(--muted-foreground, 0 0% 45%))'
+const BORDER         = 'hsl(var(--border, 0 0% 90%))'
+const SURFACE_EL     = 'hsl(var(--surface-elevated, 0 0% 96%))'
+const SURFACE_FLOAT  = 'hsl(var(--surface-float, 0 0% 98%))'
+const ACCENT         = 'hsl(var(--accent, 0 78% 54%))'
 
 // ─── Date grouping ──────────────────────────────────────────────────────────
 
@@ -79,6 +127,16 @@ export default function NotificationsPage() {
   } = useNotificationStore()
 
   const [activeType, setActiveType] = useState<string>('all')
+  const reduceMotion = useReducedMotion()
+
+  // Memoised hover-capability check — same reasoning as the hero's
+  // `canHover` ref: matchMedia doesn't change mid-session, so there's no
+  // reason to re-query it inside every pointer event handler.
+  const canHover = useRef(
+    typeof window !== 'undefined'
+      ? window.matchMedia('(hover: hover)').matches
+      : false
+  )
 
   useEffect(() => { fetchNotifications() }, [])
 
@@ -109,6 +167,8 @@ export default function NotificationsPage() {
   }
 
   // ── Cursor spotlight — subtle ambient light following the pointer ──
+  // Disabled outright for reduced-motion users, same as the hero's
+  // kenburns/parallax treatment.
   const spotlightX = useMotionValue(-500)
   const spotlightY = useMotionValue(-500)
   const spotlightXSpring = useSpring(spotlightX, { damping: 30, stiffness: 120, mass: 0.5 })
@@ -116,7 +176,8 @@ export default function NotificationsPage() {
   const spotlightBackground = useMotionTemplate`radial-gradient(600px circle at ${spotlightXSpring}px ${spotlightYSpring}px, hsl(var(--foreground) / 0.045), transparent 60%)`
 
   const handlePointerMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (typeof window !== 'undefined' && window.matchMedia('(hover: none)').matches) return
+    if (reduceMotion) return
+    if (!canHover.current) return
     spotlightX.set(e.clientX)
     spotlightY.set(e.clientY)
   }
@@ -124,22 +185,24 @@ export default function NotificationsPage() {
   return (
     <div
       className="min-h-screen relative"
-      style={{ background: 'hsl(var(--background))' }}
+      style={{ background: BG }}
       onMouseMove={handlePointerMove}
     >
       {/* ── Ambient cursor spotlight ── */}
-      <motion.div
-        aria-hidden
-        className="pointer-events-none fixed inset-0 z-30 hidden sm:block"
-        style={{ background: spotlightBackground }}
-      />
+      {!reduceMotion && (
+        <motion.div
+          aria-hidden
+          className="pointer-events-none fixed inset-0 z-30 hidden sm:block"
+          style={{ background: spotlightBackground }}
+        />
+      )}
 
       {/* ── HEADER ── */}
       <header
         className="sticky top-0 z-40"
         style={{
-          background: 'hsl(var(--background))',
-          borderBottom: '1px solid hsl(var(--border) / 0.5)',
+          background: BG,
+          borderBottom: `1px solid hsl(var(--border) / 0.5)`,
         }}
       >
         <div className="container-narrow">
@@ -148,17 +211,18 @@ export default function NotificationsPage() {
             style={{ paddingBlock: 'clamp(1rem, 2vw, 1.5rem)' }}
           >
             <motion.div
-              initial={{ opacity: 0, y: 10, filter: 'blur(3px)' }}
+              initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 10, filter: 'blur(3px)' }}
               animate={{ opacity: 1, y: 0,  filter: 'blur(0px)' }}
               transition={{ duration: 0.5, ease }}
             >
               <p
+                className={interFont.className}
                 style={{
                   fontSize: '10px',
                   fontWeight: 500,
                   letterSpacing: '0.18em',
                   textTransform: 'uppercase',
-                  color: 'hsl(var(--muted))',
+                  color: MUTED,
                   marginBottom: '0.375rem',
                 }}
               >
@@ -166,16 +230,16 @@ export default function NotificationsPage() {
               </p>
               <div className="flex items-center gap-3">
                 <h1
-                  className="font-display"
+                  className={playfair.className}
                   style={{
-                    fontSize:      'clamp(1.75rem, 3vw, 2.5rem)',
-                    fontWeight:    300,
-                    letterSpacing: '-0.02em',
+                    fontSize:      'clamp(1.875rem, 3.4vw, 2.75rem)',
+                    fontWeight:    600,
+                    letterSpacing: '-0.01em',
                     lineHeight:    1,
-                    color:         'hsl(var(--foreground))',
+                    color:         FG,
                   }}
                 >
-                  Noti<span style={{ color: 'hsl(var(--accent))' }}>fications</span>
+                  Noti<span style={{ color: ACCENT, fontStyle: 'italic' }}>fications</span>
                 </h1>
                 <AnimatePresence>
                   {unreadCount > 0 && (
@@ -190,9 +254,9 @@ export default function NotificationsPage() {
                         minWidth:     '1.375rem',
                         height:       '1.375rem',
                         borderRadius: '999px',
-                        background:   'hsl(var(--surface-elevated))',
-                        border:       '1px solid hsl(var(--border))',
-                        color:        'hsl(var(--foreground))',
+                        background:   SURFACE_EL,
+                        border:       `1px solid ${BORDER}`,
+                        color:        FG,
                         padding:      '0 0.3rem',
                       }}
                       aria-live="polite"
@@ -209,23 +273,23 @@ export default function NotificationsPage() {
                 {unreadCount > 0 && (
                   <motion.button
                     onClick={handleMarkAllRead}
-                    className="hidden sm:inline-flex items-center gap-1.5 group"
+                    className={cn('hidden sm:inline-flex items-center gap-1.5 group', interFont.className)}
                     style={{
                       fontSize: '10px',
                       fontWeight: 500,
                       letterSpacing: '0.12em',
                       textTransform: 'uppercase',
-                      color: 'hsl(var(--muted))',
+                      color: MUTED,
                       background: 'transparent',
                       border: 'none',
                       cursor: 'pointer',
                       transition: 'color 0.2s',
                     }}
-                    onMouseEnter={e => (e.currentTarget.style.color = 'hsl(var(--foreground))')}
-                    onMouseLeave={e => (e.currentTarget.style.color = 'hsl(var(--muted))')}
-                    initial={{ opacity: 0, scale: 0.94, x: 8 }}
+                    onMouseEnter={e => (e.currentTarget.style.color = FG)}
+                    onMouseLeave={e => (e.currentTarget.style.color = MUTED)}
+                    initial={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.94, x: 8 }}
                     animate={{ opacity: 1, scale: 1,    x: 0 }}
-                    exit={{   opacity: 0, scale: 0.94, x: 8 }}
+                    exit={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.94, x: 8 }}
                     transition={{ duration: 0.25, ease }}
                   >
                     <Check size={11} strokeWidth={1.5} />
@@ -243,19 +307,19 @@ export default function NotificationsPage() {
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: 'hsl(var(--muted))',
+                  color: MUTED,
                   background: 'transparent',
                   border: 'none',
                   cursor: 'pointer',
                   transition: 'color 0.2s',
                 }}
-                onMouseEnter={e => (e.currentTarget.style.color = 'hsl(var(--foreground))')}
-                onMouseLeave={e => (e.currentTarget.style.color = 'hsl(var(--muted))')}
+                onMouseEnter={e => (e.currentTarget.style.color = FG)}
+                onMouseLeave={e => (e.currentTarget.style.color = MUTED)}
               >
                 <motion.span
                   className="flex"
-                  animate={isLoading ? { rotate: 360 } : { rotate: 0 }}
-                  transition={isLoading
+                  animate={isLoading && !reduceMotion ? { rotate: 360 } : { rotate: 0 }}
+                  transition={isLoading && !reduceMotion
                     ? { duration: 0.8, repeat: Infinity, ease: 'linear' }
                     : { duration: 0.2 }}
                 >
@@ -273,7 +337,7 @@ export default function NotificationsPage() {
             >
               <button
                 onClick={() => setActiveType('all')}
-                className={cn('pill', activeType === 'all' && 'active-plain')}
+                className={cn('pill', interFont.className, activeType === 'all' && 'active-plain')}
                 style={activeType === 'all' ? plainActivePill : undefined}
               >
                 All
@@ -286,7 +350,7 @@ export default function NotificationsPage() {
                   <button
                     key={type}
                     onClick={() => setActiveType(type)}
-                    className="pill"
+                    className={cn('pill', interFont.className)}
                     style={isActive ? plainActivePill : undefined}
                   >
                     <Icon size={12} strokeWidth={2.25} />
@@ -302,13 +366,13 @@ export default function NotificationsPage() {
             <div className="sm:hidden pb-3 -mt-1">
               <button
                 onClick={handleMarkAllRead}
-                className="inline-flex items-center gap-1.5"
+                className={cn('inline-flex items-center gap-1.5', interFont.className)}
                 style={{
                   fontSize: '10px',
                   fontWeight: 500,
                   letterSpacing: '0.12em',
                   textTransform: 'uppercase',
-                  color: 'hsl(var(--muted))',
+                  color: MUTED,
                   background: 'transparent',
                   border: 'none',
                 }}
@@ -357,6 +421,7 @@ export default function NotificationsPage() {
           <EmptyState
             title="All caught up"
             body="When someone follows you, saves your pins, or sends a message, it'll show up here."
+            reduceMotion={!!reduceMotion}
           />
         )}
 
@@ -366,12 +431,13 @@ export default function NotificationsPage() {
             title="Nothing here yet"
             body={`No ${(typeConfig[activeType]?.label ?? 'matching').toLowerCase()} notifications right now.`}
             compact
+            reduceMotion={!!reduceMotion}
           />
         )}
 
         {/* Notification list */}
         {visible.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }} aria-live="polite">
 
             {unread.length > 0 && (
               <>
@@ -382,6 +448,8 @@ export default function NotificationsPage() {
                     notif={notif}
                     index={i}
                     onRead={() => handleMarkOneRead(notif._id)}
+                    reduceMotion={!!reduceMotion}
+                    canHover={canHover}
                   />
                 ))}
                 {read.length > 0 && <hr className="divider my-5" />}
@@ -397,6 +465,8 @@ export default function NotificationsPage() {
                     notif={notif}
                     index={gi * 6 + i}
                     onRead={() => {}}
+                    reduceMotion={!!reduceMotion}
+                    canHover={canHover}
                   />
                 ))}
               </div>
@@ -410,9 +480,9 @@ export default function NotificationsPage() {
 
 // Active filter pill — plain, no accent colour
 const plainActivePill: React.CSSProperties = {
-  background:  'hsl(var(--foreground))',
-  color:       'hsl(var(--background))',
-  borderColor: 'hsl(var(--foreground))',
+  background:  FG,
+  color:       BG,
+  borderColor: FG,
   fontWeight:  500,
 }
 
@@ -422,7 +492,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <p
       className="text-[10px] font-semibold uppercase tracking-[0.14em] mb-2 px-1 mt-5 first:mt-0"
-      style={{ color: 'hsl(var(--muted))' }}
+      style={{ color: MUTED }}
     >
       {children}
     </p>
@@ -431,12 +501,14 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 // ─── Empty state ────────────────────────────────────────────────────────────
 
-function EmptyState({ title, body, compact }: { title: string; body: string; compact?: boolean }) {
+function EmptyState({
+  title, body, compact, reduceMotion, flourish,
+}: { title: string; body: string; compact?: boolean; reduceMotion?: boolean; flourish?: string }) {
   return (
     <motion.div
       className="flex flex-col items-center text-center"
       style={{ paddingBlock: compact ? 'clamp(2.5rem, 6vw, 4rem)' : 'clamp(4rem, 10vw, 7rem)' }}
-      initial={{ opacity: 0, y: 16 }}
+      initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease }}
     >
@@ -446,33 +518,47 @@ function EmptyState({ title, body, compact }: { title: string; body: string; com
           width:          '4.5rem',
           height:         '4.5rem',
           borderRadius:   'var(--radius-xl)',
-          background:     'hsl(var(--surface-elevated))',
-          border:         '1px solid hsl(var(--border))',
+          background:     SURFACE_EL,
+          border:         `1px solid ${BORDER}`,
           display:        'flex',
           alignItems:     'center',
           justifyContent: 'center',
         }}
       >
-        <Bell size={22} style={{ color: 'hsl(var(--muted))', strokeWidth: 1.5 }} />
+        <Bell size={22} style={{ color: MUTED, strokeWidth: 1.5 }} />
       </div>
-      <p className="font-display" style={{
+      <p className={playfair.className} style={{
         fontWeight:    600,
-        fontSize:      '1.125rem',
-        letterSpacing: '-0.025em',
-        color:         'hsl(var(--foreground))',
+        fontSize:      '1.375rem',
+        letterSpacing: '-0.015em',
+        color:         FG,
         marginBottom:  '0.5rem',
       }}>
         {title}
       </p>
-      <p style={{
+      <p className={interFont.className} style={{
         fontSize:   'var(--text-sm)',
-        color:      'hsl(var(--muted-foreground))',
+        color:      MUTED_FG,
         fontWeight: 300,
         maxWidth:   '22rem',
         lineHeight: 1.65,
       }}>
         {body}
       </p>
+      {/* One deliberate script accent — same restraint as the hero's
+          Parisienne usage: a single warm, human touch, not a redesign. */}
+      {flourish && (
+        <p
+          className={parisienne.className}
+          style={{
+            fontSize: '19px',
+            color: ACCENT,
+            marginTop: '0.875rem',
+          }}
+        >
+          {flourish}
+        </p>
+      )}
     </motion.div>
   )
 }
@@ -483,10 +569,14 @@ function NotificationRow({
   notif,
   index,
   onRead,
+  reduceMotion,
+  canHover,
 }: {
-  notif:  NotificationItem
-  index:  number
-  onRead: () => void
+  notif:        NotificationItem
+  index:        number
+  onRead:       () => void
+  reduceMotion: boolean
+  canHover:     React.RefObject<boolean>
 }) {
   const config = typeConfig[notif.type] ?? fallbackConfig
   const Icon   = config.icon
@@ -494,15 +584,15 @@ function NotificationRow({
 
   const hasIdentity = Boolean(notif.sender?.avatar || notif.sender?.displayName)
 
-  // ── Magnetic tilt — desktop only, disabled on touch devices ──
+  // ── Magnetic tilt — desktop only, disabled on touch devices and for
+  // reduced-motion users (mirrors the hero's MagneticCircle guard) ──
   const rotateX = useMotionValue(0)
   const rotateY = useMotionValue(0)
   const tiltX = useSpring(rotateX, { damping: 18, stiffness: 220, mass: 0.4 })
   const tiltY = useSpring(rotateY, { damping: 18, stiffness: 220, mass: 0.4 })
 
   const handleTiltMove = (e: React.MouseEvent<HTMLElement>) => {
-    // Skip tilt on touch-primary devices
-    if (window.matchMedia('(hover: none)').matches) return
+    if (!canHover.current || reduceMotion) return
     const rect = e.currentTarget.getBoundingClientRect()
     const px = (e.clientX - rect.left) / rect.width  - 0.5
     const py = (e.clientY - rect.top)  / rect.height - 0.5
@@ -531,10 +621,10 @@ function NotificationRow({
                 width:        '1.25rem',
                 height:       '1.25rem',
                 borderRadius: '50%',
-                background:   'hsl(var(--surface-float))',
-                border:       '1px solid hsl(var(--border))',
-                boxShadow:    '0 0 0 1.5px hsl(var(--background))',
-                color:        'hsl(var(--foreground-secondary))',
+                background:   SURFACE_FLOAT,
+                border:       `1px solid ${BORDER}`,
+                boxShadow:    `0 0 0 1.5px ${BG}`,
+                color:        FG_SECONDARY,
               }}
             >
               <Icon size={11} strokeWidth={2.25} />
@@ -547,9 +637,9 @@ function NotificationRow({
               width:        '2.5rem',
               height:       '2.5rem',
               borderRadius: '50%',
-              background:   'hsl(var(--surface-elevated))',
-              border:       '1px solid hsl(var(--border))',
-              color:        'hsl(var(--foreground-secondary))',
+              background:   SURFACE_EL,
+              border:       `1px solid ${BORDER}`,
+              color:        FG_SECONDARY,
             }}
           >
             <Icon size={17} strokeWidth={2} />
@@ -562,7 +652,7 @@ function NotificationRow({
         <p style={{
           fontSize:     'var(--text-sm)',
           lineHeight:   1.55,
-          color:        'hsl(var(--foreground))',
+          color:        FG,
           fontWeight:   notif.isRead ? 300 : 500,
           marginBottom: '0.2rem',
         }}>
@@ -571,7 +661,7 @@ function NotificationRow({
         <div className="flex items-center gap-2">
           <p style={{
             fontSize:      '10px',
-            color:         'hsl(var(--muted-foreground))',
+            color:         MUTED_FG,
             fontWeight:    500,
             textTransform: 'uppercase',
             letterSpacing: '0.08em',
@@ -581,7 +671,7 @@ function NotificationRow({
           <span style={{ color: 'hsl(var(--muted) / 0.4)', fontSize: '10px' }}>·</span>
           <p style={{
             fontSize:      'var(--text-xs)',
-            color:         'hsl(var(--muted-foreground))',
+            color:         MUTED_FG,
             fontWeight:    300,
             letterSpacing: '0.01em',
           }}>
@@ -608,7 +698,7 @@ function NotificationRow({
               transition={{ delay: delay + 0.15, duration: 0.25 }}
               style={{
                 width: '0.4375rem', height: '0.4375rem',
-                background: 'hsl(var(--foreground))',
+                background: FG,
               }}
             />
             {/* Desktop: check appears on hover */}
@@ -617,7 +707,7 @@ function NotificationRow({
               onClick={e => { e.preventDefault(); e.stopPropagation(); onRead() }}
               className="absolute inset-0 items-center justify-center rounded-full
                          hidden sm:flex opacity-0 group-hover:opacity-100 transition-opacity"
-              style={{ background: 'hsl(var(--surface-elevated))', color: 'hsl(var(--foreground))' }}
+              style={{ background: SURFACE_EL, color: FG }}
             >
               <Check size={11} strokeWidth={2.5} />
             </button>
@@ -626,7 +716,7 @@ function NotificationRow({
               aria-label="Mark as read"
               onClick={e => { e.preventDefault(); e.stopPropagation(); onRead() }}
               className="sm:hidden flex items-center justify-center rounded-full w-full h-full"
-              style={{ color: 'hsl(var(--foreground))' }}
+              style={{ color: FG }}
             >
               <Check size={13} strokeWidth={2.5} />
             </button>
@@ -637,13 +727,13 @@ function NotificationRow({
             <ChevronRight
               size={14}
               className="hidden sm:block opacity-0 -translate-x-1 transition-all group-hover:opacity-100 group-hover:translate-x-0"
-              style={{ color: 'hsl(var(--muted-foreground))' }}
+              style={{ color: MUTED_FG }}
             />
             {/* Mobile: always visible */}
             <ChevronRight
               size={14}
               className="sm:hidden"
-              style={{ color: 'hsl(var(--muted-foreground))', opacity: 0.4 }}
+              style={{ color: MUTED_FG, opacity: 0.4 }}
             />
           </>
         )}
@@ -654,37 +744,35 @@ function NotificationRow({
   const rowClassName = "group flex items-start gap-3.5 rounded-[var(--radius-lg)] cursor-pointer transition-all duration-[var(--duration-hover)]"
   const rowStyle: React.CSSProperties = {
     padding:    '0.875rem 0.75rem',
-    background: notif.isRead ? 'transparent' : 'hsl(var(--surface-elevated))',
+    background: notif.isRead ? 'transparent' : SURFACE_EL,
     transformStyle: 'preserve-3d',
     // Ensure tap target feels generous on mobile
     WebkitTapHighlightColor: 'transparent',
   }
 
-  const isTouch = () => typeof window !== 'undefined' && window.matchMedia('(hover: none)').matches
-
   const hoverIn = (e: React.MouseEvent<HTMLElement>) => {
-    if (isTouch()) return
-    e.currentTarget.style.background = 'hsl(var(--surface-elevated))'
+    if (!canHover.current) return
+    e.currentTarget.style.background = SURFACE_EL
     e.currentTarget.style.boxShadow  = 'var(--shadow-xs)'
   }
   const hoverOut = (e: React.MouseEvent<HTMLElement>) => {
-    if (isTouch()) return
-    e.currentTarget.style.background = notif.isRead ? 'transparent' : 'hsl(var(--surface-elevated))'
+    if (!canHover.current) return
+    e.currentTarget.style.background = notif.isRead ? 'transparent' : SURFACE_EL
     e.currentTarget.style.boxShadow  = 'none'
     resetTilt()
   }
   const handleMove = (e: React.MouseEvent<HTMLElement>) => {
-    if (isTouch()) return
+    if (!canHover.current) return
     hoverIn(e)
     handleTiltMove(e)
   }
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8, filter: 'blur(2px)' }}
+      initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 8, filter: 'blur(2px)' }}
       animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
       transition={{ delay, duration: 0.35, ease }}
-      style={{ rotateX: tiltX, rotateY: tiltY, transformPerspective: 600 }}
+      style={reduceMotion ? undefined : { rotateX: tiltX, rotateY: tiltY, transformPerspective: 600 }}
     >
       {notif.link ? (
         <Link

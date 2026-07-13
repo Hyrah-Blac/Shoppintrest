@@ -1,32 +1,31 @@
 import { Suspense } from 'react'
 import { HeroSection } from '@/components/home/HeroSection'
 import { FeaturedProducts } from '@/components/home/FeaturedProducts'
-import { TrendingSection } from '@/components/home/TrendingSection'
-import { CategoriesSection } from '@/components/home/CategoriesSection'
-import { MasonryPreview } from '@/components/home/MasonryPreview'
 
 /**
- * HomePage — v2 · Shoppin
+ * HomePage — v3 · Shoppin
  *
- * Section blending based on Mytheresa / Net-a-Porter / SSENSE pattern:
+ * v2 → v3 (lean-homepage redesign):
+ *  Homepage went from 5 stacked sections (Hero, CategoriesSection,
+ *  FeaturedProducts, TrendingSection, MasonryPreview) down to 2. The pattern
+ *  now matches top fashion e-commerce: sell one curated moment on the
+ *  homepage, push everything else behind navigation instead of an endless
+ *  scroll of sections.
  *
- *  1. Single continuous background — no background-switching between sections.
- *     All sections sit on `hsl(var(--background))`. The jarring surface/background
- *     alternation is removed; sections breathe through spacing only.
+ *  - CategoriesSection moved into the Navbar (desktop dropdown + mobile
+ *    drawer section) — category browsing is a navigation action, not a
+ *    homepage section. Component file itself hasn't been deleted, just no
+ *    longer imported here.
+ *  - TrendingSection and MasonryPreview removed from the homepage. Neither
+ *    is deleted — if you want them to live somewhere, /explore (which
+ *    already does sort=popular via the Sort dropdown) or a dedicated
+ *    /trending page are the natural homes, rather than the homepage.
+ *  - FeaturedProducts kept as the one homepage section, on the assumption
+ *    it's a small curated set ("New Drops" style) rather than a full grid —
+ *    worth confirming that's actually true once this is live; if it's
+ *    rendering more than ~8 products it defeats the point of this change.
  *
- *  2. Hero exit gradient — a full-width gradient bridge fades the hero's dark
- *     overlay into the page background so the transition feels continuous, not cut.
- *
- *  3. CategoriesSection runs edge-to-edge with no section-padding top — it sits
- *     flush under the hero exit, acting as a visual landing strip.
- *
- *  4. Content sections separated by a consistent vertical gap (--section-gap)
- *     rather than background color changes.
- *
- *  5. MasonryPreview gets extra top breathing room as the final section before
- *     the footer — mirrors how SSENSE pads the editorial close of their homepage.
- *
- * globals.css additions:
+ * globals.css addition still relevant:
  *   :root { --section-gap: 6rem; }
  *   @media (max-width: 768px) { :root { --section-gap: 4rem; } }
  */
@@ -47,29 +46,13 @@ export default function HomePage() {
         }}
       />
 
-      {/* ── Categories — flush strip, no top padding, acts as visual anchor ── */}
-      <CategoriesSection />
-
-      {/* ── Content sections — consistent gap, single background ── */}
-      <div
-        className="flex flex-col"
-        style={{ gap: 'var(--section-gap, 5rem)' }}
-      >
-        <Suspense fallback={null}>
+      {/* ── The one curated section — everything else lives behind
+             navigation now, not on the homepage ── */}
+      <Suspense fallback={null}>
+        <div className="pb-16 md:pb-24">
           <FeaturedProducts />
-        </Suspense>
-
-        <Suspense fallback={null}>
-          <TrendingSection />
-        </Suspense>
-
-        {/* MasonryPreview — extra bottom clearance before footer */}
-        <Suspense fallback={null}>
-          <div className="pb-8 md:pb-16">
-            <MasonryPreview />
-          </div>
-        </Suspense>
-      </div>
+        </div>
+      </Suspense>
 
     </main>
   )

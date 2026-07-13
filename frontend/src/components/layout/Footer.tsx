@@ -89,10 +89,15 @@ export function Footer() {
         <div className="mx-auto max-w-5xl">
 
         {/* ── Top section ───────────────────────────────────────────── */}
-        <div className="flex flex-col gap-12 md:flex-row md:items-start md:justify-between">
+        {/* Mobile: everything centered and stacked — editorial line, then
+            Company, then Support, each with room to breathe instead of
+            being squeezed into a 2-col grid at phone widths.
+            sm/md+: reverts to the original left-aligned, side-by-side
+            layout. */}
+        <div className="flex flex-col items-center gap-12 text-center md:flex-row md:items-start md:justify-between md:text-left">
 
           {/* Editorial line — replaces the old logo lockup */}
-          <div className="max-w-sm md:w-64 md:shrink-0">
+          <div className="max-w-[19rem] md:max-w-sm md:w-64 md:shrink-0">
             <p
               style={{
                 ...DISPLAY,
@@ -109,10 +114,10 @@ export function Footer() {
           </div>
 
           {/* Nav columns */}
-          <div className="grid grid-cols-2 gap-x-10 gap-y-10 sm:gap-x-16 md:min-w-[22rem] md:gap-x-20 lg:min-w-[26rem]">
+          <div className="grid w-full max-w-xs grid-cols-1 gap-y-12 sm:w-auto sm:max-w-none sm:grid-cols-2 sm:gap-x-16 md:min-w-[22rem] md:gap-x-20 lg:min-w-[26rem]">
 
             {/* Company */}
-            <div>
+            <div className="flex flex-col items-center sm:items-start">
               <p
                 style={{
                   ...UTILITY,
@@ -126,7 +131,7 @@ export function Footer() {
               >
                 Company
               </p>
-              <ul className="flex flex-col gap-3">
+              <ul className="flex flex-col items-center gap-4 sm:items-start sm:gap-3">
                 {companyLinks.map((link) => (
                   <li key={link.href}>
                     <FooterLink href={link.href}>{link.label}</FooterLink>
@@ -157,7 +162,7 @@ export function Footer() {
             </div>
 
             {/* Support */}
-            <div>
+            <div className="flex flex-col items-center sm:items-start">
               <p
                 style={{
                   ...UTILITY,

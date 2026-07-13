@@ -1,15 +1,84 @@
 'use client'
 
-import { useEffect, useRef, useCallback } from 'react'
+/**
+ * SavedPage — v2 · Shoppin
+ *
+ * Brought up to the same bar as HeroSection v14:
+ *  - Self-hosted type via next/font/google (Playfair Display for display
+ *    copy, DM Sans for utility/caption text) instead of `var(--font-serif)`
+ *    with a bare `serif` fallback — same fix Hero made for Great Vibes, so
+ *    the title can't silently fall back to the browser default.
+ *  - The one accent color (--accent, Pinterest red) is now used sparingly
+ *    here too: the piece count, the empty-state CTA hover fill, and the
+ *    remove-from-saved affordance — matching how Hero spends it on the
+ *    active progress dot and "Shop Now" hover only.
+ *  - Skeleton now breathes (opacity pulse) instead of sitting static, same
+ *    motion language as Hero's loading skeleton.
+ *  - Empty-state CTA rebuilt as a magnetic bordered rectangle (Hero's
+ *    "Shop Now" language) instead of the old hairline-underline link, so
+ *    the two pages read as one product.
+ *  - Grid items get a quiet hover lift + a "Remove" affordance that only
+ *    appears on hover/focus, echoing the "Tap the heart to save" copy in
+ *    the empty state without adding a second saving mechanism to learn.
+ */
+
+import { useEffect, useRef, useCallback, useState } from 'react'
 import Link from 'next/link'
-import { motion, useAnimation } from 'framer-motion'
+import { Playfair_Display, DM_Sans } from 'next/font/google'
+import { motion, useAnimation, AnimatePresence, useMotionValue, useSpring } from 'framer-motion'
+import { Heart, ArrowRight } from 'lucide-react'
 import { useSavedStore } from '@/store/useSavedStore'
 import { ProductCard } from '@/components/product/ProductCard'
+
+// Self-hosted via next/font — matches the DISPLAY/UTILITY split used
+// throughout HeroSection so this page can't quietly drift onto a
+// different serif/sans pairing than the rest of the site.
+const playfair = Playfair_Display({ weight: ['400', '500', '600'], subsets: ['latin'], display: 'swap' })
+const dmSans   = DM_Sans({ weight: ['400', '500', '700'], subsets: ['latin'], display: 'swap' })
 
 const clipReveal = {
   hidden:  { y: '105%' },
   visible: { y: '0%'   },
 }
+
+// The real --accent token (Pinterest red), theme-aware via HSL, with a
+// literal fallback so this page never silently loses its one accent color
+// if the variable is missing. Identical token to HeroSection's ACCENT.
+const ACCENT     = 'hsl(var(--accent, 0 78% 54%))'
+const ACCENT_INK = 'hsl(var(--accent-foreground, 0 0% 100%))'
+
+// ─── MagneticButton ───────────────────────────────────────────────────────
+// Same interaction Hero uses on its "Shop Now" CTA — the button pulls
+// gently toward the cursor as it approaches, then springs back on leave.
+// Inert on touch devices, there's no mousemove to react to.
+
+function MagneticButton({ children }: { children: React.ReactNode }) {
+  const x = useMotionValue(0)
+  const y = useMotionValue(0)
+  const springX = useSpring(x, { stiffness: 150, damping: 15, mass: 0.4 })
+  const springY = useSpring(y, { stiffness: 150, damping: 15, mass: 0.4 })
+
+  const handleMove = (e: React.MouseEvent<HTMLElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    x.set((e.clientX - (rect.left + rect.width / 2)) * 0.3)
+    y.set((e.clientY - (rect.top + rect.height / 2)) * 0.3)
+  }
+  const handleLeave = () => { x.set(0); y.set(0) }
+
+  return (
+    <span
+      onMouseMove={handleMove}
+      onMouseLeave={handleLeave}
+      style={{ display: 'inline-flex', padding: '10px', margin: '-10px' }}
+    >
+      <motion.span style={{ x: springX, y: springY, display: 'inline-flex' }}>
+        {children}
+      </motion.span>
+    </span>
+  )
+}
+
+// ─── PageTitle ────────────────────────────────────────────────────────────
 
 function PageTitle() {
   return (
@@ -19,12 +88,12 @@ function PageTitle() {
         initial="hidden"
         animate="visible"
         transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+        className={playfair.className}
         style={{
           fontSize:      32,
-          fontWeight:    400,
+          fontWeight:    500,
           margin:        0,
           letterSpacing: '-0.02em',
-          fontFamily:    'var(--font-serif, serif)',
           display:       'block',
         }}
       >
@@ -34,124 +103,232 @@ function PageTitle() {
   )
 }
 
-function ExploreLink() {
-  const circleControls = useAnimation()
-  const labelRef       = useRef<HTMLSpanElement>(null)
-  const svgRef         = useRef<SVGSVGElement>(null)
-  const circleRef      = useRef<SVGEllipseElement>(null)
+// ─── ExploreCTA (empty state) ─────────────────────────────────────────────
+// Rebuilt as the bordered-rectangle CTA from Hero, rather than the old
+// underline-circle link, so both pages share one CTA language.
 
-  const updateCircle = useCallback(() => {
-    const el     = labelRef.current
-    const svg    = svgRef.current
-    const circle = circleRef.current
-    if (!el || !svg || !circle) return
+function ExploreCTA() {
+  return (
+    <MagneticButton>
+      <Link
+        href="/explore"
+        className={dmSans.className}
+        style={{
+          display:        'inline-flex',
+          alignItems:     'center',
+          gap:            10,
+          fontSize:       11,
+          fontWeight:     500,
+          letterSpacing:  '0.2em',
+          textTransform:  'uppercase',
+          color:          'hsl(var(--foreground))',
+          textDecoration: 'none',
+          border:         '1px solid hsl(var(--foreground) / 0.35)',
+          padding:        '14px 32px',
+          whiteSpace:     'nowrap',
+          transition:     'background 0.35s ease, color 0.35s ease, border-color 0.35s ease',
+        }}
+        onMouseEnter={e => {
+          e.currentTarget.style.background  = ACCENT
+          e.currentTarget.style.color       = ACCENT_INK
+          e.currentTarget.style.borderColor = ACCENT
+        }}
+        onMouseLeave={e => {
+          e.currentTarget.style.background  = 'transparent'
+          e.currentTarget.style.color       = 'hsl(var(--foreground))'
+          e.currentTarget.style.borderColor = 'hsl(var(--foreground) / 0.35)'
+        }}
+      >
+        <span>Explore the collection</span>
+        <ArrowRight size={12} />
+      </Link>
+    </MagneticButton>
+  )
+}
 
-    const { width, height } = el.getBoundingClientRect()
-    const px = 14
-    const py = 8
-    const w  = width  + px * 2
-    const h  = height + py * 2
-    const a  = w / 2 - 1
-    const b  = h / 2 - 1
-    const circumference = Math.PI * (3 * (a + b) - Math.sqrt((3 * a + b) * (a + 3 * b)))
+// ─── SavedTile ────────────────────────────────────────────────────────────
+// Wraps ProductCard with the quiet hover lift + hover-only remove
+// affordance. Doesn't touch ProductCard itself, so its own internal
+// save/heart logic keeps working — this just adds a second, obvious exit
+// from the page that doesn't require finding the heart on the card.
 
-    svg.setAttribute('width',  String(w))
-    svg.setAttribute('height', String(h))
-    svg.style.left = `-${px}px`
-    svg.style.top  = `-${py}px`
+function SavedTile({
+  product,
+  index,
+  onRemove,
+}: {
+  product: { _id: string; title?: string }
+  index: number
+  onRemove: (id: string) => void
+}) {
+  const [hovered, setHovered] = useState(false)
+  const [removing, setRemoving] = useState(false)
 
-    circle.setAttribute('cx', String(w / 2))
-    circle.setAttribute('cy', String(h / 2))
-    circle.setAttribute('rx', String(a))
-    circle.setAttribute('ry', String(b))
-    circle.style.strokeDasharray  = String(circumference)
-    circle.style.strokeDashoffset = String(circumference)
-  }, [])
-
-  const handleMouseEnter = useCallback(() => {
-    updateCircle()
-    circleControls.start({
-      strokeDashoffset: 0,
-      transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] },
-    })
-  }, [circleControls, updateCircle])
-
-  const handleMouseLeave = useCallback(() => {
-    const circle = circleRef.current
-    if (!circle) return
-    const circumference = parseFloat(circle.style.strokeDasharray)
-    circleControls.start({
-      strokeDashoffset: circumference,
-      transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] },
-    })
-  }, [circleControls])
+  const handleRemove = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+      setRemoving(true)
+      // Let the exit animation play before it actually leaves the list.
+      setTimeout(() => onRemove(product._id), 220)
+    },
+    [onRemove, product._id]
+  )
 
   return (
-    <Link
-      href="/explore"
-      className="group relative inline-flex items-center py-1"
-      style={{ textDecoration: 'none' }}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-      onFocus={handleMouseEnter}
-      onBlur={handleMouseLeave}
+    <motion.div
+      key={product._id}
+      layout
+      variants={clipReveal}
+      initial="hidden"
+      animate={removing ? { opacity: 0, scale: 0.96 } : 'visible'}
+      exit={{ opacity: 0, scale: 0.96 }}
+      transition={{
+        duration: 0.55,
+        delay:    removing ? 0 : Math.min(index, 7) * 0.04,
+        ease:     [0.22, 1, 0.36, 1],
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{ position: 'relative' }}
     >
-      <svg
-        ref={svgRef}
-        aria-hidden
-        className="pointer-events-none absolute overflow-visible"
-        style={{ position: 'absolute', top: 0, left: 0, zIndex: 0 }}
+      <motion.div
+        animate={{ y: hovered ? -3 : 0 }}
+        transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
       >
-        <motion.ellipse
-          ref={circleRef}
-          animate={circleControls}
-          fill="none"
-          style={{
-            stroke:          'hsl(var(--foreground))',
-            strokeWidth:     '0.75px',
-            strokeLinecap:   'round',
-            strokeDasharray:  '0',
-            strokeDashoffset: '0',
-          }}
-        />
-      </svg>
+        <ProductCard product={product as never} />
+      </motion.div>
 
-      <span className="overflow-hidden relative z-[1]" style={{ display: 'block', lineHeight: 1 }}>
-        <motion.span
-          ref={labelRef}
-          className="block"
+      <button
+        type="button"
+        onClick={handleRemove}
+        aria-label={`Remove ${product.title ?? 'item'} from saved`}
+        className={dmSans.className}
+        style={{
+          position:        'absolute',
+          top:              10,
+          right:            10,
+          display:          'flex',
+          alignItems:       'center',
+          justifyContent:   'center',
+          width:            30,
+          height:           30,
+          borderRadius:     '50%',
+          border:           '0.5px solid hsl(var(--border) / 0.7)',
+          background:       'hsl(var(--background) / 0.85)',
+          backdropFilter:   'blur(6px)',
+          cursor:           'pointer',
+          opacity:          hovered ? 1 : 0,
+          transform:        hovered ? 'scale(1)' : 'scale(0.9)',
+          transition:       'opacity 0.2s ease, transform 0.2s ease, border-color 0.2s ease',
+        }}
+        onFocus={() => setHovered(true)}
+        onMouseEnter={e => { e.currentTarget.style.borderColor = ACCENT }}
+        onMouseLeave={e => { e.currentTarget.style.borderColor = 'hsl(var(--border) / 0.7)' }}
+      >
+        <Heart size={13} fill={ACCENT} color={ACCENT} strokeWidth={0} />
+      </button>
+    </motion.div>
+  )
+}
+
+// ─── SkeletonGrid ─────────────────────────────────────────────────────────
+// Now breathes instead of sitting flat — same opacity-pulse language as
+// HeroSection's loading state, so the two loading moments feel related.
+
+function SkeletonGrid() {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '2rem 1.5rem' }}>
+      {Array.from({ length: 8 }).map((_, i) => (
+        <motion.div
+          key={i}
+          animate={{ opacity: [0.5, 0.8, 0.5] }}
+          transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut', delay: i * 0.06 }}
+        >
+          <div style={{ aspectRatio: '3/4', background: 'hsl(var(--border) / 0.4)', marginBottom: 12 }} />
+          <div style={{ height: 10, width: '35%', background: 'hsl(var(--border) / 0.4)', marginBottom: 8 }} />
+          <div style={{ height: 13, width: '75%', background: 'hsl(var(--border) / 0.4)', marginBottom: 8 }} />
+          <div style={{ height: 13, width: '25%', background: 'hsl(var(--border) / 0.4)' }} />
+        </motion.div>
+      ))}
+    </div>
+  )
+}
+
+// ─── EmptyState ───────────────────────────────────────────────────────────
+
+function EmptyState() {
+  return (
+    <div style={{ padding: '6rem 1rem', textAlign: 'center' }}>
+      <div style={{ overflow: 'hidden', display: 'inline-block', marginBottom: 12 }}>
+        <motion.p
           variants={clipReveal}
           initial="hidden"
           animate="visible"
           transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+          className={playfair.className}
           style={{
-            fontSize:      11,
+            fontSize:      28,
             fontWeight:    500,
-            letterSpacing: '0.1em',
-            textTransform: 'uppercase',
-            color:         'hsl(var(--muted))',
-            display:       'block',
-            transition:    'color 0.25s',
+            color:         'hsl(var(--foreground))',
+            margin:        0,
+            letterSpacing: '-0.01em',
           }}
         >
-          <span className="group-hover:text-[hsl(var(--foreground))] transition-colors duration-[250ms]">
-            Explore
-          </span>
-        </motion.span>
-      </span>
-    </Link>
+          Nothing saved yet
+        </motion.p>
+      </div>
+      <div style={{ overflow: 'hidden', display: 'block', marginBottom: '2rem' }}>
+        <motion.p
+          variants={clipReveal}
+          initial="hidden"
+          animate="visible"
+          transition={{ duration: 0.55, delay: 0.06, ease: [0.22, 1, 0.36, 1] }}
+          className={dmSans.className}
+          style={{
+            fontSize:   13,
+            color:      'hsl(var(--muted))',
+            margin:     0,
+            lineHeight: 1.6,
+          }}
+        >
+          Tap the heart on any piece to save it here.
+        </motion.p>
+      </div>
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.55, delay: 0.14, ease: [0.22, 1, 0.36, 1] }}
+      >
+        <ExploreCTA />
+      </motion.div>
+    </div>
   )
 }
 
+// ─── SavedPage ────────────────────────────────────────────────────────────
+
 export default function SavedPage() {
-  const { savedProducts, isLoaded, loadSaved } = useSavedStore()
+  const { savedProducts, isLoaded, loadSaved, removeSaved } = useSavedStore() as {
+    savedProducts: { _id: string; title?: string }[]
+    isLoaded: boolean
+    loadSaved: () => void
+    removeSaved?: (id: string) => void
+  }
 
   useEffect(() => {
     if (!isLoaded) loadSaved()
   }, [isLoaded, loadSaved])
 
+  const handleRemove = useCallback(
+    (id: string) => {
+      removeSaved?.(id)
+    },
+    [removeSaved]
+  )
+
   return (
-    <div style={{ maxWidth: 1280, margin: '0 auto', padding: '3rem 1.5rem 6rem' }}>
+    <div className={dmSans.className} style={{ maxWidth: 1280, margin: '0 auto', padding: '3rem 1.5rem 6rem' }}>
 
       {/* ── Header ── */}
       <div style={{ marginBottom: '3rem' }}>
@@ -179,7 +356,7 @@ export default function SavedPage() {
             <PageTitle />
           </div>
 
-          {isLoaded && (
+          {isLoaded && savedProducts.length > 0 && (
             <span style={{ overflow: 'hidden', display: 'block', lineHeight: 1, paddingBottom: 4 }}>
               <motion.span
                 variants={clipReveal}
@@ -187,15 +364,19 @@ export default function SavedPage() {
                 animate="visible"
                 transition={{ duration: 0.55, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
                 style={{
-                  display:       'block',
-                  fontSize:      11,
-                  fontWeight:    500,
-                  letterSpacing: '0.1em',
-                  textTransform: 'uppercase',
-                  color:         'hsl(var(--muted))',
+                  display:            'flex',
+                  alignItems:         'center',
+                  gap:                6,
+                  fontSize:           11,
+                  fontWeight:         500,
+                  letterSpacing:      '0.1em',
+                  textTransform:      'uppercase',
+                  color:              'hsl(var(--muted))',
+                  fontVariantNumeric: 'tabular-nums',
                 }}
               >
-                {savedProducts.length} {savedProducts.length === 1 ? 'piece' : 'pieces'}
+                <span style={{ color: ACCENT }}>{String(savedProducts.length).padStart(2, '0')}</span>
+                {savedProducts.length === 1 ? 'piece' : 'pieces'}
               </motion.span>
             </span>
           )}
@@ -209,77 +390,18 @@ export default function SavedPage() {
         />
       </div>
 
-      {/* ── Skeleton ── */}
+      {/* ── Body ── */}
       {!isLoaded ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '2rem 1.5rem' }}>
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i}>
-              <div style={{ aspectRatio: '3/4', background: 'hsl(var(--border) / 0.4)', marginBottom: 12 }} />
-              <div style={{ height: 10, width: '35%', background: 'hsl(var(--border) / 0.4)', marginBottom: 8 }} />
-              <div style={{ height: 13, width: '75%', background: 'hsl(var(--border) / 0.4)', marginBottom: 8 }} />
-              <div style={{ height: 13, width: '25%', background: 'hsl(var(--border) / 0.4)' }} />
-            </div>
-          ))}
-        </div>
-
-      /* ── Empty ── */
+        <SkeletonGrid />
       ) : savedProducts.length === 0 ? (
-        <div style={{ padding: '6rem 1rem', textAlign: 'center' }}>
-          <div style={{ overflow: 'hidden', display: 'inline-block', marginBottom: 12 }}>
-            <motion.p
-              variants={clipReveal}
-              initial="hidden"
-              animate="visible"
-              transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-              style={{
-                fontSize:      28,
-                fontWeight:    400,
-                fontFamily:    'var(--font-serif, serif)',
-                color:         'hsl(var(--foreground))',
-                margin:        0,
-                letterSpacing: '-0.01em',
-              }}
-            >
-              Nothing saved yet
-            </motion.p>
-          </div>
-          <div style={{ overflow: 'hidden', display: 'block', marginBottom: '2rem' }}>
-            <motion.p
-              variants={clipReveal}
-              initial="hidden"
-              animate="visible"
-              transition={{ duration: 0.55, delay: 0.06, ease: [0.22, 1, 0.36, 1] }}
-              style={{
-                fontSize:  13,
-                color:     'hsl(var(--muted))',
-                margin:    0,
-                lineHeight: 1.6,
-              }}
-            >
-              Tap the heart on any piece to save it here.
-            </motion.p>
-          </div>
-          <ExploreLink />
-        </div>
-
-      /* ── Grid ── */
+        <EmptyState />
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '2.5rem 1.5rem' }}>
-          {savedProducts.map((product, i) => (
-            <motion.div
-              key={product._id}
-              variants={clipReveal}
-              initial="hidden"
-              animate="visible"
-              transition={{
-                duration: 0.55,
-                delay:    Math.min(i, 7) * 0.04,
-                ease:     [0.22, 1, 0.36, 1],
-              }}
-            >
-              <ProductCard product={product} />
-            </motion.div>
-          ))}
+          <AnimatePresence initial={false}>
+            {savedProducts.map((product, i) => (
+              <SavedTile key={product._id} product={product} index={i} onRemove={handleRemove} />
+            ))}
+          </AnimatePresence>
         </div>
       )}
     </div>

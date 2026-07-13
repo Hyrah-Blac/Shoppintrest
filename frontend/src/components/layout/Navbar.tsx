@@ -1,17 +1,17 @@
 'use client'
 
 /**
- * Navbar — v4 · Shoppin
+ * Navbar — v5 · Shoppin
  *
- * v3 → v4: general polish pass
- *  - Tighter, more consistent spacing scale across breakpoints
- *  - Logo sizing normalized, better vertical centering
- *  - Desktop nav pill + active indicator refined
- *  - Icon button hit-targets unified (40px) for better touch/click feel
- *  - Notification/cart badges repositioned for visual balance
- *  - Mobile drawer: clearer grouping, larger tap targets, smoother stagger
- *  - Avatar ring/focus states unified between mobile + desktop
- *  - Search bar trigger restyled to look more like an actual search field
+ * v4 → v5: logo swap + header-height fit
+ *  - New transparent-background logo.png (square canvas, no black fringe)
+ *  - Logo box resized to sit visually in-line with the 40px icon buttons
+ *    instead of dwarfing them (was 56–64px, now 44–48px)
+ *  - Fixed header-height/spacer mismatch: the scroll spacer and the mobile
+ *    drawer's backdrop offset were hardcoded to 48px, which no longer (and
+ *    didn't previously) match the real rendered header height once the
+ *    logo + vertical padding are accounted for — bumped to 64px so content
+ *    never sits underneath the fixed header
  */
 
 import { useState, useEffect, useRef } from 'react'
@@ -22,7 +22,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '@clerk/nextjs'
 import {
   Search, ShoppingBag, Heart, Bell,
-  Menu, X, Compass, ChevronRight, LogOut,
+  Menu, X, Compass, ChevronRight, ChevronDown, LogOut,
   User, LayoutDashboard, ArrowRight, Package,
   Headphones,
 } from 'lucide-react'
@@ -39,6 +39,18 @@ const navLinks = [
   { href: '/explore', label: 'Explore', icon: Compass },
 ]
 
+// Same list + route pattern as the old CategoriesSection homepage strip
+// (now retired from the homepage — this is its new home).
+const categories = [
+  { label: 'Women',       value: 'womenswear'  },
+  { label: 'Men',         value: 'menswear'    },
+  { label: 'Shoes',       value: 'shoes'       },
+  { label: 'Bags',        value: 'bags'        },
+  { label: 'Jewelry',     value: 'jewelry'     },
+  { label: 'Accessories', value: 'accessories' },
+  { label: 'Beauty',      value: 'beauty'      },
+] as const
+
 const mobileOnlyLinks = [
   { href: '/saved',   label: 'Saved',     icon: Heart      },
   { href: '/orders',  label: 'My Orders', icon: Package    },
@@ -53,15 +65,17 @@ export function Navbar() {
   const user                    = useUserStore((s) => s.user)
   const isAdmin                 = user?.role === 'admin'
 
-  const [isScrolled,   setIsScrolled]   = useState(false)
-  const [isMobileOpen, setIsMobileOpen] = useState(false)
-  const [isSearchOpen, setIsSearchOpen] = useState(false)
-  const [isUserOpen,   setIsUserOpen]   = useState(false)
+  const [isScrolled,     setIsScrolled]     = useState(false)
+  const [isMobileOpen,   setIsMobileOpen]   = useState(false)
+  const [isSearchOpen,   setIsSearchOpen]   = useState(false)
+  const [isUserOpen,     setIsUserOpen]     = useState(false)
+  const [isCategoriesOpen, setIsCategoriesOpen] = useState(false)
 
-  const itemCount   = useCartStore((s) => s.itemCount)
-  const toggleCart  = useCartStore((s) => s.toggleCart)
-  const unreadCount = useNotificationStore((s) => s.unreadCount)
-  const dropdownRef = useRef<HTMLDivElement>(null)
+  const itemCount     = useCartStore((s) => s.itemCount)
+  const toggleCart    = useCartStore((s) => s.toggleCart)
+  const unreadCount   = useNotificationStore((s) => s.unreadCount)
+  const dropdownRef   = useRef<HTMLDivElement>(null)
+  const categoriesRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const onScroll = () => setIsScrolled(window.scrollY > 24)
@@ -80,12 +94,14 @@ export function Navbar() {
     const handler = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node))
         setIsUserOpen(false)
+      if (categoriesRef.current && !categoriesRef.current.contains(e.target as Node))
+        setIsCategoriesOpen(false)
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  useEffect(() => { setIsUserOpen(false) }, [pathname])
+  useEffect(() => { setIsUserOpen(false); setIsCategoriesOpen(false) }, [pathname])
 
   const allMobileLinks = isSignedIn ? [...navLinks, ...mobileOnlyLinks] : navLinks
 
@@ -123,14 +139,25 @@ export function Navbar() {
         animate={{ y: 0,   opacity: 1 }}
         transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
       >
-        <div className="container-wide flex items-center justify-between gap-3 sm:gap-4">
+       <div className="container-wide flex items-center justify-between gap-3 sm:gap-4">
 
-          {/* ── Logo ── */}
-          <Link href="/" className="shrink-0 flex items-center -ml-1">
-            <div className="relative w-[58px] h-[22px] sm:w-[64px] sm:h-[24px]">
-              <Image src="/logo.png" alt="Shoppin" fill sizes="64px" className="object-contain" priority />
-            </div>
-          </Link>
+  {/* ── Logo ──
+      logo.png is a square, transparent-background canvas with the mark
+      centered and a little internal breathing room baked in, so a plain
+      square box + object-contain is all it needs — no cropping/aspect
+      math required, and it'll never show a background box on any theme. */}
+  <Link href="/" className="shrink-0 flex items-center" aria-label="Shoppin — home">
+    <div className="relative w-11 h-11 sm:w-12 sm:h-12">
+      <Image
+        src="/logo.png"
+        alt="Shoppin"
+        fill
+        sizes="48px"
+        className="object-contain"
+        priority
+      />
+    </div>
+  </Link>
 
           {/* ── Desktop Nav ── */}
           <nav className="hidden md:flex items-center gap-0.5" aria-label="Main navigation">
@@ -157,6 +184,87 @@ export function Navbar() {
                 )}
               </Link>
             ))}
+
+            {/* Categories — dropdown, moved off the homepage per the
+                "keep the homepage lean" redesign. Same data/route pattern
+                the old CategoriesSection strip used. */}
+            <div ref={categoriesRef} className="relative">
+              <button
+                onClick={() => setIsCategoriesOpen((o) => !o)}
+                aria-expanded={isCategoriesOpen}
+                aria-haspopup="true"
+                className={cn(
+                  'relative flex items-center gap-1 px-3.5 py-1.5 rounded-[var(--radius-sm)] text-sm font-medium',
+                  'transition-all duration-[var(--duration-hover)]',
+                  isCategoriesOpen
+                    ? 'text-[hsl(var(--foreground))] bg-[hsl(var(--surface))]'
+                    : 'text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--surface)/0.7)]'
+                )}
+              >
+                Categories
+                <motion.span
+                  animate={{ rotate: isCategoriesOpen ? 180 : 0 }}
+                  transition={{ duration: 0.2, ease: 'easeInOut' }}
+                  style={{ display: 'flex', alignItems: 'center' }}
+                >
+                  <ChevronDown size={13} strokeWidth={2} />
+                </motion.span>
+              </button>
+
+              <AnimatePresence>
+                {isCategoriesOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 6, scale: 0.97 }}
+                    animate={{ opacity: 1, y: 0, scale: 1    }}
+                    exit={{   opacity: 0, y: 6, scale: 0.97  }}
+                    transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                    className="absolute left-0 top-full mt-2 z-50 overflow-hidden"
+                    style={{
+                      width:        '320px',
+                      borderRadius: '16px',
+                      background:   'hsl(var(--surface))',
+                      border:       '0.5px solid hsl(var(--border))',
+                      boxShadow:    'var(--shadow-float)',
+                    }}
+                  >
+                    <div className="p-2 grid grid-cols-2 gap-0.5">
+                      {categories.map((cat) => (
+                        <Link
+                          key={cat.value}
+                          href={`/explore?category=${cat.value}`}
+                          onClick={() => setIsCategoriesOpen(false)}
+                          className="px-3 py-2.5 rounded-[10px] text-[13.5px] font-[450] transition-all duration-[var(--duration-hover)]"
+                          style={{ color: 'hsl(var(--foreground))' }}
+                          onMouseEnter={e => (e.currentTarget.style.background = 'hsl(var(--background-secondary))')}
+                          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                        >
+                          {cat.label}
+                        </Link>
+                      ))}
+                    </div>
+                    <div className="p-1.5" style={{ borderTop: '0.5px solid hsl(var(--border))' }}>
+                      <Link
+                        href="/explore"
+                        onClick={() => setIsCategoriesOpen(false)}
+                        className="flex items-center justify-between px-2.5 py-[9px] rounded-[10px] text-[13.5px] transition-all duration-[var(--duration-hover)]"
+                        style={{ color: 'hsl(var(--muted))' }}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.background = 'hsl(var(--background-secondary))'
+                          e.currentTarget.style.color      = 'hsl(var(--foreground))'
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.background = 'transparent'
+                          e.currentTarget.style.color      = 'hsl(var(--muted))'
+                        }}
+                      >
+                        View all products
+                        <ChevronRight size={13} style={{ opacity: 0.5 }} />
+                      </Link>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </nav>
 
           {/* ── Right Actions ── */}
@@ -447,7 +555,7 @@ export function Navbar() {
                 animate={{ opacity: 1 }}
                 exit={{   opacity: 0 }}
                 transition={{ duration: 0.2 }}
-                className="fixed inset-0 top-[48px] bg-black/40 md:hidden -z-10"
+                className="fixed inset-0 top-16 bg-black/40 md:hidden -z-10"
                 onClick={() => setIsMobileOpen(false)}
                 aria-hidden
               />
@@ -477,6 +585,40 @@ export function Navbar() {
                     <Search size={15} />
                     Search anything…
                   </button>
+                </div>
+
+                <div className="h-px mx-3" style={{ background: 'hsl(var(--border))' }} />
+
+                {/* Shop by category — the primary reason someone opens this
+                    menu, so it comes first, above the account-type links. */}
+                <div className="p-2">
+                  <p
+                    className="px-3 pt-2 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.08em]"
+                    style={{ color: 'hsl(var(--muted))' }}
+                  >
+                    Shop by category
+                  </p>
+                  <div className="grid grid-cols-2 gap-0.5">
+                    {categories.map((cat, i) => (
+                      <motion.div
+                        key={cat.value}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0   }}
+                        transition={{ delay: i * 0.03, duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                      >
+                        <Link
+                          href={`/explore?category=${cat.value}`}
+                          className="flex items-center px-3 py-3 rounded-[var(--radius-sm)] text-sm font-medium
+                                     transition-all duration-[var(--duration-hover)] active:scale-[0.99]"
+                          style={{ color: 'hsl(var(--foreground))' }}
+                          onMouseEnter={e => (e.currentTarget.style.background = 'hsl(var(--background-secondary))')}
+                          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                        >
+                          {cat.label}
+                        </Link>
+                      </motion.div>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="h-px mx-3" style={{ background: 'hsl(var(--border))' }} />
@@ -641,7 +783,7 @@ export function Navbar() {
         </AnimatePresence>
       </motion.header>
 
-      <div className="h-[48px]" aria-hidden />
+      <div className="h-16" aria-hidden />
 
       <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
     </>

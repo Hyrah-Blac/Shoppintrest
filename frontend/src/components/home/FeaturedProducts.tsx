@@ -1,7 +1,21 @@
 'use client'
 
 /**
- * FeaturedProducts — v3 · Shoppin
+ * FeaturedProducts — v4 · Shoppin
+ *
+ * v3 → v4 (aligned to the lean-homepage redesign + hero styling standards):
+ *  - Hard-capped at FEATURED_LIMIT (6) instead of slicing 10 into a
+ *    5-column grid — this is now the homepage's one product section, so it
+ *    needs to actually read as curated, not as a teaser for a bigger feed
+ *  - Eyebrow relabeled "Selected" → "New Drops", tying this section's
+ *    identity to the hero's "NOW IN STORE" tag and "Fresh Drop" badge
+ *    instead of reading as an unrelated section
+ *  - Both "See all" CTAs (desktop + mobile) rebuilt to match the hero's
+ *    bordered-rectangle button: thin border, small tracked caps, no icon,
+ *    fills to the accent color on hover — was previously a plain
+ *    text+arrow link with its own separate visual language
+ *  - Grid breakpoints simplified (2 → 3 → 6 cols) since there are only
+ *    ever 6 items now; the old 5-col track was sized for 10 items
  *
  * v2 → v3 (top-brand alignment — Mytheresa / Net-a-Porter):
  *  - Eyebrow pill + Crown icon removed — bare header, no decoration
@@ -15,10 +29,14 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { MoveRight } from 'lucide-react'
 import { apiClient } from '@/lib/api'
 import { ProductCard } from '@/components/product/ProductCard'
 import { ProductCardSkeleton } from '@/components/ui/Skeleton'
+
+// A hard cap, not just a slice at render time — this is the whole point of
+// the redesign: a curated handful, not a teaser grid. Six reads as "a
+// selection" without tipping into "here's the catalog."
+const FEATURED_LIMIT = 6
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -64,26 +82,35 @@ export function FeaturedProducts() {
               color: 'hsl(var(--muted))',
             }}
           >
-            Selected
+            New Drops
           </p>
 
           <Link
             href="/explore?featured=true"
-            className="hidden sm:inline-flex items-center gap-1.5 group"
+            className="hidden sm:inline-flex items-center justify-center"
             style={{
-              fontSize: '10px',
-              fontWeight: 500,
-              letterSpacing: '0.12em',
+              fontSize: '11px',
+              letterSpacing: '0.2em',
               textTransform: 'uppercase',
-              color: 'hsl(var(--muted))',
+              color: 'hsl(var(--foreground))',
               textDecoration: 'none',
-              transition: 'color 0.2s',
+              border: '1px solid hsl(var(--border))',
+              padding: '10px 24px',
+              whiteSpace: 'nowrap',
+              transition: 'background 0.35s ease, color 0.35s ease, border-color 0.35s ease',
             }}
-            onMouseEnter={e => (e.currentTarget.style.color = 'hsl(var(--foreground))')}
-            onMouseLeave={e => (e.currentTarget.style.color = 'hsl(var(--muted))')}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = 'hsl(var(--accent))'
+              e.currentTarget.style.color       = 'hsl(var(--accent-foreground))'
+              e.currentTarget.style.borderColor = 'hsl(var(--accent))'
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = 'transparent'
+              e.currentTarget.style.color       = 'hsl(var(--foreground))'
+              e.currentTarget.style.borderColor = 'hsl(var(--border))'
+            }}
           >
-            See all
-            <MoveRight size={11} strokeWidth={1.5} className="transition-transform duration-200 group-hover:translate-x-0.5" />
+            See All
           </Link>
         </div>
 
@@ -107,20 +134,20 @@ export function FeaturedProducts() {
           </em>
         </motion.h2>
 
-        {/* ── Grid ── */}
+        {/* ── Grid — capped at FEATURED_LIMIT, not a teaser for a bigger feed ── */}
         <ul
-          className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5
+          className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6
                      gap-5 md:gap-6 list-none m-0 p-0 pb-10"
           role="list"
           aria-label="Featured products grid"
         >
           {loading
-            ? Array.from({ length: 10 }).map((_, i) => (
+            ? Array.from({ length: FEATURED_LIMIT }).map((_, i) => (
                 <li key={i} role="listitem">
                   <ProductCardSkeleton />
                 </li>
               ))
-            : products.slice(0, 10).map((product, i) => (
+            : products.slice(0, FEATURED_LIMIT).map((product, i) => (
                 <motion.li
                   key={product._id}
                   role="listitem"
@@ -129,32 +156,32 @@ export function FeaturedProducts() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, amount: 0.1 }}
                   transition={{
-                    delay: Math.min(i, 4) * 0.05,
+                    delay: i * 0.05,
                     duration: 0.45,
                     ease: [0.22, 1, 0.36, 1],
                   }}
                 >
-                  <ProductCard product={product} priority={i < 5} />
+                  <ProductCard product={product} priority />
                 </motion.li>
               ))}
         </ul>
 
-        {/* ── Mobile CTA ── */}
+        {/* ── Mobile CTA — same bordered treatment as desktop, full width ── */}
         <div className="sm:hidden pb-8 -mt-4">
           <Link
             href="/explore?featured=true"
-            className="inline-flex items-center gap-1.5 group"
+            className="flex items-center justify-center w-full"
             style={{
-              fontSize: '10px',
-              fontWeight: 500,
-              letterSpacing: '0.12em',
+              fontSize: '11px',
+              letterSpacing: '0.2em',
               textTransform: 'uppercase',
-              color: 'hsl(var(--muted))',
+              color: 'hsl(var(--foreground))',
               textDecoration: 'none',
+              border: '1px solid hsl(var(--border))',
+              padding: '13px 24px',
             }}
           >
-            See all
-            <MoveRight size={11} strokeWidth={1.5} className="transition-transform duration-200 group-hover:translate-x-0.5" />
+            See All
           </Link>
         </div>
 
