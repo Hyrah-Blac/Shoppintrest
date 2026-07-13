@@ -1,28 +1,47 @@
 'use client'
 
 /**
- * TrendingSection — v4 · Shoppin
+ * TrendingSection — Shoppin
  *
- * v3 → v4 (top-brand alignment — Mytheresa / Mr Porter / Net-a-Porter):
- *  - Eyebrow pill removed entirely — Mr Porter / Mytheresa use none
- *  - Animated underline bar removed — 2020 trend, gone from all top sites
- *  - Section header: bare label (10px uppercase tracked) + large headline
- *    side by side with right-aligned text CTA — no circle arrow in headers
- *  - Full-width 1px border-top replaces gradient hairline
- *  - Flame icon removed from header — top brands use zero decorative icons
- *    in section headers
- *  - Circle arrow kept only in hero; header CTA is plain text "See all →"
- *  - Rank badge simplified — number only for rank > 3, label only for 1–3
- *  - Section padding tightened: pt-10 pb-0 (content bleeds to next section gap)
+ * Note: not currently imported on the homepage (see HomePage's v3
+ * changelog and FeaturedProducts' header — the homepage was trimmed to
+ * Hero + FeaturedProducts only). This still exists as a candidate for
+ * /explore's sort=popular view or a dedicated /trending page.
+ *
+ * Style-alignment pass — brought in line with the hero/FeaturedProducts
+ * typography and CTA conventions:
+ *  - Eyebrow "Trending": Ultra + accent color, matching the outlined-chip
+ *    treatment used for "New Drops" and the hero's "Fresh Drop" badge.
+ *  - Headline: Great Vibes (the same headline-scale script as the hero and
+ *    FeaturedProducts), single color — dropped the old split accent-color
+ *    emphasis on "buying" since a script face carries its own visual
+ *    weight without needing a color split.
+ *  - "See all" CTA (desktop + mobile): rebuilt as the bordered-rectangle
+ *    button used everywhere else now (hero, FeaturedProducts) — no icon,
+ *    fills to accent on hover. Replaces the old MoveRight-arrow text link,
+ *    which was the one CTA style left over from the pre-alignment pass.
+ *  - This duplicates the button markup FeaturedProducts also has locally.
+ *    If both ever render on the same page, worth extracting a shared
+ *    SeeAllButton into components/ui/ instead of keeping two copies.
+ *
+ * Layout untouched: the horizontal scroll + rank-badge structure is a
+ * legitimate content-specific pattern for ranked/trending items, not a
+ * leftover inconsistency, so it wasn't forced into FeaturedProducts' grid.
  */
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { MoveRight } from 'lucide-react'
+import { Ultra, Great_Vibes } from 'next/font/google'
 import { apiClient } from '@/lib/api'
 import { ProductCard } from '@/components/product/ProductCard'
 import { ProductCardSkeleton } from '@/components/ui/Skeleton'
+
+// Same faces as the hero + FeaturedProducts, self-hosted via next/font so
+// they can't silently fall back to a generic serif (see HeroSection's v13
+// changelog for the bug this pattern avoids).
+const ultra = Ultra({ weight: '400', subsets: ['latin'], display: 'swap' })
+const greatVibes = Great_Vibes({ weight: '400', subsets: ['latin'], display: 'swap' })
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -85,6 +104,49 @@ function RankBadge({ rank }: { rank: number }) {
   )
 }
 
+// ─── SeeAllButton ─────────────────────────────────────────────────────────────
+// Matches FeaturedProducts' component of the same name — see header note
+// re: extracting a shared one if both ever render on the same page.
+
+const SEE_ALL_BASE_STYLE: React.CSSProperties = {
+  fontSize: '11px',
+  letterSpacing: '0.2em',
+  textTransform: 'uppercase',
+  color: 'hsl(var(--foreground))',
+  textDecoration: 'none',
+  border: '1px solid hsl(var(--border))',
+  whiteSpace: 'nowrap',
+  transition: 'background 0.35s ease, color 0.35s ease, border-color 0.35s ease',
+}
+
+function SeeAllButton({
+  className,
+  padding,
+}: {
+  className?: string
+  padding: string
+}) {
+  return (
+    <Link
+      href="/explore?sort=popular"
+      className={className}
+      style={{ ...SEE_ALL_BASE_STYLE, padding }}
+      onMouseEnter={e => {
+        e.currentTarget.style.background = 'hsl(var(--accent))'
+        e.currentTarget.style.color       = 'hsl(var(--accent-foreground))'
+        e.currentTarget.style.borderColor = 'hsl(var(--accent))'
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.background = 'transparent'
+        e.currentTarget.style.color       = 'hsl(var(--foreground))'
+        e.currentTarget.style.borderColor = 'hsl(var(--border))'
+      }}
+    >
+      See All
+    </Link>
+  )
+}
+
 // ─── TrendingSection ──────────────────────────────────────────────────────────
 
 export function TrendingSection() {
@@ -108,47 +170,37 @@ export function TrendingSection() {
     >
       <div className="container-wide">
 
-        {/* ── Header — Mr Porter style: label left, CTA right, headline below ── */}
+        {/* ── Header — bare label + headline left, CTA right ── */}
         <div className="flex items-baseline justify-between mb-6">
-          <p
+          <span
+            className={ultra.className}
             style={{
               fontSize: '10px',
-              fontWeight: 500,
-              letterSpacing: '0.18em',
+              letterSpacing: '0.08em',
               textTransform: 'uppercase',
-              color: 'hsl(var(--muted))',
+              color: 'hsl(var(--accent))',
+              border: '1px solid hsl(var(--accent) / 0.5)',
+              borderRadius: '3px',
+              padding: '5px 9px',
+              lineHeight: 1,
+              display: 'inline-block',
             }}
           >
             Trending
-          </p>
+          </span>
 
-          <Link
-            href="/explore?sort=popular"
-            className="hidden sm:inline-flex items-center gap-1.5 group"
-            style={{
-              fontSize: '10px',
-              fontWeight: 500,
-              letterSpacing: '0.12em',
-              textTransform: 'uppercase',
-              color: 'hsl(var(--muted))',
-              textDecoration: 'none',
-              transition: 'color 0.2s',
-            }}
-            onMouseEnter={e => (e.currentTarget.style.color = 'hsl(var(--foreground))')}
-            onMouseLeave={e => (e.currentTarget.style.color = 'hsl(var(--muted))')}
-          >
-            See all
-            <MoveRight size={11} strokeWidth={1.5} className="transition-transform duration-200 group-hover:translate-x-0.5" />
-          </Link>
+          <SeeAllButton
+            className="hidden sm:inline-flex items-center justify-center"
+            padding="10px 24px"
+          />
         </div>
 
         <motion.h2
-          className="font-display mb-8 md:mb-10"
+          className={`${greatVibes.className} mb-8 md:mb-10`}
           style={{
-            fontSize: 'clamp(1.75rem, 3vw, 2.75rem)',
-            fontWeight: 300,
-            letterSpacing: '-0.02em',
-            lineHeight: 1,
+            fontSize: 'clamp(2.75rem, 6vw, 4.5rem)',
+            fontWeight: 400,
+            lineHeight: 1.15,
             color: 'hsl(var(--foreground))',
           }}
           initial={{ opacity: 0, y: 12 }}
@@ -156,8 +208,7 @@ export function TrendingSection() {
           viewport={{ once: true }}
           transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
         >
-          People are{' '}
-          <em className="not-italic" style={{ color: 'hsl(var(--accent))' }}>buying</em>
+          People are buying
         </motion.h2>
 
         {/* ── Scroll row ── */}
@@ -204,23 +255,12 @@ export function TrendingSection() {
           )}
         </div>
 
-        {/* ── Mobile CTA ── */}
-        <div className="sm:hidden pb-8 -mt-2">
-          <Link
-            href="/explore?sort=popular"
-            className="inline-flex items-center gap-1.5 group"
-            style={{
-              fontSize: '10px',
-              fontWeight: 500,
-              letterSpacing: '0.12em',
-              textTransform: 'uppercase',
-              color: 'hsl(var(--muted))',
-              textDecoration: 'none',
-            }}
-          >
-            See all
-            <MoveRight size={11} strokeWidth={1.5} className="transition-transform duration-200 group-hover:translate-x-0.5" />
-          </Link>
+        {/* ── Mobile CTA — same bordered treatment as desktop, full width ── */}
+        <div className="sm:hidden pb-8 -mt-4">
+          <SeeAllButton
+            className="flex items-center justify-center w-full"
+            padding="13px 24px"
+          />
         </div>
 
       </div>

@@ -1,20 +1,43 @@
 'use client'
 
-import { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from 'react'
+// PATH: src/app/(main)/support/page.tsx
+
+import { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo, useId } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Parisienne } from 'next/font/google'
 import { useSupportStore } from '@/store/useSupportStore'
 import { useSupportChat }  from '@/hooks/useSupportChat'
 import { useStreamContext } from '@/components/providers/StreamProvider'
 
+const parisienne = Parisienne({ weight: '400', subsets: ['latin'], display: 'swap' })
+const ease = [0.22, 1, 0.36, 1] as const
+
+// ─── Shared type tokens (mirrors HeroSection / Footer / Contact) ──────────
+//
+// Previously this page used Cormorant Garamond for its one display moment
+// and left everything else on the browser default — inconsistent with the
+// Playfair Display / DM Sans pairing used everywhere else on the site.
+
 const DISPLAY: React.CSSProperties = {
-  fontFamily: 'var(--font-serif, "Cormorant Garamond", Georgia, serif)',
+  fontFamily: '"Playfair Display", var(--font-display, Georgia), serif',
+}
+const UTILITY: React.CSSProperties = {
+  fontFamily: '"DM Sans", system-ui, sans-serif',
 }
 
-// Brand accent colors — Pinterest-red brand, adapted for a dark messaging UI
+// Brand accent — literal Pinterest red, so this reads as an exact brand
+// match rather than an approximation via the generic theme accent token.
+// Read receipts and the online dot keep their conventional blue/green
+// (recognizable chat affordances, deliberately distinct from brand).
+const PINTEREST_RED = '#E60023'
+const BUBBLE_GRADIENT = `linear-gradient(135deg, #ff3f59 0%, ${PINTEREST_RED} 55%, #b8001c 100%)`
+
 const WA = {
-  tickRead: '#53bdeb', // WhatsApp blue (read receipts — conventional, kept distinct from brand)
+  tickRead: '#53bdeb',
   tickSent: 'var(--wa-meta)',
-  accent:   '#e60023', // Pinterest red — send button, typing indicator, new-messages pill
-  online:   '#25d366', // WhatsApp green (online status — conventional)
+  accent:   PINTEREST_RED,
+  accentInk: '#ffffff',
+  online:   '#25d366',
 }
 
 // A compact, commonly-used emoji set rendered with the system/Apple emoji font
@@ -61,7 +84,7 @@ function TypingDots() {
         background: 'var(--wa-bubble-in)',
         borderRadius: '7.5px 7.5px 7.5px 0px',
         padding: '10px 14px',
-        boxShadow: '0 1px 0.5px hsl(var(--foreground) / 0.06)',
+        boxShadow: '0 1px 0.5px hsl(0 0% 0% / 0.24)',
       }}>
         {[0, 0.18, 0.36].map((delay, i) => (
           <span key={i} style={{
@@ -93,10 +116,19 @@ function Ticks({ status, isRead }: { status?: 'sending' | 'failed' | 'sent'; isR
     )
   }
   return (
-    <svg width="16" height="11" viewBox="0 0 16 11" fill="none" style={{ flexShrink: 0 }}>
-      <path d="M11.071.653a.457.457 0 0 0-.304-.102.493.493 0 0 0-.381.178l-6.19 7.636-2.405-2.272a.463.463 0 0 0-.336-.139.46.46 0 0 0-.336.139l-.32.323a.45.45 0 0 0 0 .646l2.926 2.926c.094.094.218.146.349.146h.013a.49.49 0 0 0 .363-.183l6.625-8.171a.453.453 0 0 0-.004-.62z" fill={isRead ? WA.tickRead : WA.tickSent}/>
-      <path d="M15.071.653a.457.457 0 0 0-.304-.102.493.493 0 0 0-.381.178l-6.19 7.636-.708-.668-.621.766 1.064 1.005c.094.094.218.146.349.146h.013a.49.49 0 0 0 .363-.183l6.625-8.171a.453.453 0 0 0-.21-.607z" fill={isRead ? WA.tickRead : WA.tickSent}/>
-    </svg>
+    <AnimatePresence mode="wait" initial={false}>
+      <motion.svg
+        key={isRead ? 'read' : 'sent'}
+        width="16" height="11" viewBox="0 0 16 11" fill="none"
+        style={{ flexShrink: 0 }}
+        initial={{ opacity: 0, scale: 0.5 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+      >
+        <path d="M11.071.653a.457.457 0 0 0-.304-.102.493.493 0 0 0-.381.178l-6.19 7.636-2.405-2.272a.463.463 0 0 0-.336-.139.46.46 0 0 0-.336.139l-.32.323a.45.45 0 0 0 0 .646l2.926 2.926c.094.094.218.146.349.146h.013a.49.49 0 0 0 .363-.183l6.625-8.171a.453.453 0 0 0-.004-.62z" fill={isRead ? WA.tickRead : WA.tickSent}/>
+        <path d="M15.071.653a.457.457 0 0 0-.304-.102.493.493 0 0 0-.381.178l-6.19 7.636-.708-.668-.621.766 1.064 1.005c.094.094.218.146.349.146h.013a.49.49 0 0 0 .363-.183l6.625-8.171a.453.453 0 0 0-.21-.607z" fill={isRead ? WA.tickRead : WA.tickSent}/>
+      </motion.svg>
+    </AnimatePresence>
   )
 }
 
@@ -124,13 +156,14 @@ function Bubble({
         padding: '0 6px',
       }}>
         <div style={{
+          ...UTILITY,
           fontSize: 13.5, fontStyle: 'italic',
           color: 'var(--wa-meta)',
           background: 'var(--wa-bubble-in)',
           padding: '6px 12px',
           borderRadius: 7.5,
           display: 'flex', alignItems: 'center', gap: 6,
-          boxShadow: '0 1px 0.5px hsl(var(--foreground) / 0.06)',
+          boxShadow: '0 1px 0.5px hsl(0 0% 0% / 0.24)',
         }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="10"/><line x1="4.9" y1="4.9" x2="19.1" y2="19.1"/>
@@ -145,12 +178,13 @@ function Bubble({
     return (
       <div style={{ textAlign: 'center', padding: '6px 0', margin: '6px 0' }}>
         <span style={{
+          ...UTILITY,
           fontSize: 12.5, color: 'var(--wa-meta)',
           background: 'var(--wa-system-bg)',
           padding: '6px 12px', borderRadius: 8,
           display: 'inline-block', lineHeight: 1.5,
           maxWidth: '90%',
-          boxShadow: '0 1px 0.5px hsl(var(--foreground) / 0.06)',
+          boxShadow: '0 1px 0.5px hsl(0 0% 0% / 0.24)',
         }}>
           {text}
         </span>
@@ -161,26 +195,33 @@ function Bubble({
   const metaWidth = isMine ? 72 : 58
 
   return (
-    <div style={{
-      display: 'flex',
-      flexDirection: isMine ? 'row-reverse' : 'row',
-      margin: '1px 0',
-      padding: '0 6px',
-    }}>
+    <motion.div
+      initial={{ opacity: 0, y: 10, scale: 0.97 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+      style={{
+        display: 'flex',
+        flexDirection: isMine ? 'row-reverse' : 'row',
+        margin: '1px 0',
+        padding: '0 6px',
+      }}
+    >
       <div
         style={{
           position: 'relative',
-          maxWidth: 'min(76%, calc(100vw - 96px))',
+          maxWidth: 'min(78%, 440px)',
           minWidth: 60,
-          background: isMine ? 'var(--wa-bubble-out)' : 'var(--wa-bubble-in)',
+          background: isMine ? BUBBLE_GRADIENT : 'var(--wa-bubble-in)',
           color: isMine ? 'var(--wa-text-out)' : 'var(--wa-text-in)',
-          borderRadius: 7.5,
-          borderTopRightRadius: isMine && showTail ? 0 : 7.5,
-          borderTopLeftRadius: !isMine && showTail ? 0 : 7.5,
-          padding: '6px 7px 8px 9px',
+          borderRadius: 16,
+          borderTopRightRadius: isMine && showTail ? 4 : 16,
+          borderTopLeftRadius: !isMine && showTail ? 4 : 16,
+          padding: '7px 8px 9px 10px',
           fontSize: 14.5,
           lineHeight: 1.45,
-          boxShadow: '0 1px 0.5px hsl(var(--foreground) / 0.06)',
+          boxShadow: isMine
+            ? `0 6px 18px -4px ${PINTEREST_RED}66, inset 0 1px 0 hsl(0 0% 100% / 0.16), 0 1px 0.5px hsl(0 0% 0% / 0.3)`
+            : '0 1px 0.5px hsl(0 0% 0% / 0.24)',
           wordBreak: 'break-word',
           userSelect: 'text' as const,
           opacity: status === 'sending' ? 0.7 : 1,
@@ -200,13 +241,13 @@ function Bubble({
           >
             <path
               d="M1.533.012C.629.144 0 .997 0 2.012v8.149c0 1.13.916 2.046 2.046 2.046h.954c-1.31-1.873-2.16-4.318-2.16-6.85 0-1.99.516-3.86 1.408-5.345C2.395.04 2.04-.04 1.533.012z"
-              fill={isMine ? 'var(--wa-bubble-out)' : 'var(--wa-bubble-in)'}
+              fill={isMine ? PINTEREST_RED : 'var(--wa-bubble-in)'}
             />
           </svg>
         )}
 
         {/* Message text with reserved trailing space for meta */}
-        <span style={{ whiteSpace: 'pre-wrap' }}>
+        <span style={{ ...UTILITY, whiteSpace: 'pre-wrap' }}>
           {text}
           <span style={{
             display: 'inline-block',
@@ -218,13 +259,14 @@ function Bubble({
 
         {/* Meta (time + ticks), absolutely positioned bottom-right */}
         <span style={{
+          ...UTILITY,
           position: 'absolute',
           right: 6, bottom: 5,
           display: 'flex', alignItems: 'center', gap: 3,
           fontSize: 11, fontWeight: 500, lineHeight: 1,
           padding: '1px 5px',
           borderRadius: 6,
-          background: isMine ? 'hsl(0 0% 100% / 0.14)' : 'hsl(var(--foreground) / 0.06)',
+          background: isMine ? 'hsl(0 0% 100% / 0.14)' : 'hsl(0 0% 100% / 0.06)',
           color: isMine ? 'var(--wa-meta-out)' : 'var(--wa-meta)',
           whiteSpace: 'nowrap',
           userSelect: 'none',
@@ -234,6 +276,7 @@ function Bubble({
               className="wa-retry-btn"
               onClick={onRetry}
               style={{
+                ...UTILITY,
                 fontSize: 11, fontWeight: 600, color: '#ffd9a0',
                 background: 'none', border: 'none', cursor: 'pointer', padding: 0,
                 display: 'flex', alignItems: 'center', gap: 4,
@@ -252,7 +295,7 @@ function Bubble({
           )}
         </span>
       </div>
-    </div>
+    </motion.div>
   )
 }
 
@@ -283,8 +326,7 @@ function EmojiPicker({ onPick, onClose }: { onPick: (emoji: string) => void; onC
         overflowY: 'auto',
         background: 'var(--wa-input-bg)',
         borderRadius: 12,
-        boxShadow: '0 4px 24px hsl(var(--foreground) / 0.1)',
-        border: '0.5px solid var(--wa-border)',
+        boxShadow: '0 4px 24px hsl(0 0% 0% / 0.5)',
         padding: '10px 8px',
         zIndex: 20,
       }}
@@ -292,6 +334,7 @@ function EmojiPicker({ onPick, onClose }: { onPick: (emoji: string) => void; onC
       {EMOJI_GROUPS.map(group => (
         <div key={group.label} style={{ marginBottom: 6 }}>
           <p style={{
+            ...UTILITY,
             fontSize: 11, fontWeight: 600, color: 'var(--wa-meta)',
             margin: '2px 4px 4px', textTransform: 'uppercase', letterSpacing: 0.5,
           }}>
@@ -376,9 +419,8 @@ function Composer({ onSend, onTyping }: {
       style={{
         display: 'flex', alignItems: 'flex-end', gap: 8,
         padding: '8px 8px',
-        paddingBottom: 'max(8px, env(safe-area-inset-bottom))',
+        paddingBottom: '8px',
         background: 'var(--wa-composer-bg)',
-        borderTop: '0.5px solid var(--wa-border)',
         flexShrink: 0,
         position: 'relative',
       }}
@@ -399,7 +441,15 @@ function Composer({ onSend, onTyping }: {
           transition: 'color 0.15s',
         }}
       >
-        😊
+        <motion.span
+          key={String(showEmoji)}
+          initial={{ scale: 1 }}
+          animate={{ scale: [1, 1.35, 1] }}
+          transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+          style={{ display: 'inline-block' }}
+        >
+          😊
+        </motion.span>
       </button>
 
       {showEmoji && (
@@ -413,8 +463,7 @@ function Composer({ onSend, onTyping }: {
           background: 'var(--wa-input-bg)',
           borderRadius: 24, padding: '0 6px 0 16px',
           minHeight: 42,
-          border: '1px solid transparent',
-          transition: 'border-color 0.15s, box-shadow 0.15s',
+          transition: 'box-shadow 0.15s',
         }}
       >
         <textarea
@@ -425,31 +474,33 @@ function Composer({ onSend, onTyping }: {
           placeholder="Message"
           rows={1}
           style={{
+            ...UTILITY,
             flex: 1, resize: 'none', border: 'none', outline: 'none',
             background: 'transparent', fontSize: 16, lineHeight: 1.5,
             color: 'var(--wa-text-in)', caretColor: 'var(--wa-text-in)',
-            fontFamily: 'var(--font-sans)',
             overflowY: 'hidden', padding: '9px 0', maxHeight: 130,
           }}
         />
       </div>
 
-      <button
+      <motion.button
         className="wa-send-btn"
         onClick={send}
         disabled={!canSend && !sending}
         aria-label="Send message"
+        whileTap={canSend ? { scale: 0.82, rotate: -12 } : undefined}
         style={{
           width: 42, height: 42, borderRadius: '50%', flexShrink: 0,
           border: 'none',
           background: WA.accent,
-          color: '#ffffff',
+          color: WA.accentInk,
           cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          transition: 'transform 0.15s, opacity 0.15s',
+          transition: 'opacity 0.15s, box-shadow 0.2s',
           opacity: canSend || sending ? 1 : 0.5,
-          transform: canSend ? undefined : 'scale(0.92)',
         }}
+        animate={{ scale: canSend ? 1 : 0.92 }}
+        transition={{ duration: 0.15 }}
       >
         {sending ? (
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ animation: 'spin 0.8s linear infinite' }}>
@@ -460,7 +511,7 @@ function Composer({ onSend, onTyping }: {
             <path d="M3.478 2.405a.75.75 0 0 0-.926.94l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.405Z" />
           </svg>
         )}
-      </button>
+      </motion.button>
     </div>
   )
 }
@@ -468,6 +519,7 @@ function Composer({ onSend, onTyping }: {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SupportPage() {
+  const grainId = useId()
   const { conversation, isLoaded, load } = useSupportStore()
   const { client, isReady }              = useStreamContext()
   const {
@@ -640,20 +692,40 @@ export default function SupportPage() {
   , [messages, client?.userID])
 
   return (
-    <div
-      className="wa-chat-root"
-      style={{
-        maxWidth: 680, margin: '0 auto',
-        display: 'flex', flexDirection: 'column',
-        position: 'relative',
-      }}
-    >
+    <div className="min-h-screen relative overflow-hidden" style={{ background: '#000000' }}>
+      {/* Faint radial wash — same restrained-glow language as Contact/Hero */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -top-24 left-1/2 -translate-x-1/2 w-[720px] h-[420px] z-0"
+        style={{ background: 'radial-gradient(closest-side, hsl(var(--accent, 0 78% 54%) / 0.08), transparent 70%)' }}
+      />
+
+      <div className="container-narrow relative z-10" style={{ paddingBlock: 'clamp(1.25rem, 5vw, 4rem)' }}>
+
+        {/* ── Chat card ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 16, filter: 'blur(3px)' }}
+          animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+          transition={{ duration: 0.5, delay: 0.1, ease }}
+          className="rounded-[28px] overflow-hidden h-[min(560px,80dvh)] sm:h-[min(600px,76dvh)] lg:h-[min(660px,72dvh)]"
+          style={{
+            boxShadow: '0 24px 48px -24px hsl(0 0% 0% / 0.7)',
+          }}
+        >
+          <div
+            className="wa-chat-root"
+            style={{
+              ...UTILITY,
+              height: '100%',
+              display: 'flex', flexDirection: 'column',
+              position: 'relative',
+            }}
+          >
 
       {/* ── Header ── */}
       <div className="wa-header" style={{
         display: 'flex', alignItems: 'center', gap: 12,
         padding: '10px 16px',
-        borderBottom: '0.5px solid var(--wa-border)',
         flexShrink: 0,
         background: 'var(--wa-header-bg)',
         zIndex: 2,
@@ -678,10 +750,21 @@ export default function SupportPage() {
           }} />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ fontSize: 15.5, fontWeight: 600, color: 'var(--wa-text-in)', margin: 0, lineHeight: 1.25 }}>
+          <p className={parisienne.className} style={{ fontSize: 20, fontWeight: 400, color: 'var(--wa-text-in)', margin: 0, lineHeight: 1.3 }}>
             Support Team
           </p>
-          <p style={{ fontSize: 12.5, margin: '2px 0 0' }}>
+          <p style={{ ...UTILITY, fontSize: 12.5, margin: '2px 0 0', display: 'flex', alignItems: 'center', gap: 5 }}>
+            <span style={{ position: 'relative', display: 'flex', width: 6, height: 6 }}>
+              <span className="wa-status-dot" style={{
+                position: 'absolute', inset: 0, borderRadius: '50%',
+                background: isTyping ? WA.accent : WA.online,
+                animation: 'statusPulse 1.6s ease-in-out infinite',
+              }} />
+              <span style={{
+                position: 'relative', width: 6, height: 6, borderRadius: '50%',
+                background: isTyping ? WA.accent : WA.online,
+              }} />
+            </span>
             {isTyping
               ? <span style={{ color: WA.accent }}>typing…</span>
               : <span style={{ color: WA.online, fontWeight: 500 }}>online</span>}
@@ -701,11 +784,12 @@ export default function SupportPage() {
           display: 'flex', flexDirection: 'column',
           background: 'var(--wa-bg-chat)',
           backgroundImage: `
-            radial-gradient(circle at 20% 20%, hsl(var(--foreground) / 0.035) 0%, transparent 35%),
-            radial-gradient(circle at 80% 0%, hsl(var(--foreground) / 0.03) 0%, transparent 40%),
-            radial-gradient(circle at 60% 80%, hsl(var(--foreground) / 0.035) 0%, transparent 35%),
-            radial-gradient(circle at 10% 70%, hsl(var(--foreground) / 0.03) 0%, transparent 35%)
+            radial-gradient(circle at 20% 20%, ${PINTEREST_RED}14 0%, transparent 35%),
+            radial-gradient(circle at 80% 0%, hsl(0 0% 100% / 0.03) 0%, transparent 40%),
+            radial-gradient(circle at 60% 80%, ${PINTEREST_RED}10 0%, transparent 35%),
+            radial-gradient(circle at 10% 70%, hsl(0 0% 100% / 0.02) 0%, transparent 35%)
           `,
+          backgroundSize: '160% 160%',
           overflowAnchor: 'none',
           WebkitOverflowScrolling: 'touch',
           overscrollBehaviorY: 'contain',
@@ -725,35 +809,50 @@ export default function SupportPage() {
             alignItems: 'center', justifyContent: 'center',
             gap: 14, padding: '3rem 2rem', textAlign: 'center',
           }}>
-            <div style={{
-              width: 64, height: 64, borderRadius: '50%',
-              background: 'var(--wa-bubble-in)',
-              border: '0.5px solid var(--wa-border)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 28,
-            }}>
+            <motion.div
+              initial={{ opacity: 0, y: 10, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+              style={{
+                width: 64, height: 64, borderRadius: '50%',
+                background: 'var(--wa-bubble-in)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 28,
+              }}
+            >
               👋
-            </div>
+            </motion.div>
             <div>
-              <p style={{ ...DISPLAY, fontSize: 22, fontWeight: 300, margin: '0 0 6px', color: 'var(--wa-text-in)' }}>
+              <motion.p
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
+                style={{ ...DISPLAY, fontSize: 24, fontStyle: 'italic', fontWeight: 500, margin: '0 0 6px', color: 'var(--wa-text-in)' }}
+              >
                 Hi there!
-              </p>
-              <p style={{ fontSize: 13, margin: 0, color: 'var(--wa-meta)', lineHeight: 1.7, maxWidth: 260 }}>
-                Got a question or need help with an order? Send us a message — we're here.
-              </p>
+              </motion.p>
+              <motion.p
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                style={{ ...UTILITY, fontSize: 13, margin: 0, color: 'var(--wa-meta)', lineHeight: 1.7, maxWidth: 260, fontWeight: 300 }}
+              >
+                Got a question or need help with an order? Send us a message — we&apos;re here.
+              </motion.p>
             </div>
           </div>
         )}
 
         {grouped.map(({ day, msgs }) => (
           <div key={day}>
-            <div style={{ display: 'flex', justifyContent: 'center', margin: '12px 0' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', margin: '12px 0', position: 'sticky', top: 6, zIndex: 3, pointerEvents: 'none' }}>
               <span style={{
+                ...UTILITY,
                 fontSize: 12.5, color: 'var(--wa-meta)',
                 background: 'var(--wa-system-bg)',
                 padding: '5px 12px', borderRadius: 8,
                 fontWeight: 500,
-                boxShadow: '0 1px 0.5px hsl(var(--foreground) / 0.06)',
+                boxShadow: '0 2px 8px hsl(0 0% 0% / 0.35)',
               }}>
                 {day}
               </span>
@@ -816,14 +915,15 @@ export default function SupportPage() {
         <button
           onClick={scrollToBottom}
           style={{
+            ...UTILITY,
             position: 'absolute',
-            bottom: 'calc(80px + env(safe-area-inset-bottom))',
+            bottom: '80px',
             left: '50%', transform: 'translateX(-50%)',
             padding: '7px 18px', borderRadius: 20, fontSize: 13, fontWeight: 600,
-            background: WA.accent, color: '#ffffff',
+            background: WA.accent, color: WA.accentInk,
             border: 'none', cursor: 'pointer',
             display: 'flex', alignItems: 'center', gap: 6,
-            boxShadow: '0 4px 16px hsl(var(--foreground) / 0.15)', zIndex: 5,
+            boxShadow: `0 4px 20px ${PINTEREST_RED}59`, zIndex: 5,
           }}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -835,35 +935,59 @@ export default function SupportPage() {
 
       <Composer onSend={handleSend} onTyping={sendTyping} />
 
+      {/* Film grain — same restrained texture trick as the Hero, barely
+          visible, just enough to keep the pure black from reading flat */}
+      <svg
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{ opacity: 0.035, mixBlendMode: 'overlay', zIndex: 6 }}
+      >
+        <filter id={grainId}>
+          <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch" />
+          <feColorMatrix type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.9 0" />
+        </filter>
+        <rect width="100%" height="100%" filter={`url(#${grainId})`} />
+      </svg>
+
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
-
-        .wa-chat-root {
-          height: calc(100vh - 64px);
-          --wa-bg-chat: hsl(var(--background));
-          --wa-bubble-out: #8e0c23; /* dark Pinterest red */
-          --wa-bubble-in: #27272a;
-          --wa-text-out: #e9edef;
-          --wa-text-in: #f4f4f5;
-          --wa-meta: #a1a1aa;
-          --wa-meta-out: hsl(0 0% 100% / 0.8);
-          --wa-system-bg: #27272a;
-          --wa-header-bg: hsl(var(--background));
-          --wa-composer-bg: hsl(var(--background));
-          --wa-input-bg: #27272a;
-          --wa-icon: #a1a1aa;
-          --wa-border: #3f3f46;
-          --wa-surface-hover: #3f3f46;
+        @keyframes statusPulse {
+          0%, 100% { transform: scale(1); opacity: 0.55; }
+          50% { transform: scale(2.2); opacity: 0; }
         }
 
-        @supports (height: 100dvh) {
-          .wa-chat-root { height: calc(100dvh - 64px); }
+        .wa-chat-root {
+          height: 100%;
+          /* True black + the literal Pinterest red, not the generic theme
+             accent token — see PINTEREST_RED above. Read receipts and the
+             online dot keep their conventional blue/green. */
+          --wa-bg-chat: #000000;
+          --wa-bubble-out: ${PINTEREST_RED};
+          --wa-bubble-in: hsl(0 0% 12%);
+          --wa-text-out: hsl(var(--accent-foreground, 0 0% 100%));
+          --wa-text-in: hsl(0 0% 96%);
+          --wa-meta: hsl(0 0% 60%);
+          --wa-meta-out: hsl(var(--accent-foreground, 0 0% 100%) / 0.8);
+          --wa-system-bg: hsl(0 0% 12%);
+          --wa-header-bg: #000000;
+          --wa-composer-bg: #000000;
+          --wa-input-bg: hsl(0 0% 12%);
+          --wa-icon: hsl(0 0% 60%);
+          --wa-border: hsl(0 0% 100% / 0.1);
+          --wa-surface-hover: hsl(0 0% 100% / 0.08);
         }
 
         /* ── Themed scrollbars ── */
         .wa-msg-list, .wa-emoji-picker {
           scrollbar-width: thin;
           scrollbar-color: var(--wa-border) transparent;
+        }
+        .wa-msg-list {
+          animation: driftGlow 26s ease-in-out infinite alternate;
+        }
+        @keyframes driftGlow {
+          0%   { background-position: 0% 0%; }
+          100% { background-position: 12% 8%; }
         }
         .wa-msg-list::-webkit-scrollbar, .wa-emoji-picker::-webkit-scrollbar {
           width: 6px;
@@ -893,8 +1017,7 @@ export default function SupportPage() {
           border-radius: 0 !important;
         }
         .wa-input-wrap:focus-within {
-          border-color: ${WA.accent};
-          box-shadow: 0 0 0 2px rgba(230, 0, 35, 0.18);
+          box-shadow: 0 0 0 2px ${PINTEREST_RED}59;
         }
 
         /* ── Button hover/active feedback ── */
@@ -905,13 +1028,10 @@ export default function SupportPage() {
           background: var(--wa-surface-hover);
         }
         .wa-send-btn {
-          transition: transform 0.15s, opacity 0.15s, filter 0.15s;
+          transition: opacity 0.15s, box-shadow 0.2s;
         }
         .wa-send-btn:hover:not(:disabled) {
-          filter: brightness(1.08);
-        }
-        .wa-send-btn:active:not(:disabled) {
-          transform: scale(0.94);
+          box-shadow: 0 4px 16px ${PINTEREST_RED}66;
         }
         .wa-retry-btn {
           transition: opacity 0.15s;
@@ -926,7 +1046,16 @@ export default function SupportPage() {
           .wa-msg-list { padding: 8px 0 6px; }
           .wa-composer { padding: 6px; }
         }
+
+        /* ── Respect reduced-motion preferences ── */
+        @media (prefers-reduced-motion: reduce) {
+          .wa-msg-list { animation: none; }
+          .wa-status-dot { animation: none; }
+        }
       `}</style>
+          </div>
+        </motion.div>
+      </div>
     </div>
   )
 }

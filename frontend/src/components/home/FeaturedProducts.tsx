@@ -1,41 +1,47 @@
 'use client'
 
 /**
- * FeaturedProducts — v4 · Shoppin
+ * FeaturedProducts — Shoppin
  *
- * v3 → v4 (aligned to the lean-homepage redesign + hero styling standards):
- *  - Hard-capped at FEATURED_LIMIT (6) instead of slicing 10 into a
- *    5-column grid — this is now the homepage's one product section, so it
- *    needs to actually read as curated, not as a teaser for a bigger feed
- *  - Eyebrow relabeled "Selected" → "New Drops", tying this section's
- *    identity to the hero's "NOW IN STORE" tag and "Fresh Drop" badge
- *    instead of reading as an unrelated section
- *  - Both "See all" CTAs (desktop + mobile) rebuilt to match the hero's
- *    bordered-rectangle button: thin border, small tracked caps, no icon,
- *    fills to the accent color on hover — was previously a plain
- *    text+arrow link with its own separate visual language
- *  - Grid breakpoints simplified (2 → 3 → 6 cols) since there are only
- *    ever 6 items now; the old 5-col track was sized for 10 items
+ * The homepage's one product section (see HomePage's v3 changelog for why
+ * it's alone here — CategoriesSection moved to the Navbar, TrendingSection
+ * and MasonryPreview were removed to keep the homepage lean).
  *
- * v2 → v3 (top-brand alignment — Mytheresa / Net-a-Porter):
- *  - Eyebrow pill + Crown icon removed — bare header, no decoration
- *  - Animated underline bar removed
- *  - Header: small uppercase label + headline left, text CTA right
- *  - Full-width 1px border-top replaces gradient hairline
- *  - Grid gap increased to 5–6 (20–24px) — Mytheresa standard spacing
- *  - Section padding: pt-10 pb-0 — content bleeds to section gap
+ * Design notes:
+ *  - FEATURED_LIMIT is a hard cap, not just a render-time slice — the
+ *    point is a curated handful, not a teaser for a bigger feed.
+ *  - "New Drops" eyebrow: Ultra + accent color, deliberately matching the
+ *    hero's "Fresh Drop" badge — same face, same treatment, on purpose.
+ *  - Headline: Great Vibes, the same headline-scale script used in the
+ *    hero (not Parisienne — that's scoped to small accent labels like
+ *    "Scroll to shop"). Keep any future copy here short; long phrases
+ *    fight connected script letterforms.
+ *  - "See All" buttons intentionally use DM Sans (inherited, not set
+ *    explicitly) rather than the hero CTA's Inter — Inter was a one-off
+ *    from a specific reference image for the hero, not a sitewide button
+ *    convention. Every other .btn-* on the site is DM Sans.
  */
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
+import { Ultra, Great_Vibes } from 'next/font/google'
 import { apiClient } from '@/lib/api'
 import { ProductCard } from '@/components/product/ProductCard'
 import { ProductCardSkeleton } from '@/components/ui/Skeleton'
 
-// A hard cap, not just a slice at render time — this is the whole point of
-// the redesign: a curated handful, not a teaser grid. Six reads as "a
-// selection" without tipping into "here's the catalog."
+// Same face as the hero's "Fresh Drop" badge, self-hosted via next/font so
+// it can't silently fall back to a generic serif the way a manual
+// globals.css @import can (see HeroSection's v13 changelog for the bug
+// this pattern avoids).
+const ultra = Ultra({ weight: '400', subsets: ['latin'], display: 'swap' })
+
+// Great Vibes is the headline-scale script already established in the
+// hero — reused here rather than Parisienne, which is scoped to small
+// accent labels ("Scroll to shop," "See it"), not section headlines.
+const greatVibes = Great_Vibes({ weight: '400', subsets: ['latin'], display: 'swap' })
+
+// Hard cap, not just a render-time slice — see header design notes.
 const FEATURED_LIMIT = 6
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -46,6 +52,49 @@ interface Product {
   price: number
   brand?: string
   images?: { url: string; blurDataURL?: string }[]
+}
+
+// ─── SeeAllButton ─────────────────────────────────────────────────────────────
+// Desktop and mobile were repeating the same style object and hover
+// handlers with only padding/visibility differing — collapsed into one.
+
+const SEE_ALL_BASE_STYLE: React.CSSProperties = {
+  fontSize: '11px',
+  letterSpacing: '0.2em',
+  textTransform: 'uppercase',
+  color: 'hsl(var(--foreground))',
+  textDecoration: 'none',
+  border: '1px solid hsl(var(--border))',
+  whiteSpace: 'nowrap',
+  transition: 'background 0.35s ease, color 0.35s ease, border-color 0.35s ease',
+}
+
+function SeeAllButton({
+  className,
+  padding,
+}: {
+  className?: string
+  padding: string
+}) {
+  return (
+    <Link
+      href="/explore?featured=true"
+      className={className}
+      style={{ ...SEE_ALL_BASE_STYLE, padding }}
+      onMouseEnter={e => {
+        e.currentTarget.style.background = 'hsl(var(--accent))'
+        e.currentTarget.style.color       = 'hsl(var(--accent-foreground))'
+        e.currentTarget.style.borderColor = 'hsl(var(--accent))'
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.background = 'transparent'
+        e.currentTarget.style.color       = 'hsl(var(--foreground))'
+        e.currentTarget.style.borderColor = 'hsl(var(--border))'
+      }}
+    >
+      See All
+    </Link>
+  )
 }
 
 // ─── FeaturedProducts ─────────────────────────────────────────────────────────
@@ -73,54 +122,35 @@ export function FeaturedProducts() {
 
         {/* ── Header ── */}
         <div className="flex items-baseline justify-between mb-6">
-          <p
+          <span
+            className={ultra.className}
             style={{
               fontSize: '10px',
-              fontWeight: 500,
-              letterSpacing: '0.18em',
+              letterSpacing: '0.08em',
               textTransform: 'uppercase',
-              color: 'hsl(var(--muted))',
+              color: 'hsl(var(--accent))',
+              border: '1px solid hsl(var(--accent) / 0.5)',
+              borderRadius: '3px',
+              padding: '5px 9px',
+              lineHeight: 1,
+              display: 'inline-block',
             }}
           >
             New Drops
-          </p>
+          </span>
 
-          <Link
-            href="/explore?featured=true"
+          <SeeAllButton
             className="hidden sm:inline-flex items-center justify-center"
-            style={{
-              fontSize: '11px',
-              letterSpacing: '0.2em',
-              textTransform: 'uppercase',
-              color: 'hsl(var(--foreground))',
-              textDecoration: 'none',
-              border: '1px solid hsl(var(--border))',
-              padding: '10px 24px',
-              whiteSpace: 'nowrap',
-              transition: 'background 0.35s ease, color 0.35s ease, border-color 0.35s ease',
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.background = 'hsl(var(--accent))'
-              e.currentTarget.style.color       = 'hsl(var(--accent-foreground))'
-              e.currentTarget.style.borderColor = 'hsl(var(--accent))'
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.background = 'transparent'
-              e.currentTarget.style.color       = 'hsl(var(--foreground))'
-              e.currentTarget.style.borderColor = 'hsl(var(--border))'
-            }}
-          >
-            See All
-          </Link>
+            padding="10px 24px"
+          />
         </div>
 
         <motion.h2
-          className="font-display mb-8 md:mb-10"
+          className={`${greatVibes.className} mb-8 md:mb-10`}
           style={{
-            fontSize: 'clamp(1.75rem, 3vw, 2.75rem)',
-            fontWeight: 300,
-            letterSpacing: '-0.02em',
-            lineHeight: 1,
+            fontSize: 'clamp(2.75rem, 6vw, 4.5rem)',
+            fontWeight: 400,
+            lineHeight: 1.15,
             color: 'hsl(var(--foreground))',
           }}
           initial={{ opacity: 0, y: 12 }}
@@ -128,10 +158,7 @@ export function FeaturedProducts() {
           viewport={{ once: true }}
           transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
         >
-          Worth{' '}
-          <em className="not-italic" style={{ color: 'hsl(var(--accent))' }}>
-            your time
-          </em>
+          Freshly found
         </motion.h2>
 
         {/* ── Grid — capped at FEATURED_LIMIT, not a teaser for a bigger feed ── */}
@@ -168,21 +195,10 @@ export function FeaturedProducts() {
 
         {/* ── Mobile CTA — same bordered treatment as desktop, full width ── */}
         <div className="sm:hidden pb-8 -mt-4">
-          <Link
-            href="/explore?featured=true"
+          <SeeAllButton
             className="flex items-center justify-center w-full"
-            style={{
-              fontSize: '11px',
-              letterSpacing: '0.2em',
-              textTransform: 'uppercase',
-              color: 'hsl(var(--foreground))',
-              textDecoration: 'none',
-              border: '1px solid hsl(var(--border))',
-              padding: '13px 24px',
-            }}
-          >
-            See All
-          </Link>
+            padding="13px 24px"
+          />
         </div>
 
       </div>

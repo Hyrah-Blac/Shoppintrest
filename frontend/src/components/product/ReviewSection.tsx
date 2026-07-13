@@ -5,10 +5,16 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Star, Check, ThumbsUp } from 'lucide-react'
 import { useAuth } from '@clerk/nextjs'
 import { toast } from 'sonner'
+import { Great_Vibes } from 'next/font/google'
 import { apiClient } from '@/lib/api'
 import { Avatar } from '@/components/ui/Avatar'
 import { Input } from '@/components/ui/Input'
 import { formatRelativeTime, cn } from '@/lib/utils'
+
+// Same face as the hero/homepage sections, self-hosted via next/font so it
+// can't silently fall back to a generic serif (see HeroSection's v13
+// changelog for the bug this pattern avoids).
+const greatVibes = Great_Vibes({ weight: '400', subsets: ['latin'], display: 'swap' })
 
 interface Props { productId: string }
 
@@ -72,8 +78,13 @@ export function ReviewSection({ productId }: Props) {
           transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
         >
           <h2
-            className="font-display font-bold tracking-[-0.03em] leading-[1.1]"
-            style={{ fontSize: 'clamp(1.25rem, 2.5vw, var(--text-section))' }}
+            className="font-display"
+            style={{
+              fontWeight: 600,
+              letterSpacing: '-0.035em',
+              lineHeight: 1.08,
+              fontSize: 'clamp(1.25rem, 2.5vw, var(--text-section))',
+            }}
           >
             Customer{' '}
             <em className="not-italic" style={{ color: 'hsl(var(--accent))' }}>
@@ -88,16 +99,6 @@ export function ReviewSection({ productId }: Props) {
               {reviews.length} {reviews.length === 1 ? 'review' : 'reviews'}
             </p>
           )}
-
-          {/* Accent underline */}
-          <motion.div
-            className="mt-3 h-[2px] w-10 rounded-full"
-            style={{ background: 'hsl(var(--accent))' }}
-            initial={{ scaleX: 0, originX: 0 }}
-            whileInView={{ scaleX: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.45, delay: 0.15 }}
-          />
         </motion.div>
 
         {isSignedIn && (
@@ -123,8 +124,8 @@ export function ReviewSection({ productId }: Props) {
           {/* Average score */}
           <div className="flex flex-col items-center justify-center gap-2">
             <span
-              className="font-display font-bold tracking-[-0.03em]"
-              style={{ fontSize: 'clamp(3rem, 6vw, 4rem)' }}
+              className="font-display"
+              style={{ fontWeight: 600, letterSpacing: '-0.035em', fontSize: 'clamp(3rem, 6vw, 4rem)' }}
             >
               {avgRating.toFixed(1)}
             </span>
@@ -259,7 +260,6 @@ export function ReviewSection({ productId }: Props) {
                     background:  'hsl(var(--background))',
                     border:      '1.5px solid hsl(var(--input))',
                     color:       'hsl(var(--foreground))',
-                    fontFamily:  "'DM Sans', sans-serif",
                   }}
                   onFocus={(e) => {
                     e.currentTarget.style.borderColor = 'hsl(var(--accent) / 0.6)'
@@ -322,7 +322,7 @@ export function ReviewSection({ productId }: Props) {
           </p>
           <p
             className="text-sm"
-            style={{ color: 'hsl(var(--muted))', fontWeight: 300 }}
+            style={{ color: 'hsl(var(--muted))' }}
           >
             Be the first to share your experience
           </p>
@@ -394,7 +394,7 @@ export function ReviewSection({ productId }: Props) {
                   </p>
                   <p
                     className="text-sm leading-relaxed"
-                    style={{ color: 'hsl(var(--muted))', fontWeight: 300 }}
+                    style={{ color: 'hsl(var(--muted))' }}
                   >
                     {review.body}
                   </p>

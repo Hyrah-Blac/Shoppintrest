@@ -1,28 +1,59 @@
 'use client'
 
 /**
- * Navbar — v5 · Shoppin
+ * Navbar — v9 · Shoppin
+ *
+ * v8 → v9: smaller still
+ *  - Header padding cut again (py-1.5/py-1 depending on scroll state)
+ *  - Logo down to 32–36px
+ *  - Nav pills, search trigger, icon glyphs, and avatars all a notch
+ *    smaller across the board
+ *  - Dropdown panels narrower to match the lighter overall scale
+ *  - Spacer/backdrop offset recalculated again for the shorter header
+ *
+ * v7 → v8: cleanup
+ *  - Fixed a real bug: usePathname() never includes the query string, so
+ *    the Women/Men "active" check (pathname === '/explore?category=...')
+ *    could never be true. Now reads the category via useSearchParams,
+ *    scoped to when pathname is actually '/explore'.
+ *  - Deduped the Explore / Women / Men / Categories pill styling into one
+ *    navPillClass(active) helper instead of three copies of the same
+ *    className string.
+ *  - Hoisted the Women/Men subset (primaryCategories) to module scope
+ *    instead of filtering the categories array on every render.
+ *  - Fixed inconsistent JSX indentation around the logo block (it had
+ *    drifted to a shallower indent than its siblings).
+ *
+ * v6 → v7: Women / Men surfaced in the nav
+ *  - Added "Women" and "Men" as their own pills next to Explore, using the
+ *    existing `categories` array entries (womenswear/menswear) and the
+ *    same `/explore?category=...` route the Categories dropdown already
+ *    used — no new links, copy, or routes, just the two most-clicked
+ *    categories pulled up a level for faster access
+ *  - Categories dropdown (all 7 categories, unchanged) still holds
+ *    everything else, including Women/Men again for discoverability
+ *
+ * v5 → v6: slimmer + tighter
+ *  - Reduced vertical padding (header is noticeably shorter now)
+ *  - Logo dropped to 36–40px so it reads as a compact mark, not a hero logo
+ *  - Nav pills, search trigger, and dropdown chrome all tightened to match
+ *  - Spacer/drawer offset recalculated for the new, shorter header height
  *
  * v4 → v5: logo swap + header-height fit
  *  - New transparent-background logo.png (square canvas, no black fringe)
- *  - Logo box resized to sit visually in-line with the 40px icon buttons
- *    instead of dwarfing them (was 56–64px, now 44–48px)
- *  - Fixed header-height/spacer mismatch: the scroll spacer and the mobile
- *    drawer's backdrop offset were hardcoded to 48px, which no longer (and
- *    didn't previously) match the real rendered header height once the
- *    logo + vertical padding are accounted for — bumped to 64px so content
- *    never sits underneath the fixed header
+ *  - Fixed header-height/spacer mismatch between the fixed header and the
+ *    scroll spacer / mobile drawer backdrop offset
  */
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '@clerk/nextjs'
 import {
   Search, ShoppingBag, Heart, Bell,
-  Menu, X, Compass, ChevronRight, ChevronDown, LogOut,
+  Menu, X, Compass, ChevronRight, LogOut,
   User, LayoutDashboard, ArrowRight, Package,
   Headphones,
 } from 'lucide-react'
@@ -51,19 +82,44 @@ const categories = [
   { label: 'Beauty',      value: 'beauty'      },
 ] as const
 
+// Women/Men, pulled out of Categories as their own top-level pills since
+// they're the two most-clicked entry points. Same data + route pattern as
+// the full Categories dropdown below — nothing new, just surfaced higher.
+const primaryCategories = categories.filter(
+  (cat): cat is typeof categories[number] => cat.value === 'womenswear' || cat.value === 'menswear'
+)
+
 const mobileOnlyLinks = [
   { href: '/saved',   label: 'Saved',     icon: Heart      },
   { href: '/orders',  label: 'My Orders', icon: Package    },
   { href: '/support', label: 'Support',   icon: Headphones },
 ]
 
+// Shared pill style for top-level desktop nav items (Explore, Women, Men,
+// and the Categories trigger) so the active/inactive styling only lives
+// in one place.
+const navPillClass = (active: boolean) =>
+  cn(
+    'relative px-2.5 py-1 rounded-[var(--radius-sm)] text-[13px] font-medium',
+    'transition-all duration-[var(--duration-hover)]',
+    active
+      ? 'text-[hsl(var(--foreground))] bg-[hsl(var(--surface))]'
+      : 'text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--surface)/0.7)]'
+  )
+
 // ─── Navbar ───────────────────────────────────────────────────────────────────
 
 export function Navbar() {
   const pathname                = usePathname()
+  const searchParams            = useSearchParams()
   const { isSignedIn, signOut } = useAuth()
   const user                    = useUserStore((s) => s.user)
   const isAdmin                 = user?.role === 'admin'
+
+  // usePathname() never includes the query string, so "/explore?category=x"
+  // can't be matched against pathname alone — read the category from
+  // useSearchParams instead, only while actually on /explore.
+  const activeCategory = pathname === '/explore' ? searchParams.get('category') : null
 
   const [isScrolled,     setIsScrolled]     = useState(false)
   const [isMobileOpen,   setIsMobileOpen]   = useState(false)
@@ -133,82 +189,62 @@ export function Navbar() {
           'fixed top-0 left-0 right-0 z-50',
           'transition-[padding,background,border-color,box-shadow]',
           'duration-[var(--duration-standard)]',
-          isScrolled ? 'glass py-2' : 'bg-transparent py-2.5'
+          isScrolled ? 'glass py-1' : 'bg-transparent py-1.5'
         )}
         initial={{ y: -80, opacity: 0 }}
         animate={{ y: 0,   opacity: 1 }}
         transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
       >
-       <div className="container-wide flex items-center justify-between gap-3 sm:gap-4">
+        <div className="container-wide flex items-center justify-between gap-1.5 sm:gap-2">
 
-  {/* ── Logo ──
-      logo.png is a square, transparent-background canvas with the mark
-      centered and a little internal breathing room baked in, so a plain
-      square box + object-contain is all it needs — no cropping/aspect
-      math required, and it'll never show a background box on any theme. */}
-  <Link href="/" className="shrink-0 flex items-center" aria-label="Shoppin — home">
-    <div className="relative w-11 h-11 sm:w-12 sm:h-12">
-      <Image
-        src="/logo.png"
-        alt="Shoppin"
-        fill
-        sizes="48px"
-        className="object-contain"
-        priority
-      />
-    </div>
-  </Link>
+          {/* ── Logo ──
+              logo.png is a square, transparent-background canvas with the
+              mark centered and a little internal breathing room baked in,
+              so a plain square box + object-contain is all it needs — no
+              cropping/aspect math required, and it'll never show a
+              background box on any theme. */}
+          <Link href="/" className="shrink-0 flex items-center" aria-label="Shoppin — home">
+            <div className="relative w-8 h-8 sm:w-9 sm:h-9">
+              <Image
+                src="/logo.png"
+                alt="Shoppin"
+                fill
+                sizes="36px"
+                className="object-contain"
+                priority
+              />
+            </div>
+          </Link>
 
           {/* ── Desktop Nav ── */}
           <nav className="hidden md:flex items-center gap-0.5" aria-label="Main navigation">
-            {navLinks.map((link) => (
+            {/* Women / Men — see primaryCategories comment above. */}
+            {primaryCategories.map((cat) => (
               <Link
-                key={link.href}
-                href={link.href}
-                className={cn(
-                  'relative px-3.5 py-1.5 rounded-[var(--radius-sm)] text-sm font-medium',
-                  'transition-all duration-[var(--duration-hover)]',
-                  pathname === link.href
-                    ? 'text-[hsl(var(--foreground))] bg-[hsl(var(--surface))]'
-                    : 'text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--surface)/0.7)]'
-                )}
+                key={cat.value}
+                href={`/explore?category=${cat.value}`}
+                className={navPillClass(activeCategory === cat.value)}
               >
-                {link.label}
-                {pathname === link.href && (
-                  <motion.div
-                    layoutId="nav-indicator"
-                    className="absolute bottom-1 left-1/2 -translate-x-1/2 w-4 h-0.5 rounded-full"
-                    style={{ background: 'hsl(var(--foreground))' }}
-                    transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                  />
-                )}
+                {cat.label}
               </Link>
             ))}
 
             {/* Categories — dropdown, moved off the homepage per the
                 "keep the homepage lean" redesign. Same data/route pattern
                 the old CategoriesSection strip used. */}
-            <div ref={categoriesRef} className="relative">
+            <div
+              ref={categoriesRef}
+              className="relative"
+              onMouseEnter={() => setIsCategoriesOpen(true)}
+              onMouseLeave={() => setIsCategoriesOpen(false)}
+            >
               <button
                 onClick={() => setIsCategoriesOpen((o) => !o)}
                 aria-expanded={isCategoriesOpen}
                 aria-haspopup="true"
-                className={cn(
-                  'relative flex items-center gap-1 px-3.5 py-1.5 rounded-[var(--radius-sm)] text-sm font-medium',
-                  'transition-all duration-[var(--duration-hover)]',
-                  isCategoriesOpen
-                    ? 'text-[hsl(var(--foreground))] bg-[hsl(var(--surface))]'
-                    : 'text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--surface)/0.7)]'
-                )}
+                className={navPillClass(isCategoriesOpen)}
               >
                 Categories
-                <motion.span
-                  animate={{ rotate: isCategoriesOpen ? 180 : 0 }}
-                  transition={{ duration: 0.2, ease: 'easeInOut' }}
-                  style={{ display: 'flex', alignItems: 'center' }}
-                >
-                  <ChevronDown size={13} strokeWidth={2} />
-                </motion.span>
               </button>
 
               <AnimatePresence>
@@ -220,8 +256,8 @@ export function Navbar() {
                     transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
                     className="absolute left-0 top-full mt-2 z-50 overflow-hidden"
                     style={{
-                      width:        '320px',
-                      borderRadius: '16px',
+                      width:        '272px',
+                      borderRadius: '14px',
                       background:   'hsl(var(--surface))',
                       border:       '0.5px solid hsl(var(--border))',
                       boxShadow:    'var(--shadow-float)',
@@ -265,6 +301,25 @@ export function Navbar() {
                 )}
               </AnimatePresence>
             </div>
+
+            {/* Explore — after Categories per request. */}
+            {navLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={navPillClass(pathname === link.href)}
+              >
+                {link.label}
+                {pathname === link.href && (
+                  <motion.div
+                    layoutId="nav-indicator"
+                    className="absolute bottom-1 left-1/2 -translate-x-1/2 w-4 h-0.5 rounded-full"
+                    style={{ background: 'hsl(var(--foreground))' }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                  />
+                )}
+              </Link>
+            ))}
           </nav>
 
           {/* ── Right Actions ── */}
@@ -274,14 +329,14 @@ export function Navbar() {
             <button
               onClick={() => setIsSearchOpen(true)}
               aria-label="Search"
-              className="hidden md:flex items-center gap-2 h-8 px-2.5 rounded-full text-[13px]
+              className="hidden md:flex items-center gap-1.5 h-6 px-2 rounded-full text-[12px]
                          text-[hsl(var(--muted))] transition-all duration-[var(--duration-hover)]
                          border border-[hsl(var(--border))] bg-[hsl(var(--surface)/0.5)]
                          hover:text-[hsl(var(--foreground))] hover:border-[hsl(var(--foreground)/0.2)]
                          hover:bg-[hsl(var(--surface))]"
-              style={{ minWidth: '148px' }}
+              style={{ minWidth: '118px' }}
             >
-              <Search size={14} className="shrink-0" />
+              <Search size={12} className="shrink-0" />
               <span className="truncate">Search anything…</span>
             </button>
 
@@ -293,7 +348,7 @@ export function Navbar() {
               <>
                 {/* Notifications */}
                 <Link href="/notifications" className="btn-icon relative" aria-label="Notifications">
-                  <Bell size={16} />
+                  <Bell size={14} />
                   <AnimatePresence>
                     {unreadCount > 0 && (
                       <motion.span
@@ -319,12 +374,12 @@ export function Navbar() {
                     pathname === '/saved' && 'text-[hsl(var(--foreground))]'
                   )}
                 >
-                  <Heart size={16} className={cn(pathname === '/saved' && 'fill-current')} />
+                  <Heart size={14} className={cn(pathname === '/saved' && 'fill-current')} />
                 </Link>
 
                 {/* Cart */}
                 <button onClick={toggleCart} aria-label="Cart" className="btn-icon relative">
-                  <ShoppingBag size={16} />
+                  <ShoppingBag size={14} />
                   <AnimatePresence>
                     {itemCount > 0 && (
                       <motion.span
@@ -349,7 +404,7 @@ export function Navbar() {
                              ring-1 ring-transparent hover:ring-[hsl(var(--border))]
                              transition-all duration-[var(--duration-hover)]"
                 >
-                  <Avatar size={26} />
+                  <Avatar size={21} />
                 </Link>
 
                 {/* Avatar — desktop: dropdown */}
@@ -368,7 +423,7 @@ export function Navbar() {
                       isUserOpen && 'ring-[hsl(var(--border))]'
                     )}
                   >
-                    <Avatar size={27} />
+                    <Avatar size={22} />
                   </button>
 
                   <AnimatePresence>
@@ -380,8 +435,8 @@ export function Navbar() {
                         transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
                         className="absolute right-0 top-full mt-2 z-50 overflow-hidden"
                         style={{
-                          width:        '280px',
-                          borderRadius: '16px',
+                          width:        '240px',
+                          borderRadius: '14px',
                           background:   'hsl(var(--surface))',
                           border:       '0.5px solid hsl(var(--border))',
                           boxShadow:    'var(--shadow-float)',
@@ -389,10 +444,10 @@ export function Navbar() {
                       >
                         {/* Header */}
                         <div
-                          className="px-3.5 py-3.5 flex items-center gap-3"
+                          className="px-3 py-3 flex items-center gap-2.5"
                           style={{ borderBottom: '0.5px solid hsl(var(--border))' }}
                         >
-                          <Avatar size={38} />
+                          <Avatar size={31} />
                           <div className="min-w-0">
                             <p
                               className="text-[14px] font-medium truncate leading-snug"
@@ -491,7 +546,7 @@ export function Navbar() {
               <>
                 {/* Cart — guests */}
                 <button onClick={toggleCart} aria-label="Cart" className="btn-icon relative">
-                  <ShoppingBag size={16} />
+                  <ShoppingBag size={14} />
                   <AnimatePresence>
                     {itemCount > 0 && (
                       <motion.span
@@ -539,7 +594,7 @@ export function Navbar() {
                   transition={{ duration: 0.15 }}
                   className="flex"
                 >
-                  {isMobileOpen ? <X size={18} /> : <Menu size={18} />}
+                  {isMobileOpen ? <X size={16} /> : <Menu size={16} />}
                 </motion.span>
               </AnimatePresence>
             </button>
@@ -555,7 +610,7 @@ export function Navbar() {
                 animate={{ opacity: 1 }}
                 exit={{   opacity: 0 }}
                 transition={{ duration: 0.2 }}
-                className="fixed inset-0 top-16 bg-black/40 md:hidden -z-10"
+                className="fixed inset-0 top-11 bg-black/40 md:hidden -z-10"
                 onClick={() => setIsMobileOpen(false)}
                 aria-hidden
               />
@@ -783,7 +838,7 @@ export function Navbar() {
         </AnimatePresence>
       </motion.header>
 
-      <div className="h-16" aria-hidden />
+      <div className="h-11" aria-hidden />
 
       <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
     </>

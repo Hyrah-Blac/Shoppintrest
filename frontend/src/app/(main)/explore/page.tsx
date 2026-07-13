@@ -1,12 +1,40 @@
 'use client'
 
+/**
+ * ExplorePage — v3 · Shoppin
+ *
+ * Brought up to the same standard as HeroSection:
+ *  - An editorial opener (eyebrow + Great Vibes script reveal) using the
+ *    same font and masked "curtain lift" motion as the hero headline, so
+ *    the page has a thesis moment instead of starting cold on a filter bar.
+ *  - Category pills carry a single `layoutId` highlight that slides between
+ *    the active pill via spring physics — the same shared-layout language
+ *    as the hero's progress rail — instead of a flat class swap, filled
+ *    with the shared ACCENT_GRADIENT rather than a thin outline.
+ *  - The sticky filter bar sits in an elevated glass "toolbar card" with
+ *    the same top edge-light hairline the sort dropdown uses, and a
+ *    divider ties the sort control to the category row.
+ *  - Switching category/sort crossfades the grid + result count together
+ *    (mirrors the hero's slide crossfade) instead of snapping.
+ *  - The empty state reuses the opener's script headline + curtain lift
+ *    so a no-results view still feels like the same considered surface.
+ *
+ * Everything else — data fetching, infinite scroll, MasonryGrid — is
+ * unchanged; only the presentation layer was touched.
+ */
+
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDown, X } from 'lucide-react'
+import { Great_Vibes } from 'next/font/google'
 import { apiClient } from '@/lib/api'
 import { MasonryGrid } from '@/components/product/MasonryGrid'
-import { cn } from '@/lib/utils'
+
+// Same script family + loading strategy as the hero's headline — self-hosted
+// via next/font so it can't silently fall back to generic cursive if a
+// stylesheet import is missing or blocked.
+const greatVibes = Great_Vibes({ weight: '400', subsets: ['latin'], display: 'swap' })
 
 const CATEGORIES = [
   { label: 'All',         value: ''            },
@@ -28,7 +56,40 @@ const SORT_OPTIONS = [
   { label: 'Top Rated',    value: 'rating'     },
 ]
 
+// Rotates with the active category so the opener isn't a static label —
+// small editorial gesture, not a full copy system. Built around the
+// "Freshly found" motif so the script headline reads as one family of
+// phrases rather than a generic tagline per filter.
+const HEADLINES: Record<string, string> = {
+  '':            'Freshly found',
+  womenswear:    'Freshly styled',
+  menswear:      'Freshly styled',
+  shoes:         'Freshly stepped',
+  bags:          'Freshly carried',
+  jewelry:       'Freshly adorned',
+  accessories:   'Freshly finished',
+  beauty:        'Freshly glowing',
+  home:          'Freshly arranged',
+}
+
+const EYEBROW = 'The Selection'
+
 const ease = [0.16, 1, 0.3, 1] as const
+
+// ─── Shared style tokens ────────────────────────────────────────────────────
+// Pulled out because the accent treatment now appears in four places
+// (active category pill, showing-chip, reset button hover, meta dot) and
+// previously each one hand-typed its own copy of the gradient/shadow —
+// one source of truth here means a color tweak only happens once.
+const ACCENT_GRADIENT = 'linear-gradient(135deg, hsl(var(--accent)) 0%, hsl(var(--accent) / 0.84) 100%)'
+const ACCENT_GLOW      = 'var(--shadow-red)'
+const EDGE_LIGHT        = 'linear-gradient(90deg, transparent, hsl(var(--border)) 40%, transparent)'
+
+// Common hover-state transition for pill-style controls (color/background/
+// border swap together, no box-shadow — pass that separately when needed).
+const PILL_TRANSITION = `color var(--duration-fast) var(--ease-smooth),
+  background var(--duration-fast) var(--ease-smooth),
+  border-color var(--duration-fast) var(--ease-smooth)`
 
 /* ═══════════════════════════════════════════════════════════════════════════
    SORT DROPDOWN — atmospheric glass panel, no hard dashboard borders
@@ -54,25 +115,37 @@ function SortDropdown({
 
   return (
     <div ref={ref} className="relative">
-      <button
+      <motion.button
         onClick={() => setOpen((o) => !o)}
-        className={cn(
-          'pill gap-1.5 shrink-0',
-          open && 'active'
-        )}
-        style={{ height: '2.125rem', paddingRight: '0.625rem' }}
+        whileTap={{ scale: 0.96 }}
+        className="flex items-center gap-1.5 shrink-0"
+        style={{
+          height:        '2.25rem',
+          padding:       '0 0.75rem 0 1.125rem',
+          borderRadius:  '999px',
+          fontSize:      'var(--text-xs)',
+          fontWeight:    open ? 550 : 450,
+          letterSpacing: '0.01em',
+          color:         open ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground))',
+          background:    open ? 'hsl(var(--surface-elevated))' : 'hsl(var(--surface-elevated) / 0.55)',
+          border:        open ? '1px solid hsl(var(--border))' : '1px solid hsl(var(--border-subtle))',
+          boxShadow:     open ? 'var(--shadow-sm)' : 'none',
+          cursor:        'pointer',
+          whiteSpace:    'nowrap',
+          transition:    `${PILL_TRANSITION}, box-shadow var(--duration-fast) var(--ease-smooth)`,
+        }}
       >
-        <span style={{ fontWeight: open ? 500 : 400 }}>
+        <span>
           {current?.label ?? 'Sort'}
         </span>
         <motion.span
           animate={{ rotate: open ? 180 : 0 }}
           transition={{ duration: 0.22, ease: 'easeInOut' }}
-          style={{ display: 'flex', alignItems: 'center' }}
+          style={{ display: 'flex', alignItems: 'center', color: 'hsl(var(--accent))' }}
         >
-          <ChevronDown size={11} strokeWidth={2} />
+          <ChevronDown size={11} strokeWidth={2.25} />
         </motion.span>
-      </button>
+      </motion.button>
 
       <AnimatePresence>
         {open && (
@@ -89,16 +162,10 @@ function SortDropdown({
               background:   'hsl(var(--surface-float))',
               border:       '1px solid hsl(var(--border-subtle))',
               boxShadow:    'var(--shadow-float)',
-              /* VOID: ambient edge light */
             }}
           >
             {/* Top edge highlight — VOID UI signature */}
-            <div
-              style={{
-                height:     '1px',
-                background: 'linear-gradient(90deg, transparent, hsl(var(--border)) 40%, transparent)',
-              }}
-            />
+            <div style={{ height: '1px', background: EDGE_LIGHT }} />
 
             <div style={{ padding: '0.375rem' }}>
               {SORT_OPTIONS.map((opt, i) => {
@@ -147,6 +214,156 @@ function SortDropdown({
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  )
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CATEGORY PILL / RAIL — shared-layout sliding highlight, same language as
+   the hero's progress rail: one moving element, physics-driven, rather than
+   a class swap that snaps. Fully self-styled (not dependent on the global
+   .pill/.active classes) so the active state reads as a real selection —
+   a rich gradient fill with a soft glow — rather than a thin outline.
+   ═══════════════════════════════════════════════════════════════════════════ */
+function CategoryPill({
+  label,
+  isActive,
+  onClick,
+}: {
+  label: string
+  isActive: boolean
+  onClick: () => void
+}) {
+  return (
+    <motion.button
+      onClick={onClick}
+      whileTap={{ scale: 0.95 }}
+      whileHover={!isActive ? { y: -1 } : undefined}
+      className="relative shrink-0 overflow-hidden"
+      style={{
+        height:        '2.25rem',
+        padding:       '0 1.125rem',
+        display:       'flex',
+        alignItems:    'center',
+        justifyContent:'center',
+        borderRadius:  '999px',
+        fontSize:      'var(--text-xs)',
+        fontWeight:    isActive ? 600 : 450,
+        letterSpacing: '0.01em',
+        whiteSpace:    'nowrap',
+        color:         isActive ? 'hsl(var(--accent-foreground))' : 'hsl(var(--muted-foreground))',
+        border:        isActive ? '1px solid transparent' : '1px solid hsl(var(--border-subtle))',
+        background:    isActive ? 'transparent' : 'hsl(var(--surface-elevated) / 0.55)',
+        cursor:        'pointer',
+        transition:    PILL_TRANSITION,
+      }}
+      onMouseEnter={e => {
+        if (isActive) return
+        const el = e.currentTarget as HTMLElement
+        el.style.color      = 'hsl(var(--foreground))'
+        el.style.borderColor = 'hsl(var(--border))'
+        el.style.background  = 'hsl(var(--surface-elevated))'
+      }}
+      onMouseLeave={e => {
+        if (isActive) return
+        const el = e.currentTarget as HTMLElement
+        el.style.color      = 'hsl(var(--muted-foreground))'
+        el.style.borderColor = 'hsl(var(--border-subtle))'
+        el.style.background  = 'hsl(var(--surface-elevated) / 0.55)'
+      }}
+    >
+      {isActive && (
+        <motion.span
+          layoutId="categoryHighlight"
+          className="absolute inset-0"
+          style={{
+            borderRadius: 'inherit',
+            background:   ACCENT_GRADIENT,
+            boxShadow:    `${ACCENT_GLOW}, 0 0 0 1px hsl(var(--accent) / 0.45)`,
+            zIndex: 0,
+          }}
+          transition={{ type: 'spring', stiffness: 420, damping: 36 }}
+        />
+      )}
+      <span className="relative" style={{ zIndex: 1 }}>{label}</span>
+    </motion.button>
+  )
+}
+
+function CategoryRail({
+  value,
+  onChange,
+}: {
+  value: string
+  onChange: (v: string) => void
+}) {
+  return (
+    <div
+      className="flex gap-2 overflow-x-auto scrollbar-hide flex-1"
+      style={{ paddingBlock: '2px' }} /* prevent clipping on pill shadow/glow */
+    >
+      {CATEGORIES.map((cat) => (
+        <CategoryPill
+          key={cat.value}
+          label={cat.label}
+          isActive={cat.value === value}
+          onClick={() => onChange(cat.value)}
+        />
+      ))}
+    </div>
+  )
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   EDITORIAL OPENER — small eyebrow + masked Great Vibes script reveal,
+   the same font and "curtain lift" motion the hero uses on its headline.
+   Kept quiet: no parallax, no video, no cursor — this page's job is
+   browsing, not arrival, so the moment is brief and then gets out of the way.
+   ═══════════════════════════════════════════════════════════════════════════ */
+function ExploreOpener({ category }: { category: string }) {
+  const headline = HEADLINES[category] ?? 'Freshly found'
+
+  return (
+    <div className="container-wide" style={{ paddingBlock: 'clamp(2rem, 5vw, 3.25rem) clamp(1.25rem, 3vw, 2rem)' }}>
+      <motion.p
+        initial={{ opacity: 0, y: -6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease }}
+        style={{
+          fontSize:      'var(--text-2xs)',
+          fontWeight:    500,
+          letterSpacing: '0.28em',
+          textTransform: 'uppercase',
+          color:         'hsl(var(--muted-foreground))',
+          marginBottom:  '0.625rem',
+        }}
+      >
+        {EYEBROW}
+      </motion.p>
+
+      <div style={{ overflow: 'hidden' }}>
+        <AnimatePresence mode="wait">
+          <motion.h1
+            key={headline}
+            className={greatVibes.className}
+            initial={{ y: '105%' }}
+            animate={{ y: '0%' }}
+            exit={{ y: '-105%' }}
+            transition={{ duration: 0.62, ease: [0.16, 1, 0.3, 1] }}
+            style={{
+              fontWeight:    400,
+              letterSpacing: '0.01em',
+              fontSize:      'clamp(2.75rem, 7vw, 5rem)',
+              lineHeight:    1.2,
+              color:         'hsl(var(--foreground))',
+              margin:        0,
+              paddingBottom: '0.1em', // clears descenders (the 'y', 'f') from the mask
+            }}
+          >
+            {headline}
+          </motion.h1>
+        </AnimatePresence>
+      </div>
     </div>
   )
 }
@@ -228,33 +445,42 @@ export default function ExplorePage() {
     <div className="min-h-screen" style={{ background: 'hsl(var(--background))' }}>
 
       {/* ══════════════════════════════════════════════════════════════════
-          STICKY FILTER BAR — glass atmospheric, no hard border walls
+          EDITORIAL OPENER — the page's thesis moment
       ══════════════════════════════════════════════════════════════════ */}
-      <div
-        className="sticky z-30 glass"
-        style={{ top: '72px' }}
-      >
+      <ExploreOpener category={category} />
+
+      {/* ══════════════════════════════════════════════════════════════════
+          STICKY FILTER BAR — glass atmospheric, top edge-light hairline
+          to match the sort dropdown / VOID glass system
+      ══════════════════════════════════════════════════════════════════ */}
+      <div className="sticky z-30 glass" style={{ top: '72px' }}>
+        {/* Top edge highlight — same signature as the sort dropdown panel */}
+        <div aria-hidden style={{ height: '1px', background: EDGE_LIGHT }} />
+
         <div className="container-wide" style={{ paddingBlock: '0.75rem' }}>
 
-          {/* Categories + Sort — single unified row */}
-          <div className="flex items-center gap-3">
+          {/* Toolbar card — lifts the controls off the page background so
+              the bar reads as a considered surface, not raw buttons on
+              black. Categories + Sort share one row, joined by a hairline
+              divider so Sort no longer floats disconnected in empty space. */}
+          <div
+            className="flex items-center gap-3"
+            style={{
+              padding:      '0.5rem 0.625rem',
+              borderRadius: 'var(--radius-xl)',
+              background:   'hsl(var(--surface-elevated) / 0.4)',
+              border:       '1px solid hsl(var(--border-subtle))',
+              boxShadow:    'var(--shadow-sm)',
+            }}
+          >
+            <CategoryRail value={category} onChange={(v) => setParam('category', v)} />
 
-            {/* Category pills — scrollable, no scrollbar */}
+            {/* Divider — visually ties the sort control to the pill row */}
             <div
-              className="flex gap-1.5 overflow-x-auto scrollbar-hide flex-1"
-              style={{ paddingBottom: '1px' }} /* prevent clipping on pill shadow */
-            >
-              {CATEGORIES.map((cat) => (
-                <button
-                  key={cat.value}
-                  onClick={() => setParam('category', cat.value)}
-                  className={cn('pill shrink-0', category === cat.value && 'active')}
-                  style={{ height: '2.125rem', fontSize: 'var(--text-xs)' }}
-                >
-                  {cat.label}
-                </button>
-              ))}
-            </div>
+              aria-hidden
+              className="hidden sm:block shrink-0"
+              style={{ width: '1px', height: '1.375rem', background: 'hsl(var(--border))' }}
+            />
 
             {/* Sort dropdown — always visible, right-anchored */}
             <div className="shrink-0">
@@ -276,8 +502,8 @@ export default function ExplorePage() {
                 className="overflow-hidden"
               >
                 <div
-                  className="flex items-center gap-2"
-                  style={{ paddingTop: '0.625rem' }}
+                  className="flex items-center gap-2.5"
+                  style={{ paddingTop: '0.75rem', paddingLeft: '0.625rem' }}
                 >
                   <span
                     style={{
@@ -298,13 +524,22 @@ export default function ExplorePage() {
                     exit={{   opacity: 0, scale: 0.88 }}
                     transition={{ duration: 0.2, ease }}
                     onClick={() => setParam('category', '')}
-                    className="badge badge-red flex items-center gap-1 cursor-pointer capitalize"
-                    style={{ transition: 'opacity var(--duration-fast) ease' }}
-                    onMouseEnter={e => ((e.currentTarget as HTMLElement).style.opacity = '0.72')}
+                    className="flex items-center gap-1.5 cursor-pointer capitalize"
+                    style={{
+                      fontSize:     'var(--text-xs)',
+                      fontWeight:   600,
+                      padding:      '0.3125rem 0.75rem',
+                      borderRadius: '999px',
+                      color:        'hsl(var(--accent-foreground))',
+                      background:   ACCENT_GRADIENT,
+                      boxShadow:    ACCENT_GLOW,
+                      transition:   'opacity var(--duration-fast) ease, transform var(--duration-fast) ease',
+                    }}
+                    onMouseEnter={e => ((e.currentTarget as HTMLElement).style.opacity = '0.85')}
                     onMouseLeave={e => ((e.currentTarget as HTMLElement).style.opacity = '1')}
                   >
                     {category}
-                    <X size={8} strokeWidth={2.5} />
+                    <X size={9} strokeWidth={2.75} />
                   </motion.button>
 
                   <button
@@ -314,7 +549,7 @@ export default function ExplorePage() {
                       color:            'hsl(var(--muted-foreground))',
                       textDecoration:   'underline',
                       textUnderlineOffset: '3px',
-                      fontWeight:       300,
+                      fontWeight:       400,
                       transition:       `color var(--duration-hover) var(--ease-smooth)`,
                     }}
                     onMouseEnter={e => ((e.currentTarget as HTMLElement).style.color = 'hsl(var(--foreground))')}
@@ -335,49 +570,99 @@ export default function ExplorePage() {
       <div className="container-wide" style={{ paddingBlock: 'clamp(1.5rem, 3vw, 2.5rem)' }}>
 
         {/* Result meta — editorial weight, not dashboard */}
-        <AnimatePresence>
+        <AnimatePresence mode="wait">
           {!isLoading && (
             <motion.div
+              key={`${category}-${sort}-meta`}
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.35, ease }}
-              className="flex items-baseline gap-2"
+              className="flex items-center gap-2.5"
               style={{ marginBottom: 'clamp(1rem, 2vw, 1.75rem)' }}
             >
-              <span
+              {/* Pulsing accent dot — small "freshly updated" signal, ties
+                  the meta line back to the same accent used on active pills */}
+              <motion.span
+                aria-hidden
                 style={{
-                  fontFamily:    "'Playfair Display', Georgia, serif",
-                  fontWeight:    600,
-                  fontSize:      'clamp(1rem, 1.5vw, 1.125rem)',
-                  letterSpacing: '-0.025em',
-                  color:         'hsl(var(--foreground))',
+                  width:        '5px',
+                  height:       '5px',
+                  borderRadius: '50%',
+                  background:   'hsl(var(--accent))',
+                  boxShadow:    '0 0 6px hsl(var(--accent) / 0.65)',
+                  flexShrink:   0,
                 }}
-              >
-                {total.toLocaleString()}
-              </span>
-              <span
-                style={{
-                  fontSize:   'var(--text-sm)',
-                  color:      'hsl(var(--muted-foreground))',
-                  fontWeight: 300,
-                }}
-              >
-                {total === 1 ? 'product' : 'products'}
-                {category && (
-                  <> in <span style={{ fontStyle: 'italic' }} className="capitalize">{category}</span></>
-                )}
-              </span>
+                animate={{ opacity: [0.45, 1, 0.45] }}
+                transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
+              />
+
+              <div className="flex items-baseline gap-1.5">
+                {/* Count rolls independently when it changes, rather than
+                    only fading with the whole line */}
+                <AnimatePresence mode="wait">
+                  <motion.span
+                    key={total}
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{   opacity: 0, y: 4 }}
+                    transition={{ duration: 0.25, ease }}
+                    style={{
+                      fontFamily:         "'Playfair Display', Georgia, serif",
+                      fontWeight:         600,
+                      fontSize:           'clamp(1.0625rem, 1.6vw, 1.1875rem)',
+                      letterSpacing:      '-0.02em',
+                      color:              'hsl(var(--foreground))',
+                      fontVariantNumeric: 'tabular-nums',
+                    }}
+                  >
+                    {total.toLocaleString()}
+                  </motion.span>
+                </AnimatePresence>
+
+                <span
+                  style={{
+                    fontSize:      'var(--text-sm)',
+                    color:         'hsl(var(--muted-foreground))',
+                    fontWeight:    300,
+                    letterSpacing: '0.01em',
+                  }}
+                >
+                  {total === 1 ? 'product' : 'products'}
+                  {category && (
+                    <>
+                      {' '}in{' '}
+                      <span
+                        className="capitalize"
+                        style={{ fontStyle: 'italic', fontWeight: 500, color: 'hsl(var(--accent))' }}
+                      >
+                        {category}
+                      </span>
+                    </>
+                  )}
+                </span>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Masonry grid */}
-        <MasonryGrid
-          products={products}
-          isLoading={isLoading}
-          skeletonCount={24}
-        />
+        {/* Masonry grid — crossfades on filter change, same beat as the
+            hero's background crossfade between slides */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={`${category}-${sort}-grid`}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.4, ease }}
+          >
+            <MasonryGrid
+              products={products}
+              isLoading={isLoading}
+              skeletonCount={24}
+            />
+          </motion.div>
+        </AnimatePresence>
 
         {/* Load more — breathing loader, matches Liquid Glass system */}
         {isFetchingMore && (
@@ -402,7 +687,7 @@ export default function ExplorePage() {
                   height:       '0.625rem',
                   borderRadius: '50%',
                   background:   'hsl(var(--accent))',
-                  boxShadow:    'var(--shadow-red)',
+                  boxShadow:    ACCENT_GLOW,
                 }}
                 animate={{ scale: [0.85, 1.1, 0.85], opacity: [0.6, 1, 0.6] }}
                 transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
@@ -445,57 +730,109 @@ export default function ExplorePage() {
             className="flex flex-col items-center justify-center text-center"
             style={{ paddingBlock: 'clamp(4rem, 10vw, 7rem)' }}
           >
-            {/* Void vessel */}
-            <div
-              className="void-glow mb-7"
-              style={{
-                width:        '4rem',
-                height:       '4rem',
-                borderRadius: 'var(--radius-xl)',
-                background:   'hsl(var(--surface-elevated))',
-                boxShadow:    'var(--shadow-md)',
-                display:      'flex',
-                alignItems:   'center',
-                justifyContent: 'center',
-                fontSize:     '1.375rem',
-                opacity:      0.5,
-              }}
-            >
-              ✦
+            {/* Void vessel — soft breathing glow behind a glass tile */}
+            <div className="relative mb-8" style={{ width: '5rem', height: '5rem' }}>
+              <motion.div
+                aria-hidden
+                className="absolute inset-0"
+                style={{
+                  borderRadius: '50%',
+                  background:   'radial-gradient(circle, hsl(var(--accent) / 0.22) 0%, transparent 72%)',
+                }}
+                animate={{ scale: [1, 1.3, 1], opacity: [0.45, 0.9, 0.45] }}
+                transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut' }}
+              />
+              <div
+                className="void-glow absolute inset-0 flex items-center justify-center"
+                style={{
+                  borderRadius: 'var(--radius-xl)',
+                  background:   'hsl(var(--surface-elevated))',
+                  border:       '1px solid hsl(var(--border-subtle))',
+                  boxShadow:    'var(--shadow-md)',
+                }}
+              >
+                <motion.span
+                  animate={{ rotate: [0, 18, 0, -18, 0], opacity: [0.65, 1, 0.65] }}
+                  transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
+                  style={{ fontSize: '1.375rem', color: 'hsl(var(--accent))' }}
+                >
+                  ✦
+                </motion.span>
+              </div>
+            </div>
+
+            {/* Headline — same Great Vibes script + curtain-lift reveal as
+                the page opener, so the empty state still feels like the
+                same considered surface rather than a bare fallback. */}
+            <div style={{ overflow: 'hidden' }}>
+              <motion.p
+                className={greatVibes.className}
+                initial={{ y: '105%' }}
+                animate={{ y: '0%' }}
+                transition={{ duration: 0.6, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+                style={{
+                  fontSize:      'clamp(2.5rem, 6vw, 3.5rem)',
+                  fontWeight:    400,
+                  letterSpacing: '0.01em',
+                  lineHeight:    1.2,
+                  color:         'hsl(var(--foreground))',
+                  margin:        0,
+                  paddingBottom: '0.12em', // clears descenders from the mask
+                }}
+              >
+                Nothing found
+              </motion.p>
             </div>
 
             <p
               style={{
-                fontFamily:    "'Playfair Display', Georgia, serif",
-                fontWeight:    600,
-                fontSize:      '1.25rem',
-                letterSpacing: '-0.03em',
-                color:         'hsl(var(--foreground))',
-                marginBottom:  '0.5rem',
-              }}
-            >
-              Nothing found
-            </p>
-            <p
-              style={{
-                fontSize:   'var(--text-sm)',
-                color:      'hsl(var(--muted-foreground))',
-                fontWeight: 300,
-                maxWidth:   '20rem',
-                lineHeight: 1.65,
-                marginBottom: '2rem',
+                fontSize:     'var(--text-sm)',
+                color:        'hsl(var(--muted-foreground))',
+                fontWeight:   300,
+                maxWidth:     '20rem',
+                lineHeight:   1.65,
+                marginTop:    '0.375rem',
+                marginBottom: '2.25rem',
               }}
             >
               Try a different category or adjust your sort order.
             </p>
 
-            <button
+            <motion.button
               onClick={() => router.push('/explore')}
-              className="btn-ghost"
-              style={{ fontSize: 'var(--text-sm)' }}
+              whileTap={{ scale: 0.96 }}
+              whileHover={{ y: -1 }}
+              style={{
+                fontSize:      'var(--text-sm)',
+                fontWeight:    500,
+                padding:       '0.75rem 1.875rem',
+                borderRadius:  '999px',
+                color:         'hsl(var(--foreground))',
+                background:    'transparent',
+                border:        '1px solid hsl(var(--border))',
+                cursor:        'pointer',
+                transition:    `background var(--duration-fast) var(--ease-smooth),
+                                 color var(--duration-fast) var(--ease-smooth),
+                                 border-color var(--duration-fast) var(--ease-smooth),
+                                 box-shadow var(--duration-fast) var(--ease-smooth)`,
+              }}
+              onMouseEnter={e => {
+                const el = e.currentTarget as HTMLElement
+                el.style.background   = ACCENT_GRADIENT
+                el.style.color        = 'hsl(var(--accent-foreground))'
+                el.style.borderColor  = 'transparent'
+                el.style.boxShadow    = ACCENT_GLOW
+              }}
+              onMouseLeave={e => {
+                const el = e.currentTarget as HTMLElement
+                el.style.background   = 'transparent'
+                el.style.color        = 'hsl(var(--foreground))'
+                el.style.borderColor  = 'hsl(var(--border))'
+                el.style.boxShadow    = 'none'
+              }}
             >
               Reset explore
-            </button>
+            </motion.button>
           </motion.div>
         )}
       </div>
