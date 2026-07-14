@@ -22,6 +22,17 @@
  *    label, and Parisienne — the same script used for the hero's "Scroll
  *    to shop" / "See it" — gets one deliberate, sparing appearance on the
  *    "New" section label.
+ *  - Visual/motion polish pass:
+ *    · Filter pills share a layoutId — the active highlight now slides and
+ *      resizes to its new home instead of just swapping colour.
+ *    · Marking a row read animates it out of "New" and into its date
+ *      group (AnimatePresence popLayout) instead of an abrupt jump.
+ *    · Unread rows get a soft breathing halo behind the dot and a faint
+ *      accent ring around the avatar/icon — a quiet "this is new" cue.
+ *    · The sticky header is now frosted (backdrop-blur) with a soft
+ *      shadow fade instead of a flat 1px border.
+ *    · Row hover now lifts (translateY + soft shadow) instead of only
+ *      swapping background colour.
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -198,11 +209,16 @@ export default function NotificationsPage() {
       )}
 
       {/* ── HEADER ── */}
+      {/* Frosted on scroll (backdrop-blur over translucent bg) with a soft
+          shadow fade beneath it instead of a flat 1px border — reads as
+          the content sliding under glass rather than hitting a hard edge. */}
       <header
         className="sticky top-0 z-40"
         style={{
-          background: BG,
-          borderBottom: `1px solid hsl(var(--border) / 0.5)`,
+          background: `hsl(var(--background, 0 0% 100%) / 0.82)`,
+          backdropFilter: 'blur(14px) saturate(1.4)',
+          WebkitBackdropFilter: 'blur(14px) saturate(1.4)',
+          boxShadow: `0 1px 0 hsl(var(--border, 0 0% 90%) / 0.6), 0 12px 24px -18px rgb(0 0 0 / 0.14)`,
         }}
       >
         <div className="container-narrow">
@@ -301,6 +317,7 @@ export default function NotificationsPage() {
               <motion.button
                 onClick={() => fetchNotifications()}
                 aria-label="Refresh"
+                whileHover={reduceMotion ? undefined : { scale: 1.08 }}
                 whileTap={{ scale: 0.92 }}
                 disabled={isLoading}
                 style={{
@@ -330,6 +347,10 @@ export default function NotificationsPage() {
           </div>
 
           {/* ── TYPE FILTERS ── */}
+          {/* The active state now morphs between pills via a shared
+              layoutId instead of just swapping colours — the highlight
+              physically slides and resizes to its new home, the same
+              "magic move" feel as the hero's progress rail filling in. */}
           {items.length > 0 && types.length > 1 && (
             <div
               className="flex items-center gap-2 overflow-x-auto scrollbar-hide"
@@ -337,9 +358,17 @@ export default function NotificationsPage() {
             >
               <button
                 onClick={() => setActiveType('all')}
-                className={cn('pill', interFont.className, activeType === 'all' && 'active-plain')}
-                style={activeType === 'all' ? plainActivePill : undefined}
+                className={cn('pill relative', interFont.className)}
+                style={activeType === 'all' ? pillTextActive : pillTextInactive}
               >
+                {activeType === 'all' && (
+                  <motion.span
+                    layoutId="activeFilterPill"
+                    className="absolute inset-0 -z-10"
+                    style={{ background: FG, borderRadius: 'var(--radius-full, 999px)' }}
+                    transition={reduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 420, damping: 34 }}
+                  />
+                )}
                 All
               </button>
               {types.map(type => {
@@ -350,9 +379,17 @@ export default function NotificationsPage() {
                   <button
                     key={type}
                     onClick={() => setActiveType(type)}
-                    className={cn('pill', interFont.className)}
-                    style={isActive ? plainActivePill : undefined}
+                    className={cn('pill relative', interFont.className)}
+                    style={isActive ? pillTextActive : pillTextInactive}
                   >
+                    {isActive && (
+                      <motion.span
+                        layoutId="activeFilterPill"
+                        className="absolute inset-0 -z-10"
+                        style={{ background: FG, borderRadius: 'var(--radius-full, 999px)' }}
+                        transition={reduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 420, damping: 34 }}
+                      />
+                    )}
                     <Icon size={12} strokeWidth={2.25} />
                     {config.label}
                   </button>
@@ -420,8 +457,9 @@ export default function NotificationsPage() {
         {!isLoading && items.length === 0 && (
           <EmptyState
             title="All caught up"
-            body="When someone follows you, saves your pins, or sends a message, it'll show up here."
+            body="Messages from Support will show up here."
             reduceMotion={!!reduceMotion}
+            flourish="enjoy the quiet"
           />
         )}
 
@@ -438,39 +476,44 @@ export default function NotificationsPage() {
         {/* Notification list */}
         {visible.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }} aria-live="polite">
+            {/* popLayout lets a row that changes from unread → read animate
+                its move from the "New" cluster down into its date group,
+                instead of just vanishing from one spot and popping up in
+                another. */}
+            <AnimatePresence initial={false} mode="popLayout">
+              {unread.length > 0 && (
+                <div key="unread-section">
+                  <SectionLabel>New</SectionLabel>
+                  {unread.map((notif, i) => (
+                    <NotificationRow
+                      key={notif._id}
+                      notif={notif}
+                      index={i}
+                      onRead={() => handleMarkOneRead(notif._id)}
+                      reduceMotion={!!reduceMotion}
+                      canHover={canHover}
+                    />
+                  ))}
+                  {read.length > 0 && <FadeDivider />}
+                </div>
+              )}
 
-            {unread.length > 0 && (
-              <>
-                <SectionLabel>New</SectionLabel>
-                {unread.map((notif, i) => (
-                  <NotificationRow
-                    key={notif._id}
-                    notif={notif}
-                    index={i}
-                    onRead={() => handleMarkOneRead(notif._id)}
-                    reduceMotion={!!reduceMotion}
-                    canHover={canHover}
-                  />
-                ))}
-                {read.length > 0 && <hr className="divider my-5" />}
-              </>
-            )}
-
-            {readGroups.map(([label, group], gi) => (
-              <div key={label}>
-                <SectionLabel>{label}</SectionLabel>
-                {group.map((notif, i) => (
-                  <NotificationRow
-                    key={notif._id}
-                    notif={notif}
-                    index={gi * 6 + i}
-                    onRead={() => {}}
-                    reduceMotion={!!reduceMotion}
-                    canHover={canHover}
-                  />
-                ))}
-              </div>
-            ))}
+              {readGroups.map(([label, group], gi) => (
+                <div key={label}>
+                  <SectionLabel>{label}</SectionLabel>
+                  {group.map((notif, i) => (
+                    <NotificationRow
+                      key={notif._id}
+                      notif={notif}
+                      index={gi * 6 + i}
+                      onRead={() => {}}
+                      reduceMotion={!!reduceMotion}
+                      canHover={canHover}
+                    />
+                  ))}
+                </div>
+              ))}
+            </AnimatePresence>
           </div>
         )}
       </main>
@@ -478,20 +521,52 @@ export default function NotificationsPage() {
   )
 }
 
-// Active filter pill — plain, no accent colour
-const plainActivePill: React.CSSProperties = {
-  background:  FG,
+// A soft gradient fade instead of a hard 1px rule — echoes the hero's
+// hairline dividers (0.5px, low-opacity) rather than a flat <hr>.
+function FadeDivider() {
+  return (
+    <div
+      aria-hidden
+      className="my-5"
+      style={{
+        height: '1px',
+        background: `linear-gradient(90deg, transparent, ${BORDER} 20%, ${BORDER} 80%, transparent)`,
+      }}
+    />
+  )
+}
+
+// Pill text colour only — the background/border is now the animated
+// layoutId element that slides between pills, so these just control the
+// foreground colour and stay transparent themselves.
+const pillTextActive: React.CSSProperties = {
   color:       BG,
-  borderColor: FG,
+  borderColor: 'transparent',
   fontWeight:  500,
+  background:  'transparent',
+}
+const pillTextInactive: React.CSSProperties = {
+  background: 'transparent',
 }
 
 // ─── Section label ──────────────────────────────────────────────────────────
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
+  // "New" gets the one script accent on this page — same restraint as the
+  // hero's Parisienne moments: a single warm touch, not applied everywhere.
+  if (children === 'New') {
+    return (
+      <p
+        className={cn(parisienne.className, 'mb-1.5 px-1 mt-5 first:mt-0')}
+        style={{ color: ACCENT, fontSize: '20px', lineHeight: 1 }}
+      >
+        New
+      </p>
+    )
+  }
   return (
     <p
-      className="text-[10px] font-semibold uppercase tracking-[0.14em] mb-2 px-1 mt-5 first:mt-0"
+      className={cn(interFont.className, 'text-[10px] font-semibold uppercase tracking-[0.14em] mb-2 px-1 mt-5 first:mt-0')}
       style={{ color: MUTED }}
     >
       {children}
@@ -512,21 +587,23 @@ function EmptyState({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease }}
     >
-      <div
+      <motion.div
         className="mb-6"
         style={{
           width:          '4.5rem',
           height:         '4.5rem',
           borderRadius:   'var(--radius-xl)',
-          background:     SURFACE_EL,
+          background:     `radial-gradient(circle at 32% 28%, hsl(var(--accent, 0 78% 54%) / 0.08), ${SURFACE_EL} 70%)`,
           border:         `1px solid ${BORDER}`,
           display:        'flex',
           alignItems:     'center',
           justifyContent: 'center',
         }}
+        animate={reduceMotion ? {} : { scale: [1, 1.045, 1] }}
+        transition={{ duration: 3.6, repeat: Infinity, ease: 'easeInOut' }}
       >
         <Bell size={22} style={{ color: MUTED, strokeWidth: 1.5 }} />
-      </div>
+      </motion.div>
       <p className={playfair.className} style={{
         fontWeight:    600,
         fontSize:      '1.375rem',
@@ -607,7 +684,13 @@ function NotificationRow({
   const content = (
     <>
       {/* Avatar (only if we have one) or a plain icon tile */}
-      <div className="relative shrink-0 mt-0.5">
+      <div
+        className="relative shrink-0 mt-0.5 rounded-full"
+        style={{
+          boxShadow: notif.isRead ? 'none' : `0 0 0 2px hsl(var(--accent, 0 78% 54%) / 0.3)`,
+          transition: 'box-shadow 0.4s ease',
+        }}
+      >
         {hasIdentity ? (
           <>
             <Avatar
@@ -637,9 +720,12 @@ function NotificationRow({
               width:        '2.5rem',
               height:       '2.5rem',
               borderRadius: '50%',
-              background:   SURFACE_EL,
-              border:       `1px solid ${BORDER}`,
+              background:   notif.isRead
+                ? SURFACE_EL
+                : `radial-gradient(circle at 30% 25%, hsl(var(--accent, 0 78% 54%) / 0.14), ${SURFACE_EL} 70%)`,
+              border:       `1px solid ${notif.isRead ? BORDER : 'hsl(var(--accent, 0 78% 54%) / 0.35)'}`,
               color:        FG_SECONDARY,
+              transition:   'background 0.4s ease, border-color 0.4s ease',
             }}
           >
             <Icon size={17} strokeWidth={2} />
@@ -658,7 +744,7 @@ function NotificationRow({
         }}>
           {notif.message}
         </p>
-        <div className="flex items-center gap-2">
+        <div className={cn('flex items-center gap-2', interFont.className)}>
           <p style={{
             fontSize:      '10px',
             color:         MUTED_FG,
@@ -690,6 +776,20 @@ function NotificationRow({
       >
         {!notif.isRead ? (
           <>
+            {/* Soft breathing halo behind the dot — a quiet "this is new"
+                cue instead of a static mark. Off for reduced-motion. */}
+            {!reduceMotion && (
+              <motion.span
+                aria-hidden
+                className="absolute inset-0 m-auto rounded-full sm:block hidden"
+                style={{
+                  width: '0.4375rem', height: '0.4375rem',
+                  background: ACCENT,
+                }}
+                animate={{ scale: [1, 2.4, 1], opacity: [0.35, 0, 0.35] }}
+                transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut', delay: delay + 0.3 }}
+              />
+            )}
             {/* Desktop: dot that hides on hover */}
             <motion.span
               className="absolute inset-0 m-auto rounded-full sm:block hidden group-hover:opacity-0 transition-opacity"
@@ -752,13 +852,15 @@ function NotificationRow({
 
   const hoverIn = (e: React.MouseEvent<HTMLElement>) => {
     if (!canHover.current) return
-    e.currentTarget.style.background = SURFACE_EL
-    e.currentTarget.style.boxShadow  = 'var(--shadow-xs)'
+    e.currentTarget.style.background  = SURFACE_EL
+    e.currentTarget.style.boxShadow   = 'var(--shadow-md, 0 8px 20px -12px rgb(0 0 0 / 0.18))'
+    e.currentTarget.style.transform   = reduceMotion ? '' : 'translateY(-1px)'
   }
   const hoverOut = (e: React.MouseEvent<HTMLElement>) => {
     if (!canHover.current) return
-    e.currentTarget.style.background = notif.isRead ? 'transparent' : SURFACE_EL
-    e.currentTarget.style.boxShadow  = 'none'
+    e.currentTarget.style.background  = notif.isRead ? 'transparent' : SURFACE_EL
+    e.currentTarget.style.boxShadow   = 'none'
+    e.currentTarget.style.transform   = ''
     resetTilt()
   }
   const handleMove = (e: React.MouseEvent<HTMLElement>) => {
@@ -769,8 +871,11 @@ function NotificationRow({
 
   return (
     <motion.div
+      layout={!reduceMotion}
+      layoutId={`row-${notif._id}`}
       initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 8, filter: 'blur(2px)' }}
       animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+      exit={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.97, transition: { duration: 0.2 } }}
       transition={{ delay, duration: 0.35, ease }}
       style={reduceMotion ? undefined : { rotateX: tiltX, rotateY: tiltY, transformPerspective: 600 }}
     >
@@ -779,7 +884,7 @@ function NotificationRow({
           href={notif.link}
           onClick={onRead}
           className={rowClassName}
-          style={rowStyle}
+          style={{ ...rowStyle, transition: 'background 0.25s, box-shadow 0.3s, transform 0.3s' }}
           onMouseEnter={handleMove}
           onMouseMove={handleTiltMove}
           onMouseLeave={hoverOut}
@@ -793,7 +898,7 @@ function NotificationRow({
           onClick={onRead}
           onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') onRead() }}
           className={rowClassName}
-          style={rowStyle}
+          style={{ ...rowStyle, transition: 'background 0.25s, box-shadow 0.3s, transform 0.3s' }}
           onMouseEnter={handleMove}
           onMouseMove={handleTiltMove}
           onMouseLeave={hoverOut}

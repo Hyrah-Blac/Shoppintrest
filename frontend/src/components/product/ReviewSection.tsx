@@ -78,18 +78,15 @@ export function ReviewSection({ productId }: Props) {
           transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
         >
           <h2
-            className="font-display"
+            className={greatVibes.className}
             style={{
-              fontWeight: 600,
-              letterSpacing: '-0.035em',
-              lineHeight: 1.08,
-              fontSize: 'clamp(1.25rem, 2.5vw, var(--text-section))',
+              fontSize: 'clamp(2.25rem, 4vw, 3.25rem)',
+              fontWeight: 400,
+              lineHeight: 1.15,
+              color: 'hsl(var(--foreground))',
             }}
           >
-            Customer{' '}
-            <em className="not-italic" style={{ color: 'hsl(var(--accent))' }}>
-              Reviews
-            </em>
+            Customer Reviews
           </h2>
           {reviews.length > 0 && (
             <p

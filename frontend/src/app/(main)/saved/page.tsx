@@ -1,61 +1,34 @@
 'use client'
 
 /**
- * SavedPage — v3 · Shoppin
+ * SavedPage · Shoppin
  *
- * v2 → v3 (mobile unsaving + polish pass):
- *  - Dropped the hover-only remove button from v2 — it was invisible on
- *    touch, which is most of this page's traffic (you save things while
- *    browsing on your phone, you come back and clean house on your phone).
- *    It also duplicated the heart ProductCard almost certainly already
- *    renders in the same top-right corner, which the empty-state copy
- *    ("Tap the heart...") implies is the primary save affordance.
- *  - Replaced with two things that don't collide with that heart:
- *      1. A quiet, always-visible "Remove" label under each tile — no
- *         hover required, works identically with a mouse, a finger, or
- *         a keyboard tab stop.
- *      2. A swipe-left gesture on the tile itself, the pattern anyone
- *         who's cleaned out a mail or notifications app already knows.
- *  - Removal is undo-able: a bottom toast holds the item for a few
+ * A wishlist grid, not an inbox — quiet at rest, with exactly two ways to
+ * unsave something and no redundant controls fighting for the same corner
+ * of a card:
+ *
+ *  - Desktop: ProductCard's own heart handles it, one click, nothing added.
+ *  - Touch: a swipe-left gesture reveals a red "Unsave" bed behind the
+ *    card, plus a solid Pinterest-red pill underneath in the same
+ *    calligraphic script Hero uses for "Scroll to shop" / "See it" — the
+ *    heart icon is a genuinely hard target to land with a thumb, so touch
+ *    gets a second, larger, easy-to-land control that desktop doesn't need.
+ *  - Either path is undo-able: a bottom toast holds the item for a few
  *    seconds with an Undo action, so a swipe you didn't mean can't
- *    silently lose the piece. The toast's dismiss timer reuses Hero's
- *    ProgressRail drain motif instead of inventing a new one.
- *  - Grid moved from auto-fill/minmax guessing to art-directed Tailwind
- *    breakpoints (2 → 3 → 4 → 5 cols), so phones get a deliberate 2-up
- *    layout instead of whatever auto-fill happens to land on.
- *  - Headline now clamps instead of sitting at one fixed 32px, and the
- *    page picked up safe-area bottom padding to match Hero.
+ *    silently lose the piece. The drain timer reuses Hero's ProgressRail
+ *    motif rather than inventing a new one.
  *
- * v3 → v3.1 (curvy pass):
- *  - Everything that was a hard rectangle picked up real radius: tiles
- *    (RADIUS_LG), the unsave pill, the empty-state CTA, the undo toast,
- *    even the skeleton blocks. Hero's own "Shop Now" stays a sharp
- *    hairline rectangle on purpose (that flatness is doing a job against
- *    a photographic background), but this page isn't sitting on top of a
- *    photo — it's a closet, so softer edges read as friendlier, not off-
- *    brand.
+ * Design tokens (type, ACCENT, RADIUS_*) match HeroSection's so this reads
+ * as the same product, not a different page pasted in.
  *
- * v3.1 → v3.2 (mobile-only unsave, real fix + rename):
- *  - The pill was rendering full-time on desktop too, which was
- *    redundant — ProductCard's own heart already unsaves there with one
- *    click. Restricted it to the sm breakpoint and below, where a heart
- *    icon in the corner of a small thumbnail is a genuinely hard target
- *    to land with a thumb.
- *  - Renamed "Remove" → "Unsave" everywhere it's user-facing (the pill,
- *    the swipe-reveal bed, the swipe hint, the undo toast) — this is a
- *    save/unsave action, not a delete, and the copy should say so.
- *  - Gave the mobile control actual presence: a solid Pinterest-red pill,
- *    a springy pop-in on mount, a one-time glossy sweep across it once it
- *    lands, and a snappy scale-down on tap.
- *  - Fixed a real bug alongside this: the swipe-reveal bed had no tie to
- *    the actual drag distance, so it rendered at full opacity all the
- *    time and bled a solid accent panel through any transparent part of
- *    ProductCard. Its opacity is now driven by the live drag value and
- *    it's scoped to just the card, not the whole tile.
+ * Touch detection uses actual input capability (matchMedia on hover/pointer,
+ * same pattern as Hero's CustomCursor) rather than a viewport breakpoint —
+ * a resized or docked desktop window shouldn't get treated as mobile.
  *
- * Assumption to verify against the real store: removeSaved(id) and
- * saveProduct(product) below are guessed method names on useSavedStore.
- * Rename the two call sites if the store uses different ones.
+ * useSavedStore's real method names haven't been confirmed. handleRequestRemove
+ * / handleUndo below try a short list of likely candidates and, if none
+ * match, log the store's actual keys to the console instead of failing
+ * silently — if unsaving does nothing, check there first.
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react'
@@ -100,8 +73,25 @@ const UNDO_WINDOW_MS = 5000
 
 // Shared curvature — one scale so every rounded thing on the page reads as
 // the same hand, rather than each component picking its own radius.
-const RADIUS_LG   = 20   // tiles, remove bed, toast
+const RADIUS_LG   = 20   // tiles, unsave bed, toast
 const RADIUS_PILL = 999  // buttons, badges
+
+// One focus treatment reused on every button on the page, so Tab users get
+// the same clear, on-brand ring everywhere instead of each browser's
+// inconsistent default outline (or, worse, silence). Composes with an
+// element's own resting box-shadow rather than replacing it, since a
+// couple of these buttons already use box-shadow for depth.
+function useFocusRing(restingShadow = 'none') {
+  const ring = `0 0 0 2px hsl(var(--background)), 0 0 0 4px ${ACCENT}`
+  return {
+    onFocus: (e: React.FocusEvent<HTMLElement>) => {
+      e.currentTarget.style.boxShadow = restingShadow === 'none' ? ring : `${restingShadow}, ${ring}`
+    },
+    onBlur: (e: React.FocusEvent<HTMLElement>) => {
+      e.currentTarget.style.boxShadow = restingShadow
+    },
+  }
+}
 
 // ─── useIsTouchDevice ─────────────────────────────────────────────────────
 // A viewport-width breakpoint (sm:hidden) answers "is the window narrow"
@@ -539,15 +529,23 @@ function UndoToast({
 // ─── SavedPage ────────────────────────────────────────────────────────────
 
 export default function SavedPage() {
-  const store = useSavedStore() as {
+  // Cast loosely rather than to a fixed shape — the actual method names on
+  // useSavedStore haven't been confirmed, so this tries a short list of
+  // likely candidates instead of assuming one and failing silently.
+  const store = useSavedStore() as Record<string, unknown> & {
     savedProducts: SavedProduct[]
     isLoaded: boolean
     loadSaved: () => void
-    removeSaved?: (id: string) => void
-    saveProduct?: (product: SavedProduct) => void
   }
-  const { savedProducts, isLoaded, loadSaved, removeSaved, saveProduct } = store
+  const { savedProducts, isLoaded, loadSaved } = store
   const isTouch = useIsTouchDevice()
+
+  const removeSaved = (store.removeSaved ?? store.unsaveProduct ?? store.removeFromSaved ?? store.deleteSaved ?? store.unsave) as
+    | ((id: string) => void)
+    | undefined
+  const saveProduct = (store.saveProduct ?? store.addSaved ?? store.saveItem ?? store.save) as
+    | ((product: SavedProduct) => void)
+    | undefined
 
   const [pendingRemoval, setPendingRemoval] = useState<SavedProduct | null>(null)
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -558,18 +556,37 @@ export default function SavedPage() {
 
   const handleRequestRemove = useCallback(
     (product: SavedProduct) => {
-      removeSaved?.(product._id)
+      if (!removeSaved) {
+        // Loud on purpose — a silent optional-chain no-op here looks
+        // exactly like "the button doesn't work" with nothing in the
+        // console to explain why. This prints the store's real shape so
+        // the actual method name is one console open away.
+        console.error(
+          '[SavedPage] useSavedStore has no removeSaved/unsaveProduct/removeFromSaved/deleteSaved/unsave method. ' +
+          'Available store keys:', Object.keys(store)
+        )
+        return
+      }
+      removeSaved(product._id)
       setPendingRemoval(product)
       if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
     },
-    [removeSaved]
+    [removeSaved, store]
   )
 
   const handleUndo = useCallback(() => {
     if (!pendingRemoval) return
-    saveProduct?.(pendingRemoval)
+    if (!saveProduct) {
+      console.warn(
+        '[SavedPage] useSavedStore has no saveProduct/addSaved/saveItem/save method — Undo can\'t restore the item. ' +
+        'Available store keys:', Object.keys(store)
+      )
+      setPendingRemoval(null)
+      return
+    }
+    saveProduct(pendingRemoval)
     setPendingRemoval(null)
-  }, [pendingRemoval, saveProduct])
+  }, [pendingRemoval, saveProduct, store])
 
   const handleExpire = useCallback(() => {
     setPendingRemoval(null)

@@ -1,7 +1,19 @@
 'use client'
 
 /**
- * Navbar — v9 · Shoppin
+ * Navbar — v10 · Shoppin
+ *
+ * v9 → v10: pixel-perfect alignment
+ *  - Logo now a single fixed 32px size on every breakpoint instead of
+ *    jumping at sm: — same look, same alignment, on any device
+ *  - Nav pills (Explore, Women, Men, Categories) switched from
+ *    padding-derived height to an explicit h-8, so they can't drift a
+ *    pixel or two off from font-rendering differences across browsers
+ *  - Search trigger bumped to the same h-8 so it sits exactly on the same
+ *    line as the logo and pills, instead of floating slightly lower
+ *  - Recalculated the scroll spacer / mobile backdrop offset against the
+ *    real tallest row element (the 40px .btn-icon buttons, not the logo),
+ *    since that's what actually determines the header's rendered height
  *
  * v8 → v9: smaller still
  *  - Header padding cut again (py-1.5/py-1 depending on scroll state)
@@ -96,11 +108,14 @@ const mobileOnlyLinks = [
 ]
 
 // Shared pill style for top-level desktop nav items (Explore, Women, Men,
-// and the Categories trigger) so the active/inactive styling only lives
-// in one place.
+// and the Categories trigger). Height is fixed (not padding-derived) so
+// every pill — and the logo/search trigger next to them, which share the
+// same h-8 — line up on the exact same row height across browsers and
+// devices, instead of drifting a pixel or two from font-rendering
+// differences in padding-based sizing.
 const navPillClass = (active: boolean) =>
   cn(
-    'relative px-2.5 py-1 rounded-[var(--radius-sm)] text-[13px] font-medium',
+    'relative h-8 flex items-center px-2.5 rounded-[var(--radius-sm)] text-[13px] font-medium',
     'transition-all duration-[var(--duration-hover)]',
     active
       ? 'text-[hsl(var(--foreground))] bg-[hsl(var(--surface))]'
@@ -204,12 +219,12 @@ export function Navbar() {
               cropping/aspect math required, and it'll never show a
               background box on any theme. */}
           <Link href="/" className="shrink-0 flex items-center" aria-label="Shoppin — home">
-            <div className="relative w-8 h-8 sm:w-9 sm:h-9">
+            <div className="relative w-8 h-8">
               <Image
                 src="/logo.png"
                 alt="Shoppin"
                 fill
-                sizes="36px"
+                sizes="32px"
                 className="object-contain"
                 priority
               />
@@ -325,18 +340,20 @@ export function Navbar() {
           {/* ── Right Actions ── */}
           <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
 
-            {/* Search — desktop only, styled as an actual field trigger */}
+            {/* Search — desktop only, styled as an actual field trigger.
+                h-8 matches the logo and nav pills exactly, so it sits on
+                the same line rather than floating a couple px off. */}
             <button
               onClick={() => setIsSearchOpen(true)}
               aria-label="Search"
-              className="hidden md:flex items-center gap-1.5 h-6 px-2 rounded-full text-[12px]
+              className="hidden md:flex items-center gap-1.5 h-8 px-2.5 rounded-full text-[12.5px]
                          text-[hsl(var(--muted))] transition-all duration-[var(--duration-hover)]
                          border border-[hsl(var(--border))] bg-[hsl(var(--surface)/0.5)]
                          hover:text-[hsl(var(--foreground))] hover:border-[hsl(var(--foreground)/0.2)]
                          hover:bg-[hsl(var(--surface))]"
-              style={{ minWidth: '118px' }}
+              style={{ minWidth: '128px' }}
             >
-              <Search size={12} className="shrink-0" />
+              <Search size={13} className="shrink-0" />
               <span className="truncate">Search anything…</span>
             </button>
 
@@ -610,7 +627,7 @@ export function Navbar() {
                 animate={{ opacity: 1 }}
                 exit={{   opacity: 0 }}
                 transition={{ duration: 0.2 }}
-                className="fixed inset-0 top-11 bg-black/40 md:hidden -z-10"
+                className="fixed inset-0 top-[52px] bg-black/40 md:hidden -z-10"
                 onClick={() => setIsMobileOpen(false)}
                 aria-hidden
               />
@@ -838,7 +855,7 @@ export function Navbar() {
         </AnimatePresence>
       </motion.header>
 
-      <div className="h-11" aria-hidden />
+      <div className="h-[52px]" aria-hidden />
 
       <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
     </>

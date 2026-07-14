@@ -192,7 +192,38 @@ function Bubble({
     )
   }
 
-  const metaWidth = isMine ? 72 : 58
+  const metaBadgeStyle: React.CSSProperties = {
+    ...UTILITY,
+    display: 'flex', alignItems: 'center', gap: 3,
+    fontSize: 11, fontWeight: 500, lineHeight: 1,
+    padding: '1px 5px',
+    borderRadius: 6,
+    whiteSpace: 'nowrap',
+  }
+
+  const metaContent = status === 'failed' ? (
+    <button
+      className="wa-retry-btn"
+      onClick={onRetry}
+      tabIndex={-1}
+      style={{
+        ...UTILITY,
+        fontSize: 11, fontWeight: 600, color: '#ffd9a0',
+        background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+        display: 'flex', alignItems: 'center', gap: 4,
+      }}
+    >
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/>
+      </svg>
+      Retry
+    </button>
+  ) : (
+    <>
+      <span>{timeLabel(createdAt)}</span>
+      {isMine && <Ticks status={status} isRead={isRead} />}
+    </>
+  )
 
   return (
     <motion.div
@@ -246,53 +277,32 @@ function Bubble({
           </svg>
         )}
 
-        {/* Message text with reserved trailing space for meta */}
+        {/* Message text, with an invisible clone of the real meta badge
+            reserved inline right after it — guarantees the blank gap left
+            for the visible badge always matches its actual width exactly,
+            instead of guessing a fixed pixel number that drifts out of
+            sync with real content (this is what caused the badge to
+            overlap short messages). */}
         <span style={{ ...UTILITY, whiteSpace: 'pre-wrap' }}>
           {text}
-          <span style={{
-            display: 'inline-block',
-            width: metaWidth,
-            height: 1,
-            verticalAlign: 'bottom',
-          }} />
+          <span
+            aria-hidden
+            style={{ ...metaBadgeStyle, display: 'inline-flex', visibility: 'hidden' }}
+          >
+            {metaContent}
+          </span>
         </span>
 
-        {/* Meta (time + ticks), absolutely positioned bottom-right */}
+        {/* Meta (time + ticks, or retry), absolutely positioned bottom-right */}
         <span style={{
-          ...UTILITY,
+          ...metaBadgeStyle,
           position: 'absolute',
           right: 6, bottom: 5,
-          display: 'flex', alignItems: 'center', gap: 3,
-          fontSize: 11, fontWeight: 500, lineHeight: 1,
-          padding: '1px 5px',
-          borderRadius: 6,
           background: isMine ? 'hsl(0 0% 100% / 0.14)' : 'hsl(0 0% 100% / 0.06)',
           color: isMine ? 'var(--wa-meta-out)' : 'var(--wa-meta)',
-          whiteSpace: 'nowrap',
           userSelect: 'none',
         }}>
-          {status === 'failed' ? (
-            <button
-              className="wa-retry-btn"
-              onClick={onRetry}
-              style={{
-                ...UTILITY,
-                fontSize: 11, fontWeight: 600, color: '#ffd9a0',
-                background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-                display: 'flex', alignItems: 'center', gap: 4,
-              }}
-            >
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/>
-              </svg>
-              Retry
-            </button>
-          ) : (
-            <>
-              <span>{timeLabel(createdAt)}</span>
-              {isMine && <Ticks status={status} isRead={isRead} />}
-            </>
-          )}
+          {metaContent}
         </span>
       </div>
     </motion.div>
