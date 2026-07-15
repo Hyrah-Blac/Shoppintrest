@@ -33,7 +33,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import Link from 'next/link'
-import { Playfair_Display, DM_Sans, Parisienne } from 'next/font/google'
+import { Playfair_Display, DM_Sans, Parisienne, Great_Vibes } from 'next/font/google'
 import {
   motion,
   AnimatePresence,
@@ -43,7 +43,7 @@ import {
   useSpring,
   useReducedMotion,
 } from 'framer-motion'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, Heart } from 'lucide-react'
 import { useSavedStore } from '@/store/useSavedStore'
 import { ProductCard } from '@/components/product/ProductCard'
 
@@ -57,6 +57,11 @@ const dmSans    = DM_Sans({ weight: ['400', '500', '700'], subsets: ['latin'], d
 // so it's kept out of the all-caps/tracked-caps treatment everything
 // else on this page uses.
 const parisienne = Parisienne({ weight: '400', subsets: ['latin'], display: 'swap' })
+// The main headline script — same font Hero uses for its own title and
+// Notifications now mirrors for "Notifications." Kept to natural case and
+// zero letter-spacing here too: negative tracking breaks a connecting
+// script's joined strokes.
+const greatVibes = Great_Vibes({ weight: '400', subsets: ['latin'], display: 'swap' })
 
 const clipReveal = {
   hidden:  { y: '105%' },
@@ -68,6 +73,9 @@ const clipReveal = {
 // if the variable is missing. Identical token to HeroSection's ACCENT.
 const ACCENT     = 'hsl(var(--accent, 0 78% 54%))'
 const ACCENT_INK = 'hsl(var(--accent-foreground, 0 0% 100%))'
+// Same fallback-safe pattern as ACCENT, mirroring Notifications' FG token —
+// used for the white half of the two-tone script title below.
+const FG = 'hsl(var(--foreground, 0 0% 9%))'
 
 const UNDO_WINDOW_MS = 5000
 
@@ -156,22 +164,41 @@ function MagneticButton({ children }: { children: React.ReactNode }) {
 
 function PageTitle() {
   return (
-    <div style={{ overflow: 'hidden', display: 'inline-block', lineHeight: 1 }}>
+    <div
+      style={{
+        overflow:  'hidden',
+        display:   'inline-block',
+        lineHeight: 1,
+        // Script faces like Great Vibes draw well above the normal line
+        // box (the S's loop especially) — with lineHeight:1 and nothing
+        // else, that ink sits right at the container's top edge and
+        // overflow:hidden clips straight through it. This padding buys
+        // headroom scaled to the font size (em, not px, so it tracks the
+        // clamp() below), and the negative margin cancels it back out so
+        // it doesn't push the rest of the header down.
+        paddingTop: '0.32em',
+        marginTop:  '-0.32em',
+      }}
+    >
       <motion.h1
         variants={clipReveal}
         initial="hidden"
         animate="visible"
         transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-        className={playfair.className}
+        className={greatVibes.className}
         style={{
-          fontSize:      'clamp(1.75rem, 4vw, 2.25rem)',
-          fontWeight:    500,
+          // Natural case, zero tracking — negative letter-spacing (what
+          // the old Playfair treatment used) breaks a connecting script's
+          // joined strokes, same reasoning as Hero and Notifications.
+          fontSize:      'clamp(2.75rem, 7vw, 4.5rem)',
+          fontWeight:    400,
           margin:        0,
-          letterSpacing: '-0.02em',
+          letterSpacing: '0em',
           display:       'block',
+          color:         FG,
         }}
       >
-        Saved
+        Sa<span style={{ color: ACCENT }}>ved</span>
       </motion.h1>
     </div>
   )
@@ -180,6 +207,7 @@ function PageTitle() {
 // ─── ExploreCTA (empty state) ─────────────────────────────────────────────
 
 function ExploreCTA() {
+  const focusRing = useFocusRing()
   return (
     <MagneticButton>
       <Link
@@ -199,18 +227,23 @@ function ExploreCTA() {
           borderRadius:   RADIUS_PILL,
           padding:        '14px 32px',
           whiteSpace:     'nowrap',
-          transition:     'background 0.35s ease, color 0.35s ease, border-color 0.35s ease',
+          transition:     'background 0.35s ease, color 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease, transform 0.35s ease',
         }}
         onMouseEnter={e => {
           e.currentTarget.style.background  = ACCENT
           e.currentTarget.style.color       = ACCENT_INK
           e.currentTarget.style.borderColor = ACCENT
+          e.currentTarget.style.boxShadow   = '0 8px 24px hsl(var(--accent, 0 78% 54%) / 0.35)'
+          e.currentTarget.style.transform   = 'translateY(-1px)'
         }}
         onMouseLeave={e => {
           e.currentTarget.style.background  = 'transparent'
           e.currentTarget.style.color       = 'hsl(var(--foreground))'
           e.currentTarget.style.borderColor = 'hsl(var(--foreground) / 0.35)'
+          e.currentTarget.style.boxShadow   = 'none'
+          e.currentTarget.style.transform   = 'translateY(0)'
         }}
+        {...focusRing}
       >
         <span>Explore the collection</span>
         <ArrowRight size={12} />
@@ -250,6 +283,8 @@ function SavedTile({
   const bedOpacity = useTransform(dragX, [0, -20, -70], [0, 0, 1])
   const cardControls = useAnimation()
   const [dismissed, setDismissed] = useState(false)
+  const pillRestShadow = '0 6px 18px hsl(var(--accent, 0 78% 54%) / 0.4), inset 0 1px 0 rgba(255,255,255,0.25)'
+  const pillFocusRing = useFocusRing(pillRestShadow)
 
   const fireRemove = useCallback(() => {
     setDismissed(true)
@@ -306,6 +341,8 @@ function SavedTile({
           dragDirectionLock
           dragConstraints={{ left: -140, right: 0 }}
           dragElastic={{ left: 0.5, right: 0 }}
+          whileHover={isTouch ? undefined : { y: -4, boxShadow: '0 14px 30px rgba(0,0,0,0.22)' }}
+          transition={{ type: 'spring', stiffness: 300, damping: 24 }}
           style={{
             x: dragX,
             position:     'relative',
@@ -349,9 +386,10 @@ function SavedTile({
             borderRadius:    RADIUS_PILL,
             padding:         '8px 22px 10px',
             cursor:          'pointer',
-            boxShadow:       '0 6px 18px hsl(var(--accent, 0 78% 54%) / 0.4), inset 0 1px 0 rgba(255,255,255,0.25)',
+            boxShadow:       pillRestShadow,
           }}
           aria-label={`Unsave ${product.title ?? 'this item'}`}
+          {...pillFocusRing}
         >
           {/* One-time glossy sweep after the pill lands — the bit of
               polish that makes solid red read as a considered surface
@@ -403,8 +441,23 @@ function SkeletonGrid() {
 // ─── EmptyState ───────────────────────────────────────────────────────────
 
 function EmptyState() {
+  const reduceMotion = useReducedMotion()
   return (
     <div style={{ padding: '6rem 1rem', textAlign: 'center' }}>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.7 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ type: 'spring', stiffness: 200, damping: 16, delay: 0.05 }}
+        style={{ display: 'inline-flex', marginBottom: 20 }}
+      >
+        <motion.div
+          animate={reduceMotion ? {} : { y: [0, -6, 0] }}
+          transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut' }}
+        >
+          <Heart size={30} strokeWidth={1.25} style={{ color: 'hsl(var(--muted) / 0.4)' }} />
+        </motion.div>
+      </motion.div>
+
       <div style={{ overflow: 'hidden', display: 'inline-block', marginBottom: 12 }}>
         <motion.p
           variants={clipReveal}
@@ -459,6 +512,7 @@ function UndoToast({
   onUndo: () => void
   onExpire: () => void
 }) {
+  const focusRing = useFocusRing()
   return (
     <motion.div
       initial={{ y: 40, opacity: 0 }}
@@ -499,10 +553,15 @@ function UndoToast({
           color:         ACCENT,
           background:    'none',
           border:        'none',
-          padding:       0,
+          borderRadius:  4,
+          padding:       '2px 1px',
           cursor:        'pointer',
           whiteSpace:    'nowrap',
+          transition:    'opacity 0.2s ease',
         }}
+        onMouseEnter={e => { e.currentTarget.style.opacity = '0.7' }}
+        onMouseLeave={e => { e.currentTarget.style.opacity = '1' }}
+        {...focusRing}
       >
         Undo
       </button>
@@ -569,13 +628,19 @@ export default function SavedPage() {
       }
       removeSaved(product._id)
       setPendingRemoval(product)
+      // JS-level fallback for the toast's own drain-bar timer — the visual
+      // one is enough on its own most of the time, but a backgrounded tab
+      // can pause its rAF-driven animation without pausing setTimeout, so
+      // this guarantees the toast can't get stuck open indefinitely.
       if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
+      undoTimerRef.current = setTimeout(() => setPendingRemoval(null), UNDO_WINDOW_MS + 400)
     },
     [removeSaved, store]
   )
 
   const handleUndo = useCallback(() => {
     if (!pendingRemoval) return
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
     if (!saveProduct) {
       console.warn(
         '[SavedPage] useSavedStore has no saveProduct/addSaved/saveItem/save method — Undo can\'t restore the item. ' +
@@ -659,7 +724,7 @@ export default function SavedPage() {
           initial={{ scaleX: 0, originX: 0 }}
           animate={{ scaleX: 1 }}
           transition={{ duration: 0.6, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
-          style={{ height: '0.5px', background: 'hsl(var(--border) / 0.6)', marginTop: '1.5rem' }}
+          style={{ height: '0.5px', background: 'hsl(var(--border) / 0.6)', marginTop: '2rem' }}
         />
 
         {/* Swipe hint — only shown once there's something to swipe, and

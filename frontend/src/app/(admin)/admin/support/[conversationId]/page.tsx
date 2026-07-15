@@ -1,8 +1,13 @@
 'use client'
 
-import { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from 'react'
+// PATH: src/app/(admin)/admin/support/[conversationId]/page.tsx
+// (adjust to match your actual admin route — this wasn't in the file tree
+// you shared earlier, so double-check the folder name matches your router)
+
+import { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo, useId } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
+import { motion, AnimatePresence } from 'framer-motion'
 import { apiClient }        from '@/lib/api'
 import { useSupportChat }   from '@/hooks/useSupportChat'
 import { useStreamContext } from '@/components/providers/StreamProvider'
@@ -10,7 +15,9 @@ import { useStreamContext } from '@/components/providers/StreamProvider'
 /**
  * All colours are CSS variables — define these in your global stylesheet
  * (or in a [data-theme] / .dark / .light block) so dark/light mode just
- * works by toggling the theme:
+ * works by toggling the theme. This was already the right architecture in
+ * the original file — untouched here, just extended with a couple more
+ * tokens the new bits use:
  *
  *  --chat-bg              Page / chat area background
  *  --chat-surface         Bubble & input background (elevated)
@@ -23,12 +30,21 @@ import { useStreamContext } from '@/components/providers/StreamProvider'
  *  --chat-accent-hover    Pinterest red hover — #ff1a38
  *  --chat-bubble-out      Outgoing bubble bg  → var(--chat-accent)
  *  --chat-bubble-out-text Outgoing bubble text → #fff
- *  --chat-online          Online indicator dot
+ *  --chat-online          Online indicator dot / halo — #25d366
  *  --chat-tick-read       Read receipt blue
  */
 
+const ease = [0.22, 1, 0.36, 1] as const
+
+// Playfair Display / DM Sans — matches the pairing used sitewide (Hero,
+// Footer, Contact, the customer-facing support chat). The original file
+// used Cormorant Garamond here, which was inconsistent with the rest of
+// the site's type system.
 const DISPLAY: React.CSSProperties = {
-  fontFamily: 'var(--font-serif, "Cormorant Garamond", Georgia, serif)',
+  fontFamily: '"Playfair Display", var(--font-display, Georgia), serif',
+}
+const UTILITY: React.CSSProperties = {
+  fontFamily: '"DM Sans", var(--font-sans, system-ui), sans-serif',
 }
 
 interface AdminConversation {
@@ -93,10 +109,19 @@ function Ticks({ status, isRead }: { status?: 'sending' | 'failed' | 'sent'; isR
   }
   const col = isRead ? 'var(--chat-tick-read)' : 'var(--chat-bubble-out-text)'
   return (
-    <svg width="16" height="11" viewBox="0 0 16 11" fill="none" style={{ flexShrink: 0, opacity: 0.7 }}>
-      <path d="M11.071.653a.457.457 0 0 0-.304-.102.493.493 0 0 0-.381.178l-6.19 7.636-2.405-2.272a.463.463 0 0 0-.336-.139.46.46 0 0 0-.336.139l-.32.323a.45.45 0 0 0 0 .646l2.926 2.926c.094.094.218.146.349.146h.013a.49.49 0 0 0 .363-.183l6.625-8.171a.453.453 0 0 0-.004-.62z" fill={col}/>
-      <path d="M15.071.653a.457.457 0 0 0-.304-.102.493.493 0 0 0-.381.178l-6.19 7.636-.708-.668-.621.766 1.064 1.005c.094.094.218.146.349.146h.013a.49.49 0 0 0 .363-.183l6.625-8.171a.453.453 0 0 0-.21-.607z" fill={col}/>
-    </svg>
+    <AnimatePresence mode="wait" initial={false}>
+      <motion.svg
+        key={isRead ? 'read' : 'sent'}
+        width="16" height="11" viewBox="0 0 16 11" fill="none"
+        style={{ flexShrink: 0, opacity: 0.7 }}
+        initial={{ opacity: 0, scale: 0.5 }}
+        animate={{ opacity: 0.7, scale: 1 }}
+        transition={{ duration: 0.25, ease }}
+      >
+        <path d="M11.071.653a.457.457 0 0 0-.304-.102.493.493 0 0 0-.381.178l-6.19 7.636-2.405-2.272a.463.463 0 0 0-.336-.139.46.46 0 0 0-.336.139l-.32.323a.45.45 0 0 0 0 .646l2.926 2.926c.094.094.218.146.349.146h.013a.49.49 0 0 0 .363-.183l6.625-8.171a.453.453 0 0 0-.004-.62z" fill={col}/>
+        <path d="M15.071.653a.457.457 0 0 0-.304-.102.493.493 0 0 0-.381.178l-6.19 7.636-.708-.668-.621.766 1.064 1.005c.094.094.218.146.349.146h.013a.49.49 0 0 0 .363-.183l6.625-8.171a.453.453 0 0 0-.21-.607z" fill={col}/>
+      </motion.svg>
+    </AnimatePresence>
   )
 }
 
@@ -110,6 +135,7 @@ function Bubble({ text, isMine, createdAt, isSystem, showTail, status, onRetry }
     return (
       <div style={{ textAlign: 'center', padding: '6px 0', margin: '4px 0' }}>
         <span style={{
+          ...UTILITY,
           fontSize: 11.5, color: 'var(--chat-text-meta)',
           background: 'var(--chat-surface)',
           border: '0.5px solid var(--chat-border)',
@@ -123,14 +149,19 @@ function Bubble({ text, isMine, createdAt, isSystem, showTail, status, onRetry }
   }
 
   return (
-    <div style={{
-      display: 'flex',
-      flexDirection: isMine ? 'row-reverse' : 'row',
-      margin: '1px 0', padding: '0 8px',
-    }}>
+    <motion.div
+      initial={{ opacity: 0, y: 10, scale: 0.97 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.26, ease }}
+      style={{
+        display: 'flex',
+        flexDirection: isMine ? 'row-reverse' : 'row',
+        margin: '1px 0', padding: '0 8px',
+      }}
+    >
       <div style={{
         position: 'relative',
-        maxWidth: 'min(74%, calc(100vw - 88px))',
+        maxWidth: 'min(74%, 460px)',
         minWidth: 64,
         background: isMine ? 'var(--chat-bubble-out)' : 'var(--chat-surface)',
         color: isMine ? 'var(--chat-bubble-out-text)' : 'var(--chat-text-primary)',
@@ -161,8 +192,11 @@ function Bubble({ text, isMine, createdAt, isSystem, showTail, status, onRetry }
           </svg>
         )}
 
-        {/* Text + timestamp — flex-wrap prevents overlap */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', columnGap: 8, rowGap: 3 }}>
+        {/* Text + timestamp — flex-wrap prevents overlap. This layout
+            (text flex-grows, meta shrinks + wraps down if there's no
+            room) sidesteps the reserved-space-guessing bug that showed
+            up on the customer-facing version — no change needed here. */}
+        <div style={{ ...UTILITY, display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', columnGap: 8, rowGap: 3 }}>
           <span style={{ whiteSpace: 'pre-wrap', flex: '1 1 auto', minWidth: 0 }}>
             {text}
           </span>
@@ -175,7 +209,8 @@ function Bubble({ text, isMine, createdAt, isSystem, showTail, status, onRetry }
             whiteSpace: 'nowrap', userSelect: 'none',
           }}>
             {status === 'failed' ? (
-              <button onClick={onRetry} style={{
+              <button onClick={onRetry} className="chat-retry-btn" style={{
+                ...UTILITY,
                 fontSize: 11, fontWeight: 600, color: 'var(--chat-warn, #fbbf24)',
                 background: 'none', border: 'none', cursor: 'pointer', padding: 0,
                 display: 'flex', alignItems: 'center', gap: 4,
@@ -194,7 +229,7 @@ function Bubble({ text, isMine, createdAt, isSystem, showTail, status, onRetry }
           </span>
         </div>
       </div>
-    </div>
+    </motion.div>
   )
 }
 
@@ -210,14 +245,14 @@ function EmojiPicker({ onPick, onClose }: { onPick: (e: string) => void; onClose
   return (
     <div ref={ref} style={{
       position: 'absolute', bottom: '100%', left: 8, marginBottom: 8,
-      width: 'min(300px, calc(100vw - 48px))', maxHeight: 'min(280px, 50vh)',
+      width: 'min(300px, calc(100% - 16px))', maxHeight: 'min(280px, 50vh)',
       overflowY: 'auto', background: 'var(--chat-surface)',
       border: '0.5px solid var(--chat-border)', borderRadius: 14,
       padding: '10px 8px', zIndex: 20,
     }}>
       {EMOJI_GROUPS.map(g => (
         <div key={g.label} style={{ marginBottom: 8 }}>
-          <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--chat-text-meta)', margin: '2px 4px 5px', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+          <p style={{ ...UTILITY, fontSize: 10, fontWeight: 600, color: 'var(--chat-text-meta)', margin: '2px 4px 5px', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
             {g.label}
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
@@ -283,7 +318,7 @@ function Composer({ onSend, onTyping }: { onSend: (t: string) => Promise<void>; 
       flexShrink: 0, position: 'relative',
     }}>
       <button onClick={() => setShowEmoji(v => !v)} aria-label="Emoji" style={{
-        width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
+        width: 44, height: 44, borderRadius: '50%', flexShrink: 0,
         border: 'none', background: 'transparent', cursor: 'pointer',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         fontSize: 22, lineHeight: 1, transition: 'background 0.12s',
@@ -291,7 +326,17 @@ function Composer({ onSend, onTyping }: { onSend: (t: string) => Promise<void>; 
       }}
         onMouseEnter={e => (e.currentTarget.style.background = 'var(--chat-surface-hi)')}
         onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-      >😊</button>
+      >
+        <motion.span
+          key={String(showEmoji)}
+          initial={{ scale: 1 }}
+          animate={{ scale: [1, 1.3, 1] }}
+          transition={{ duration: 0.3, ease }}
+          style={{ display: 'inline-block' }}
+        >
+          😊
+        </motion.span>
+      </button>
 
       {showEmoji && <EmojiPicker onPick={insertEmoji} onClose={() => setShowEmoji(false)} />}
 
@@ -299,7 +344,7 @@ function Composer({ onSend, onTyping }: { onSend: (t: string) => Promise<void>; 
         flex: 1, display: 'flex', alignItems: 'flex-end',
         background: 'var(--chat-surface)',
         border: '0.5px solid var(--chat-border)',
-        borderRadius: 22, padding: '0 6px 0 14px', minHeight: 42,
+        borderRadius: 22, padding: '0 6px 0 14px', minHeight: 44,
         transition: 'border-color 0.15s',
       }}>
         <textarea ref={ref} value={input}
@@ -308,7 +353,7 @@ function Composer({ onSend, onTyping }: { onSend: (t: string) => Promise<void>; 
           placeholder="Reply to customer…" rows={1}
           style={{
             flex: 1, resize: 'none', border: 'none', outline: 'none',
-            background: 'transparent', fontSize: 15, lineHeight: 1.5,
+            background: 'transparent', fontSize: 16, lineHeight: 1.5,
             color: 'var(--chat-text-primary)', caretColor: 'var(--chat-accent)',
             fontFamily: 'var(--font-sans)',
             overflowY: 'hidden', padding: '9px 0', maxHeight: 130,
@@ -316,24 +361,28 @@ function Composer({ onSend, onTyping }: { onSend: (t: string) => Promise<void>; 
         />
       </div>
 
-      <button onClick={send} disabled={!canSend && !sending} aria-label="Send" style={{
-        width: 42, height: 42, borderRadius: '50%', flexShrink: 0,
-        border: 'none', background: 'var(--chat-accent)', color: '#fff',
-        cursor: canSend ? 'pointer' : 'default',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        opacity: canSend || sending ? 1 : 0.4,
-        transition: 'opacity 0.15s, transform 0.12s, background 0.12s',
-      }}
-        onMouseEnter={e => { if (canSend) { e.currentTarget.style.background = 'var(--chat-accent-hover)'; e.currentTarget.style.transform = 'scale(1.06)' } }}
-        onMouseLeave={e => { e.currentTarget.style.background = 'var(--chat-accent)'; e.currentTarget.style.transform = 'scale(1)' }}
-        onMouseDown={e  => { if (canSend) e.currentTarget.style.transform = 'scale(0.93)' }}
-        onMouseUp={e    => { if (canSend) e.currentTarget.style.transform = 'scale(1.06)' }}
+      <motion.button
+        onClick={send}
+        disabled={!canSend && !sending}
+        aria-label="Send"
+        whileTap={canSend ? { scale: 0.85, rotate: -10 } : undefined}
+        style={{
+          width: 44, height: 44, borderRadius: '50%', flexShrink: 0,
+          border: 'none', background: 'var(--chat-accent)', color: '#fff',
+          cursor: canSend ? 'pointer' : 'default',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          opacity: canSend || sending ? 1 : 0.4,
+          transition: 'opacity 0.15s, background 0.12s',
+        }}
+        animate={{ scale: canSend ? 1 : 0.94 }}
+        onMouseEnter={e => { if (canSend) e.currentTarget.style.background = 'var(--chat-accent-hover)' }}
+        onMouseLeave={e => { e.currentTarget.style.background = 'var(--chat-accent)' }}
       >
         {sending
           ? <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ animation: 'spin 0.8s linear infinite' }}><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
           : <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M3.478 2.405a.75.75 0 0 0-.926.94l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.405Z" /></svg>
         }
-      </button>
+      </motion.button>
     </div>
   )
 }
@@ -459,6 +508,8 @@ export default function AdminConversationPage() {
     return result
   }, [messages])
 
+  const grainId = useId()
+
   const Spinner = () => (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--chat-text-meta)" strokeWidth="2.5" strokeLinecap="round" style={{ animation: 'spin 0.8s linear infinite' }}>
       <path d="M21 12a9 9 0 1 1-6.219-8.56" />
@@ -475,8 +526,8 @@ export default function AdminConversationPage() {
   if (!convo) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 'calc(100dvh - 64px)', background: 'var(--chat-bg)' }}>
       <div style={{ textAlign: 'center' }}>
-        <p style={{ ...DISPLAY, fontSize: 22, fontWeight: 300, color: 'var(--chat-text-primary)', margin: '0 0 14px' }}>Conversation not found</p>
-        <Link href="/admin/support" style={{ fontSize: 12, color: 'var(--chat-text-meta)', textDecoration: 'underline' }}>← Back to inbox</Link>
+        <p style={{ ...DISPLAY, fontSize: 22, fontStyle: 'italic', fontWeight: 500, color: 'var(--chat-text-primary)', margin: '0 0 14px' }}>Conversation not found</p>
+        <Link href="/admin/support" style={{ ...UTILITY, fontSize: 12, color: 'var(--chat-text-meta)', textDecoration: 'underline' }}>← Back to inbox</Link>
       </div>
     </div>
   )
@@ -485,6 +536,7 @@ export default function AdminConversationPage() {
 
   return (
     <div style={{
+      ...UTILITY,
       maxWidth: 760, margin: '0 auto',
       display: 'flex', flexDirection: 'column',
       height: 'calc(100dvh - 64px)',
@@ -511,8 +563,23 @@ export default function AdminConversationPage() {
           </svg>
         </Link>
 
-        <div style={{ position: 'relative', flexShrink: 0 }}>
+        <div style={{ position: 'relative', flexShrink: 0, width: 40, height: 40 }}>
+          {/* Rotating green halo — same "online" treatment as the
+              customer-facing chat, instead of a plain static dot */}
+          {user && (
+            <div
+              className="chat-avatar-halo"
+              aria-hidden
+              style={{
+                position: 'absolute', top: -3, left: -3, right: -3, bottom: -3,
+                borderRadius: '50%',
+                background: 'conic-gradient(from 0deg, var(--chat-online) 0deg, transparent 170deg, transparent 190deg, var(--chat-online) 360deg)',
+                filter: 'blur(2px)',
+              }}
+            />
+          )}
           <div style={{
+            position: 'relative',
             width: 40, height: 40, borderRadius: '50%',
             background: 'var(--chat-surface)', border: '0.5px solid var(--chat-border)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -524,11 +591,6 @@ export default function AdminConversationPage() {
               : (user?.displayName?.[0] ?? user?.username?.[0] ?? '?').toUpperCase()
             }
           </div>
-          <span style={{
-            position: 'absolute', bottom: 0, right: 0,
-            width: 10, height: 10, borderRadius: '50%',
-            background: 'var(--chat-online)', border: '2px solid var(--chat-bg)',
-          }} />
         </div>
 
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -574,20 +636,26 @@ export default function AdminConversationPage() {
         )}
 
         {!isLoading && messages.length === 0 && optimistic.length === 0 && (
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: '3rem 2rem', textAlign: 'center' }}>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.4, ease }}
+            style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: '3rem 2rem', textAlign: 'center' }}
+          >
             <div style={{ width: 60, height: 60, borderRadius: '50%', background: 'var(--chat-surface)', border: '0.5px solid var(--chat-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26 }}>💬</div>
             <div>
-              <p style={{ ...DISPLAY, fontSize: 22, fontWeight: 300, margin: '0 0 6px', color: 'var(--chat-text-primary)' }}>No messages yet</p>
-              <p style={{ fontSize: 13, margin: 0, color: 'var(--chat-text-secondary)', lineHeight: 1.7 }}>The customer hasn't sent anything yet.</p>
+              <p style={{ ...DISPLAY, fontSize: 22, fontStyle: 'italic', fontWeight: 500, margin: '0 0 6px', color: 'var(--chat-text-primary)' }}>No messages yet</p>
+              <p style={{ fontSize: 13, margin: 0, color: 'var(--chat-text-secondary)', lineHeight: 1.7 }}>The customer hasn&apos;t sent anything yet.</p>
             </div>
-          </div>
+          </motion.div>
         )}
 
         {grouped.map(({ day, msgs }) => (
           <div key={day}>
-            <div style={{ display: 'flex', justifyContent: 'center', margin: '16px 0 10px' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', margin: '16px 0 10px', position: 'sticky', top: 4, zIndex: 3, pointerEvents: 'none' }}>
               <span style={{
                 fontSize: 10.5, color: 'var(--chat-text-meta)',
+                background: 'var(--chat-bg)',
                 padding: '4px 14px', borderRadius: 20,
                 fontWeight: 500, letterSpacing: '0.08em',
                 border: '0.5px solid var(--chat-border)',
@@ -644,9 +712,24 @@ export default function AdminConversationPage() {
 
       <Composer onSend={handleSend} onTyping={sendTyping} />
 
+      {/* Very faint grain — same restrained texture as the customer chat,
+          dialed down further here since this is a work tool, not a brand
+          moment. Dark noise (not white) so it reads correctly in both
+          light and dark theme. */}
+      <svg aria-hidden className="pointer-events-none absolute inset-0" style={{ opacity: 0.02, mixBlendMode: 'overlay', zIndex: 6 }}>
+        <filter id={grainId}>
+          <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch" />
+          <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.9 0" />
+        </filter>
+        <rect width="100%" height="100%" filter={`url(#${grainId})`} />
+      </svg>
+
       <style>{`
         @keyframes spin         { to { transform: rotate(360deg) } }
         @keyframes typingBounce { 0%,60%,100%{transform:translateY(0);opacity:.3} 30%{transform:translateY(-6px);opacity:1} }
+        @keyframes avatarHaloSpin { to { transform: rotate(360deg) } }
+
+        .chat-avatar-halo { animation: avatarHaloSpin 5s linear infinite; }
 
         .chat-input-wrap:focus-within { border-color: var(--chat-accent) !important; }
 
@@ -656,6 +739,13 @@ export default function AdminConversationPage() {
 
         textarea::placeholder { color: var(--chat-text-meta) !important }
         textarea:focus        { outline: none !important; box-shadow: none !important }
+
+        .chat-retry-btn { transition: opacity 0.15s; }
+        .chat-retry-btn:hover { opacity: 0.7; }
+
+        @media (prefers-reduced-motion: reduce) {
+          .chat-avatar-halo { animation: none; }
+        }
       `}</style>
     </div>
   )

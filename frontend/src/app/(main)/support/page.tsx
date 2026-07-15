@@ -27,8 +27,9 @@ const UTILITY: React.CSSProperties = {
 
 // Brand accent — literal Pinterest red, so this reads as an exact brand
 // match rather than an approximation via the generic theme accent token.
-// Read receipts and the online dot keep their conventional blue/green
-// (recognizable chat affordances, deliberately distinct from brand).
+// Read receipts keep their conventional WhatsApp blue (a recognizable
+// affordance, deliberately distinct from brand). The support avatar's
+// status indicator is a rotating green halo instead of a plain dot.
 const PINTEREST_RED = '#E60023'
 const BUBBLE_GRADIENT = `linear-gradient(135deg, #ff3f59 0%, ${PINTEREST_RED} 55%, #b8001c 100%)`
 
@@ -298,7 +299,7 @@ function Bubble({
           ...metaBadgeStyle,
           position: 'absolute',
           right: 6, bottom: 5,
-          background: isMine ? 'hsl(0 0% 100% / 0.14)' : 'hsl(0 0% 100% / 0.06)',
+          background: isMine ? 'hsl(0 0% 100% / 0.14)' : 'hsl(var(--foreground) / 0.06)',
           color: isMine ? 'var(--wa-meta-out)' : 'var(--wa-meta)',
           userSelect: 'none',
         }}>
@@ -331,7 +332,7 @@ function EmojiPicker({ onPick, onClose }: { onPick: (emoji: string) => void; onC
         bottom: '100%',
         left: 8,
         marginBottom: 8,
-        width: 'min(300px, calc(100vw - 48px))',
+        width: 'min(300px, calc(100% - 16px))',
         maxHeight: 'min(280px, 50vh)',
         overflowY: 'auto',
         background: 'var(--wa-input-bg)',
@@ -442,7 +443,7 @@ function Composer({ onSend, onTyping }: {
         aria-label="Open emoji picker"
         aria-expanded={showEmoji}
         style={{
-          width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
+          width: 44, height: 44, borderRadius: '50%', flexShrink: 0,
           border: 'none', background: 'transparent', cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           color: showEmoji ? WA.accent : 'var(--wa-icon)',
@@ -472,7 +473,7 @@ function Composer({ onSend, onTyping }: {
           flex: 1, display: 'flex', alignItems: 'flex-end',
           background: 'var(--wa-input-bg)',
           borderRadius: 24, padding: '0 6px 0 16px',
-          minHeight: 42,
+          minHeight: 44,
           transition: 'box-shadow 0.15s',
         }}
       >
@@ -500,7 +501,7 @@ function Composer({ onSend, onTyping }: {
         aria-label="Send message"
         whileTap={canSend ? { scale: 0.82, rotate: -12 } : undefined}
         style={{
-          width: 42, height: 42, borderRadius: '50%', flexShrink: 0,
+          width: 44, height: 44, borderRadius: '50%', flexShrink: 0,
           border: 'none',
           background: WA.accent,
           color: WA.accentInk,
@@ -702,12 +703,12 @@ export default function SupportPage() {
   , [messages, client?.userID])
 
   return (
-    <div className="min-h-screen relative overflow-hidden" style={{ background: '#000000' }}>
+    <div className="relative overflow-hidden" style={{ background: 'hsl(var(--background))' }}>
       {/* Faint radial wash — same restrained-glow language as Contact/Hero */}
       <div
         aria-hidden
         className="pointer-events-none absolute -top-24 left-1/2 -translate-x-1/2 w-[720px] h-[420px] z-0"
-        style={{ background: 'radial-gradient(closest-side, hsl(var(--accent, 0 78% 54%) / 0.08), transparent 70%)' }}
+        style={{ background: `radial-gradient(closest-side, ${PINTEREST_RED}14, transparent 70%)` }}
       />
 
       <div className="container-narrow relative z-10" style={{ paddingBlock: 'clamp(1.25rem, 5vw, 4rem)' }}>
@@ -719,7 +720,7 @@ export default function SupportPage() {
           transition={{ duration: 0.5, delay: 0.1, ease }}
           className="rounded-[28px] overflow-hidden h-[min(560px,80dvh)] sm:h-[min(600px,76dvh)] lg:h-[min(660px,72dvh)]"
           style={{
-            boxShadow: '0 24px 48px -24px hsl(0 0% 0% / 0.7)',
+            boxShadow: '0 20px 40px -20px hsl(0 0% 0% / 0.3)',
           }}
         >
           <div
@@ -740,8 +741,22 @@ export default function SupportPage() {
         background: 'var(--wa-header-bg)',
         zIndex: 2,
       }}>
-        <div style={{ position: 'relative', flexShrink: 0 }}>
+        <div style={{ position: 'relative', flexShrink: 0, width: 40, height: 40 }}>
+          {/* Rotating half-green glow halo — a livelier "online" cue than
+              a plain static dot */}
+          <div
+            className="wa-avatar-halo"
+            aria-hidden
+            style={{
+              position: 'absolute',
+              top: -3, left: -3, right: -3, bottom: -3,
+              borderRadius: '50%',
+              background: `conic-gradient(from 0deg, ${WA.online} 0deg, transparent 170deg, transparent 190deg, ${WA.online} 360deg)`,
+              filter: 'blur(2px)',
+            }}
+          />
           <div style={{
+            position: 'relative',
             width: 40, height: 40, borderRadius: '50%',
             background: 'var(--wa-bubble-in)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -752,12 +767,6 @@ export default function SupportPage() {
               <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/>
             </svg>
           </div>
-          <span style={{
-            position: 'absolute', bottom: -1, right: -1,
-            width: 11, height: 11, borderRadius: '50%',
-            background: WA.online,
-            border: '2px solid var(--wa-header-bg)',
-          }} />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <p className={parisienne.className} style={{ fontSize: 20, fontWeight: 400, color: 'var(--wa-text-in)', margin: 0, lineHeight: 1.3 }}>
@@ -795,9 +804,9 @@ export default function SupportPage() {
           background: 'var(--wa-bg-chat)',
           backgroundImage: `
             radial-gradient(circle at 20% 20%, ${PINTEREST_RED}14 0%, transparent 35%),
-            radial-gradient(circle at 80% 0%, hsl(0 0% 100% / 0.03) 0%, transparent 40%),
+            radial-gradient(circle at 80% 0%, hsl(var(--foreground) / 0.025) 0%, transparent 40%),
             radial-gradient(circle at 60% 80%, ${PINTEREST_RED}10 0%, transparent 35%),
-            radial-gradient(circle at 10% 70%, hsl(0 0% 100% / 0.02) 0%, transparent 35%)
+            radial-gradient(circle at 10% 70%, hsl(var(--foreground) / 0.02) 0%, transparent 35%)
           `,
           backgroundSize: '160% 160%',
           overflowAnchor: 'none',
@@ -945,22 +954,25 @@ export default function SupportPage() {
 
       <Composer onSend={handleSend} onTyping={sendTyping} />
 
-      {/* Film grain — same restrained texture trick as the Hero, barely
-          visible, just enough to keep the pure black from reading flat */}
+      {/* Film grain — same restrained texture trick as the Hero. Uses dark
+          noise rather than white: darkening reads correctly against both
+          a light and a dark background, whereas white noise would have
+          been invisible once this page started following the theme. */}
       <svg
         aria-hidden
         className="pointer-events-none absolute inset-0"
-        style={{ opacity: 0.035, mixBlendMode: 'overlay', zIndex: 6 }}
+        style={{ opacity: 0.05, mixBlendMode: 'overlay', zIndex: 6 }}
       >
         <filter id={grainId}>
           <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch" />
-          <feColorMatrix type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.9 0" />
+          <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.9 0" />
         </filter>
         <rect width="100%" height="100%" filter={`url(#${grainId})`} />
       </svg>
 
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes avatarHaloSpin { to { transform: rotate(360deg); } }
         @keyframes statusPulse {
           0%, 100% { transform: scale(1); opacity: 0.55; }
           50% { transform: scale(2.2); opacity: 0; }
@@ -968,23 +980,29 @@ export default function SupportPage() {
 
         .wa-chat-root {
           height: 100%;
-          /* True black + the literal Pinterest red, not the generic theme
-             accent token — see PINTEREST_RED above. Read receipts and the
-             online dot keep their conventional blue/green. */
-          --wa-bg-chat: #000000;
+          /* Theme tokens, not hardcoded literals — this is what makes the
+             chat switch with light/dark mode the same way Footer/Contact/
+             Hero do. The Pinterest red (bubbles, accents, focus ring) stays
+             constant across both themes on purpose — it's the brand color,
+             not part of the light/dark surface system. */
+          --wa-bg-chat: hsl(var(--background));
           --wa-bubble-out: ${PINTEREST_RED};
-          --wa-bubble-in: hsl(0 0% 12%);
+          --wa-bubble-in: hsl(var(--surface-elevated));
           --wa-text-out: hsl(var(--accent-foreground, 0 0% 100%));
-          --wa-text-in: hsl(0 0% 96%);
-          --wa-meta: hsl(0 0% 60%);
+          --wa-text-in: hsl(var(--foreground));
+          --wa-meta: hsl(var(--muted));
           --wa-meta-out: hsl(var(--accent-foreground, 0 0% 100%) / 0.8);
-          --wa-system-bg: hsl(0 0% 12%);
-          --wa-header-bg: #000000;
-          --wa-composer-bg: #000000;
-          --wa-input-bg: hsl(0 0% 12%);
-          --wa-icon: hsl(0 0% 60%);
-          --wa-border: hsl(0 0% 100% / 0.1);
-          --wa-surface-hover: hsl(0 0% 100% / 0.08);
+          --wa-system-bg: hsl(var(--surface-elevated));
+          --wa-header-bg: hsl(var(--background));
+          --wa-composer-bg: hsl(var(--background));
+          --wa-input-bg: hsl(var(--surface-elevated));
+          --wa-icon: hsl(var(--muted));
+          --wa-border: hsl(var(--border));
+          --wa-surface-hover: hsl(var(--foreground) / 0.08);
+        }
+
+        .wa-avatar-halo {
+          animation: avatarHaloSpin 5s linear infinite;
         }
 
         /* ── Themed scrollbars ── */
@@ -1061,6 +1079,7 @@ export default function SupportPage() {
         @media (prefers-reduced-motion: reduce) {
           .wa-msg-list { animation: none; }
           .wa-status-dot { animation: none; }
+          .wa-avatar-halo { animation: none; }
         }
       `}</style>
           </div>

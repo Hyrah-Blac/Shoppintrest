@@ -1,14 +1,38 @@
 'use client'
 
 /**
- * ProductCard — v2 · Shoppin
+ * ProductCard — v5 · Shoppin
+ *
+ * v4 → v5 (reverted, per explicit preference):
+ *  - Brand eyebrow color override removed — back to .eyebrow's default
+ *    accent red. The v4 dilution concern (red brand text on every card in
+ *    a grid, competing with the discount badge) still stands as a real
+ *    tradeoff, but the call was made to keep Pinterest red on the brand
+ *    name regardless. Worth revisiting if the grid ever feels noisy once
+ *    it's live with real data.
+ *
+ * v3 → v4 (correction):
+ *  - The v3 note below claims the discount badge is "the only accent-red
+ *    element on the card" — that was wrong. The global .eyebrow class
+ *    (used for product.brand) defaults to color: hsl(var(--accent)), so
+ *    the brand name was already red on every card, missed at v3 time.
+ *
+ * v2 → v3:
+ *  - Resolved the v2 flag: Quick Add now uses .btn-primary (foreground bg)
+ *    instead of .btn-save (accent red). .btn-save is semantically a
+ *    wishlist/save action — reusing it for "add to cart" meant two
+ *    unrelated actions shared one accent-red visual language.
+ *  - Removed two redundant fontWeight: 300 declarations (review-count
+ *    span, "No image" placeholder) — both already inherit 300 from body.
+ *  - No calligraphy/script treatment applied here, deliberately — this is
+ *    dense commerce UI meant to be scanned across a grid (image, badges,
+ *    price, rating, title), not a headline moment.
  *
  * v1 → v2:
  *  - Typed Product interface (no more any)
  *  - Save button: accent → dark foreground when saved (heart fill + shadow)
  *  - Rating dots: accent → foreground for filled dots
  *  - Featured badge: badge-red → badge-mono (featured is not a sale/alert state)
- *  - btn-save on Quick Add kept — flagged; review globals.css
  */
 
 import { useState } from 'react'
@@ -146,7 +170,6 @@ export function ProductCard({ product, priority = false, className }: ProductCar
                     background:    'hsl(var(--surface-inset))',
                     fontSize:      'var(--text-xs)',
                     color:         'hsl(var(--muted))',
-                    fontWeight:    300,
                     letterSpacing: '0.04em',
                   }}
                 >
@@ -335,11 +358,10 @@ export function ProductCard({ product, priority = false, className }: ProductCar
                     transition={{ duration: 0.2, ease, delay: 0.03 }}
                     className="absolute bottom-0 left-0 right-0 z-30 p-2.5 hidden md:flex"
                   >
-                    {/* NOTE: btn-save likely has accent bg — review globals.css */}
                     <button
                       onClick={handleQuickAdd}
                       disabled={isAdding}
-                      className="btn-save w-full justify-center gap-2"
+                      className="btn-primary w-full justify-center gap-2"
                       style={{ height: '2.25rem', fontSize: 'var(--text-xs)' }}
                     >
                       <ShoppingBag size={12} strokeWidth={2} />
@@ -362,7 +384,9 @@ export function ProductCard({ product, priority = false, className }: ProductCar
             gap:          '0.25rem',
           }}
         >
-          {/* Brand eyebrow */}
+          {/* Brand eyebrow — kept on .eyebrow's default accent red, per
+              explicit preference, despite the dilution concern noted in
+              the v4 changelog (red brand text on every card in a grid). */}
           {product.brand && (
             <p className="eyebrow">{product.brand}</p>
           )}
@@ -439,7 +463,6 @@ export function ProductCard({ product, priority = false, className }: ProductCar
                   style={{
                     fontSize:   'var(--text-2xs)',
                     color:      'hsl(var(--muted))',
-                    fontWeight: 300,
                     marginLeft: '0.125rem',
                   }}
                 >

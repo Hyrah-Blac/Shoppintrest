@@ -33,17 +33,36 @@
  *      shadow fade instead of a flat 1px border.
  *    · Row hover now lifts (translateY + soft shadow) instead of only
  *      swapping background colour.
+ *  - Manual refresh button removed — fetchNotifications() still runs once
+ *    on mount, but the page no longer exposes a spinner/refresh control.
+ *  - The page title now runs in Great Vibes, the same connecting
+ *    calligraphy script the hero uses for its headline — natural case, no
+ *    negative letter-spacing (that breaks a script's joined strokes), and
+ *    sized up so it reads as handwriting rather than as decoration.
+ *  - Cross-device pass:
+ *    · Header title row wraps instead of overflowing on ≤320px phones;
+ *      the script heading's size now factors in viewport height too
+ *      (`min(vw, vh)` inside the clamp), so short landscape viewports
+ *      don't get a heading that eats the screen.
+ *    · Every tap target that was under the ~44px accessible minimum
+ *      (mark-as-read check, mark-all-read on mobile, filter pills) now
+ *      has an invisible padding/negative-margin hit area or a taller
+ *      min-height, without changing how anything visually looks.
+ *    · Sticky header adds `env(safe-area-inset-top)` so it clears the
+ *      status bar / notch in standalone (PWA) mode.
+ *    · The cursor spotlight no longer mounts at all on touch/hybrid
+ *      devices or for reduced-motion users, instead of mounting inert.
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
-import { Playfair_Display, Parisienne, Inter } from 'next/font/google'
+import { Playfair_Display, Parisienne, Great_Vibes, Inter } from 'next/font/google'
 import {
   motion, AnimatePresence, useMotionValue, useMotionTemplate, useSpring,
   useReducedMotion,
 } from 'framer-motion'
 import {
-  Bell, Check, RefreshCw, ChevronRight,
+  Bell, Check, ChevronRight,
   UserPlus, Heart, Package, MessageCircle, Star, Bookmark,
   type LucideIcon,
 } from 'lucide-react'
@@ -56,6 +75,7 @@ import { formatRelativeTime, cn } from '@/lib/utils'
 // globals.css to go stale, no silent fallback to generic serif/cursive.
 const playfair   = Playfair_Display({ weight: ['500', '600', '700'], style: ['normal', 'italic'], subsets: ['latin'], display: 'swap' })
 const parisienne = Parisienne({ weight: '400', subsets: ['latin'], display: 'swap' })
+const greatVibes = Great_Vibes({ weight: '400', subsets: ['latin'], display: 'swap' })
 const interFont  = Inter({ weight: ['400', '500', '600'], subsets: ['latin'], display: 'swap' })
 
 interface NotificationItem {
@@ -200,7 +220,10 @@ export default function NotificationsPage() {
       onMouseMove={handlePointerMove}
     >
       {/* ── Ambient cursor spotlight ── */}
-      {!reduceMotion && (
+      {/* Skipped outright (not just inert) for reduced-motion and
+          touch/hybrid devices — no point mounting a fixed full-screen
+          element that a mouse will never reach. */}
+      {!reduceMotion && canHover.current && (
         <motion.div
           aria-hidden
           className="pointer-events-none fixed inset-0 z-30 hidden sm:block"
@@ -219,17 +242,22 @@ export default function NotificationsPage() {
           backdropFilter: 'blur(14px) saturate(1.4)',
           WebkitBackdropFilter: 'blur(14px) saturate(1.4)',
           boxShadow: `0 1px 0 hsl(var(--border, 0 0% 90%) / 0.6), 0 12px 24px -18px rgb(0 0 0 / 0.14)`,
+          // Notched/dynamic-island devices in standalone/PWA mode — keeps
+          // the frosted header clear of the status bar instead of sliding
+          // under it.
+          paddingTop: 'env(safe-area-inset-top, 0px)',
         }}
       >
         <div className="container-narrow">
           <div
-            className="flex items-baseline justify-between gap-4"
+            className="flex flex-wrap items-baseline justify-between gap-4"
             style={{ paddingBlock: 'clamp(1rem, 2vw, 1.5rem)' }}
           >
             <motion.div
               initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 10, filter: 'blur(3px)' }}
               animate={{ opacity: 1, y: 0,  filter: 'blur(0px)' }}
               transition={{ duration: 0.5, ease }}
+              style={{ minWidth: 0 }}
             >
               <p
                 className={interFont.className}
@@ -244,18 +272,25 @@ export default function NotificationsPage() {
               >
                 Activity
               </p>
-              <div className="flex items-center gap-3">
+              {/* flex-wrap + a slightly gentler minimum keeps the script
+                  heading and unread badge from overflowing on very narrow
+                  (≤320px) phones — clamp() alone can't wrap, only resize. */}
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                 <h1
-                  className={playfair.className}
+                  className={greatVibes.className}
                   style={{
-                    fontSize:      'clamp(1.875rem, 3.4vw, 2.75rem)',
-                    fontWeight:    600,
-                    letterSpacing: '-0.01em',
+                    // min() of a width- and height-based term keeps this
+                    // from ballooning in short landscape viewports (where
+                    // vw alone would still pick a tall heading) while still
+                    // scaling normally in the common portrait case.
+                    fontSize:      'clamp(2.25rem, min(5vw + 1rem, 8vh + 1.25rem), 4.25rem)',
+                    fontWeight:    400,
+                    letterSpacing: '0em',
                     lineHeight:    1,
                     color:         FG,
                   }}
                 >
-                  Noti<span style={{ color: ACCENT, fontStyle: 'italic' }}>fications</span>
+                  Noti<span style={{ color: ACCENT }}>fications</span>
                 </h1>
                 <AnimatePresence>
                   {unreadCount > 0 && (
@@ -313,36 +348,6 @@ export default function NotificationsPage() {
                   </motion.button>
                 )}
               </AnimatePresence>
-
-              <motion.button
-                onClick={() => fetchNotifications()}
-                aria-label="Refresh"
-                whileHover={reduceMotion ? undefined : { scale: 1.08 }}
-                whileTap={{ scale: 0.92 }}
-                disabled={isLoading}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: MUTED,
-                  background: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                  transition: 'color 0.2s',
-                }}
-                onMouseEnter={e => (e.currentTarget.style.color = FG)}
-                onMouseLeave={e => (e.currentTarget.style.color = MUTED)}
-              >
-                <motion.span
-                  className="flex"
-                  animate={isLoading && !reduceMotion ? { rotate: 360 } : { rotate: 0 }}
-                  transition={isLoading && !reduceMotion
-                    ? { duration: 0.8, repeat: Infinity, ease: 'linear' }
-                    : { duration: 0.2 }}
-                >
-                  <RefreshCw size={14} strokeWidth={1.5} />
-                </motion.span>
-              </motion.button>
             </div>
           </div>
 
@@ -401,6 +406,9 @@ export default function NotificationsPage() {
           {/* ── MOBILE MARK-ALL-READ ── */}
           {unreadCount > 0 && (
             <div className="sm:hidden pb-3 -mt-1">
+              {/* Padding + matching negative margin: the visible label
+                  stays the same compact size, but the actual tap target
+                  grows to the accessible ~44px minimum. */}
               <button
                 onClick={handleMarkAllRead}
                 className={cn('inline-flex items-center gap-1.5', interFont.className)}
@@ -412,6 +420,8 @@ export default function NotificationsPage() {
                   color: MUTED,
                   background: 'transparent',
                   border: 'none',
+                  padding: '0.75rem 0.25rem',
+                  margin: '-0.75rem -0.25rem',
                 }}
               >
                 <Check size={11} strokeWidth={1.5} />
@@ -457,7 +467,7 @@ export default function NotificationsPage() {
         {!isLoading && items.length === 0 && (
           <EmptyState
             title="All caught up"
-            body="Messages from Support will show up here."
+            body="You'll see a notification here when our support team messages you."
             reduceMotion={!!reduceMotion}
             flourish="enjoy the quiet"
           />
@@ -538,15 +548,19 @@ function FadeDivider() {
 
 // Pill text colour only — the background/border is now the animated
 // layoutId element that slides between pills, so these just control the
-// foreground colour and stay transparent themselves.
+// foreground colour and stay transparent themselves. minHeight guarantees
+// a comfortable tap target even if the shared .pill class's own padding
+// is ever tightened.
 const pillTextActive: React.CSSProperties = {
   color:       BG,
   borderColor: 'transparent',
   fontWeight:  500,
   background:  'transparent',
+  minHeight:   '2.25rem',
 }
 const pillTextInactive: React.CSSProperties = {
   background: 'transparent',
+  minHeight:  '2.25rem',
 }
 
 // ─── Section label ──────────────────────────────────────────────────────────
@@ -769,10 +783,14 @@ function NotificationRow({
       {/* End slot:
           - Unread: dot on desktop (hidden on hover → check icon);
                     always-visible check button on mobile (touch has no hover)
-          - Read: chevron always visible on mobile, hover-reveal on desktop */}
+          - Read: chevron always visible on mobile, hover-reveal on desktop
+          The hit area itself is ~44px on mobile (accessible touch-target
+          minimum) even though the glyph inside stays visually small — same
+          "small glyph, generous invisible hit box" idea as the hero's
+          MagneticCircle padding trick. */}
       <div
-        className="shrink-0 flex items-center justify-center relative"
-        style={{ width: '1.25rem', height: '1.25rem', marginTop: '0.4rem' }}
+        className="shrink-0 flex items-center justify-center relative w-11 h-11 sm:w-5 sm:h-5"
+        style={{ marginTop: '-0.25rem' }}
       >
         {!notif.isRead ? (
           <>
@@ -811,14 +829,19 @@ function NotificationRow({
             >
               <Check size={11} strokeWidth={2.5} />
             </button>
-            {/* Mobile: always-visible tap target */}
+            {/* Mobile: 44px tap target, small centred glyph */}
             <button
               aria-label="Mark as read"
               onClick={e => { e.preventDefault(); e.stopPropagation(); onRead() }}
               className="sm:hidden flex items-center justify-center rounded-full w-full h-full"
               style={{ color: FG }}
             >
-              <Check size={13} strokeWidth={2.5} />
+              <span
+                className="flex items-center justify-center rounded-full"
+                style={{ width: '1.5rem', height: '1.5rem', background: SURFACE_EL, border: `1px solid ${BORDER}` }}
+              >
+                <Check size={13} strokeWidth={2.5} />
+              </span>
             </button>
           </>
         ) : (
@@ -829,7 +852,7 @@ function NotificationRow({
               className="hidden sm:block opacity-0 -translate-x-1 transition-all group-hover:opacity-100 group-hover:translate-x-0"
               style={{ color: MUTED_FG }}
             />
-            {/* Mobile: always visible */}
+            {/* Mobile: always visible, centred in the same 44px box */}
             <ChevronRight
               size={14}
               className="sm:hidden"

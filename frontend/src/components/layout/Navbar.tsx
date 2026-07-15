@@ -115,7 +115,7 @@ const mobileOnlyLinks = [
 // differences in padding-based sizing.
 const navPillClass = (active: boolean) =>
   cn(
-    'relative h-8 flex items-center px-2.5 rounded-[var(--radius-sm)] text-[13px] font-medium',
+    'relative h-8 flex items-center px-2.5 rounded-[var(--radius-sm)] text-[13px] font-medium leading-none',
     'transition-all duration-[var(--duration-hover)]',
     active
       ? 'text-[hsl(var(--foreground))] bg-[hsl(var(--surface))]'
@@ -254,10 +254,11 @@ export function Navbar() {
               onMouseLeave={() => setIsCategoriesOpen(false)}
             >
               <button
+                type="button"
                 onClick={() => setIsCategoriesOpen((o) => !o)}
                 aria-expanded={isCategoriesOpen}
                 aria-haspopup="true"
-                className={navPillClass(isCategoriesOpen)}
+                className={cn('appearance-none border-0 bg-transparent [font-family:inherit] cursor-pointer', navPillClass(isCategoriesOpen))}
               >
                 Categories
               </button>

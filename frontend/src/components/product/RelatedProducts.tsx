@@ -2,8 +2,14 @@
 
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
+import { Great_Vibes } from 'next/font/google'
 import { apiClient } from '@/lib/api'
 import { ProductCard } from './ProductCard'
+
+// Same face as the hero/homepage sections/ReviewSection, self-hosted via
+// next/font so it can't silently fall back to a generic serif (see
+// HeroSection's v13 changelog for the bug this pattern avoids).
+const greatVibes = Great_Vibes({ weight: '400', subsets: ['latin'], display: 'swap' })
 
 export function RelatedProducts({ id }: { id: string }) {
   const [products, setProducts] = useState<any[]>([])
@@ -32,24 +38,16 @@ export function RelatedProducts({ id }: { id: string }) {
           className="mb-8"
         >
           <h2
-            className="font-display font-bold tracking-[-0.03em] leading-[1.1]"
-            style={{ fontSize: 'clamp(1.25rem, 2.5vw, var(--text-section))' }}
+            className={greatVibes.className}
+            style={{
+              fontSize: 'clamp(2.25rem, 4vw, 3.25rem)',
+              fontWeight: 400,
+              lineHeight: 1.15,
+              color: 'hsl(var(--foreground))',
+            }}
           >
-            You May{' '}
-            <em className="not-italic" style={{ color: 'hsl(var(--accent))' }}>
-              Also Like
-            </em>
+            You may also like
           </h2>
-
-          {/* Accent underline */}
-          <motion.div
-            className="mt-3 h-[2px] w-10 rounded-full"
-            style={{ background: 'hsl(var(--accent))' }}
-            initial={{ scaleX: 0, originX: 0 }}
-            whileInView={{ scaleX: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.45, delay: 0.15 }}
-          />
         </motion.div>
 
         {/* ── Grid ── */}
