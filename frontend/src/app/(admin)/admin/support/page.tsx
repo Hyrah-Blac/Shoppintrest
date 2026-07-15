@@ -1,32 +1,54 @@
 'use client'
 
+// PATH: src/app/(admin)/admin/support/page.tsx
+// (adjust to match your actual admin route if different)
+
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { Parisienne } from 'next/font/google'
 import { useStreamContext } from '@/components/providers/StreamProvider'
 import { apiClient }        from '@/lib/api'
 import { useSupportChat, ChannelPreview } from '@/hooks/useSupportChat'
 
-/**
- * All colours reference CSS variables — no hardcoded values.
- * Define these alongside your --chat-* tokens in global CSS:
- *
- *  --chat-bg              Page background
- *  --chat-surface         Elevated surface (cards, inputs, avatars)
- *  --chat-surface-hi      Hover / active surface
- *  --chat-border          Hairline borders
- *  --chat-text-primary    Main text
- *  --chat-text-secondary  Supporting text
- *  --chat-text-meta       Timestamps, labels, placeholders
- *  --chat-accent          Pinterest red — #e60023
- *  --chat-accent-hover    Pinterest red hover — #ff1a38
- *  --chat-unread          Unread indicator — e.g. #3b82f6
- *  --chat-bubble-out      Outgoing bubble bg → var(--chat-accent)
- *  --chat-bubble-out-text Outgoing bubble text → #fff
- */
+const parisienne = Parisienne({ weight: '400', subsets: ['latin'], display: 'swap' })
 
+/**
+ * Same fix as the conversation page: these --chat-* names used to come
+ * with a comment asking you to define them yourself in global CSS, but
+ * nothing ever did — so the whole inbox looked hardcoded regardless of
+ * light/dark mode. Grounded in the site's real, already-working theme
+ * tokens instead (the ones Footer/Contact/Hero/the chat pages use), and
+ * applied as inline custom properties on this page's one root element.
+ *
+ * Brand/functional colors (accent, unread) stay constant across both
+ * themes on purpose — they're identity/semantics, not adaptive surface.
+ */
+const PINTEREST_RED = '#E60023'
+
+const chatVars = {
+  '--chat-bg': 'hsl(var(--background))',
+  '--chat-surface': 'hsl(var(--surface-elevated))',
+  '--chat-surface-hi': 'hsl(var(--foreground) / 0.08)',
+  '--chat-border': 'hsl(var(--border))',
+  '--chat-text-primary': 'hsl(var(--foreground))',
+  '--chat-text-secondary': 'hsl(var(--muted-foreground, var(--muted)))',
+  '--chat-text-meta': 'hsl(var(--muted))',
+  '--chat-accent': PINTEREST_RED,
+  '--chat-accent-hover': '#ff1a38',
+  '--chat-unread': '#3b82f6',
+  '--chat-bubble-out': PINTEREST_RED,
+  '--chat-bubble-out-text': '#ffffff',
+} as React.CSSProperties
+
+// Playfair Display / DM Sans — the pairing used sitewide. The original
+// file used Cormorant Garamond, inconsistent with Footer/Contact/Hero/
+// the chat pages.
 const DISPLAY: React.CSSProperties = {
-  fontFamily: 'var(--font-display, "Cormorant Garamond", Georgia, serif)',
+  fontFamily: '"Playfair Display", var(--font-display, Georgia), serif',
+}
+const UTILITY: React.CSSProperties = {
+  fontFamily: '"DM Sans", var(--font-sans, system-ui), sans-serif',
 }
 
 interface AdminConversation {
@@ -99,6 +121,7 @@ function ConversationRow({ convo, isSelected, isFocused, onSelect, style, innerR
 
   return (
     <div ref={innerRef} onClick={() => onSelect(convo)} style={{
+      ...UTILITY,
       display: 'flex', alignItems: 'center', gap: 13,
       padding: '14px 18px',
       borderBottom: '0.5px solid var(--chat-border)',
@@ -183,6 +206,7 @@ function PreviewPane({ convo, onClose }: { convo: MergedConversation; onClose: (
 
   return (
     <div style={{
+      ...UTILITY,
       width: 272, flexShrink: 0,
       borderLeft: '0.5px solid var(--chat-border)',
       display: 'flex', flexDirection: 'column',
@@ -215,7 +239,7 @@ function PreviewPane({ convo, onClose }: { convo: MergedConversation; onClose: (
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
           <Avatar user={user} size={48} />
           <div style={{ minWidth: 0 }}>
-            <p style={{ ...DISPLAY, fontSize: 18, fontWeight: 400, color: 'var(--chat-text-primary)', margin: '0 0 3px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <p style={{ ...DISPLAY, fontSize: 18, fontStyle: 'italic', fontWeight: 500, color: 'var(--chat-text-primary)', margin: '0 0 3px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {user?.displayName ?? user?.username ?? '—'}
             </p>
             <p style={{ fontSize: 11, color: 'var(--chat-text-meta)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -283,7 +307,7 @@ function PreviewPane({ convo, onClose }: { convo: MergedConversation; onClose: (
 // ─── Empty state ──────────────────────────────────────────────────────────────
 function EmptyState({ icon, title, body }: { icon: React.ReactNode; title: string; body: string }) {
   return (
-    <div style={{ textAlign: 'center', padding: '5rem 1.5rem' }}>
+    <div style={{ ...UTILITY, textAlign: 'center', padding: '5rem 1.5rem' }}>
       <div style={{
         width: 46, height: 46, borderRadius: 12, margin: '0 auto 1.5rem',
         border: '0.5px solid var(--chat-border)', background: 'var(--chat-surface)',
@@ -292,7 +316,7 @@ function EmptyState({ icon, title, body }: { icon: React.ReactNode; title: strin
       }}>
         {icon}
       </div>
-      <p style={{ ...DISPLAY, fontSize: 22, fontWeight: 300, color: 'var(--chat-text-primary)', margin: '0 0 8px' }}>{title}</p>
+      <p style={{ ...DISPLAY, fontSize: 22, fontStyle: 'italic', fontWeight: 500, color: 'var(--chat-text-primary)', margin: '0 0 8px' }}>{title}</p>
       <p style={{ fontSize: 12.5, color: 'var(--chat-text-secondary)', margin: 0, maxWidth: 260, marginInline: 'auto', lineHeight: 1.7 }}>{body}</p>
     </div>
   )
@@ -396,13 +420,18 @@ export default function AdminSupportPage() {
   )
 
   return (
-    <div style={{ maxWidth: selected ? '100%' : 820, margin: '0 auto', padding: selected ? '0' : '3rem 1.25rem 6rem' }}>
+    <div style={{ ...UTILITY, ...chatVars, maxWidth: selected ? '100%' : 820, margin: '0 auto', padding: selected ? '0' : '3rem 1.25rem 6rem' }}>
 
       {!selected && (
         <div style={{ marginBottom: '2rem' }}>
-          <p style={{ fontSize: 9, letterSpacing: '0.36em', textTransform: 'uppercase', color: 'var(--chat-text-meta)', margin: '0 0 10px', fontWeight: 600 }}>
-            Admin
-          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+            <p style={{ fontSize: 9, letterSpacing: '0.36em', textTransform: 'uppercase', color: 'var(--chat-text-meta)', margin: 0, fontWeight: 600 }}>
+              Admin
+            </p>
+            <span className={parisienne.className} style={{ fontSize: 17, color: 'var(--chat-accent)', lineHeight: 1 }}>
+              your inbox
+            </span>
+          </div>
           <h1 style={{ ...DISPLAY, fontSize: 'clamp(2rem, 5vw, 3rem)', fontWeight: 300, color: 'var(--chat-text-primary)', margin: '0 0 10px', lineHeight: 0.95 }}>
             Messages
           </h1>
@@ -440,7 +469,7 @@ export default function AdminSupportPage() {
               </svg>
               <input ref={searchRef} value={search} onChange={e => setSearch(e.target.value)}
                 placeholder="Search by name, email or message…"
-                style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 13, color: 'var(--chat-text-primary)', fontFamily: 'var(--font-sans)' }}
+                style={{ ...UTILITY, flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 13, color: 'var(--chat-text-primary)' }}
               />
               {search ? (
                 <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--chat-text-meta)', padding: 0, display: 'flex' }}>

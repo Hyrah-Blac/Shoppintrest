@@ -169,15 +169,15 @@ function PageTitle() {
         overflow:  'hidden',
         display:   'inline-block',
         lineHeight: 1,
-        // Script faces like Great Vibes draw well above the normal line
-        // box (the S's loop especially) — with lineHeight:1 and nothing
-        // else, that ink sits right at the container's top edge and
-        // overflow:hidden clips straight through it. This padding buys
-        // headroom scaled to the font size (em, not px, so it tracks the
-        // clamp() below), and the negative margin cancels it back out so
-        // it doesn't push the rest of the header down.
-        paddingTop: '0.32em',
-        marginTop:  '-0.32em',
+        // Script faces like Great Vibes draw well outside the normal glyph
+        // box on every side — tall above the line (the S's loop), and
+        // wide/low at the finishing stroke (the d's tail swings out to the
+        // right and below the baseline more than a normal descender).
+        // All four sides get the same headroom-then-cancel treatment:
+        // padding buys the room, the matching negative margin gives it
+        // back so it doesn't shove the rest of the header around.
+        padding: '0.34em 0.14em 0.26em 0.08em',
+        margin:  '-0.34em -0.14em -0.26em -0.08em',
       }}
     >
       <motion.h1
@@ -344,15 +344,26 @@ function SavedTile({
           whileHover={isTouch ? undefined : { y: -4, boxShadow: '0 14px 30px rgba(0,0,0,0.22)' }}
           transition={{ type: 'spring', stiffness: 300, damping: 24 }}
           style={{
-            x: dragX,
+            x:            dragX,
             position:     'relative',
             touchAction:  'pan-y',
+            // Rounds the whole card into one continuous shape instead of
+            // the hard photo-cuts-into-a-square-white-box seam — this is
+            // an outer crop on the container, not a restyle of anything
+            // ProductCard renders internally (its price/brand/category
+            // markup and colors are untouched). Safe to reintroduce now:
+            // the earlier bleed-through bug was the unsave bed rendering
+            // at full opacity at rest, not this radius/overflow pairing
+            // itself — that's fixed independently, further down.
             borderRadius: RADIUS_LG,
             overflow:     'hidden',
           }}
           animate={cardControls}
           onDragEnd={handleDragEnd}
         >
+          {/* Everything ProductCard renders — its image, its info panel,
+              its own heart button — stays exactly as-is. Only the outer
+              corners are being cropped here. */}
           <ProductCard product={product as never} />
         </motion.div>
       </div>

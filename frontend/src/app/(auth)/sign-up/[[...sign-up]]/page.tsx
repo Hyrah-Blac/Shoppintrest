@@ -5,7 +5,16 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Great_Vibes } from 'next/font/google'
+import { User, Mail, Lock, Eye, EyeOff, CheckCircle2, Circle, AlertCircle } from 'lucide-react'
 import api from '@/lib/api'
+
+// Same script family + loading strategy used across the rest of the app
+// (hero headline, explore opener/empty state, cart empty state, sign-in) —
+// self-hosted via next/font so it can't silently fall back to generic cursive.
+const greatVibes = Great_Vibes({ weight: '400', subsets: ['latin'], display: 'swap' })
+
+const ease = [0.16, 1, 0.3, 1] as const
 
 // ── password rules ─────────────────────────────────────────────────────────────
 const PW_RULES = [
@@ -40,12 +49,12 @@ function PasswordStrength({ password }: { password: string }) {
           <div key={i} style={{ flex: 1, height: 3, borderRadius: 2, background: i < passed ? barColor : 'hsl(var(--border))', transition: 'background 0.25s ease' }} />
         ))}
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
         {PW_RULES.map(r => {
           const ok = r.test(password)
           return (
-            <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.75rem', color: ok ? '#22c55e' : 'hsl(var(--muted-foreground))' }}>
-              <span style={{ fontSize: '0.65rem' }}>{ok ? '✓' : '○'}</span>
+            <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.75rem', color: ok ? '#22c55e' : 'hsl(var(--muted-foreground))', transition: 'color 0.2s ease' }}>
+              {ok ? <CheckCircle2 size={12} /> : <Circle size={12} />}
               {r.label}
             </div>
           )
@@ -327,21 +336,25 @@ export default function SignUpPage() {
   }
 
   // ── styles ────────────────────────────────────────────────────────────────────
+  // Base input reserves room for a leading icon — purely presentational;
+  // every id/name/value/handler stays exactly as it was.
   const inputStyle: React.CSSProperties = {
-    width: '100%', padding: '0.6875rem 1rem',
+    width: '100%', padding: '0.6875rem 1rem 0.6875rem 2.75rem',
     borderRadius: 'var(--radius)', border: '1.5px solid hsl(var(--input))',
-    background: 'hsl(var(--background))', color: 'hsl(var(--foreground))',
+    background: 'hsl(var(--surface) / 0.6)', color: 'hsl(var(--foreground))',
     fontSize: 'var(--text-body)', fontFamily: "'DM Sans', sans-serif",
     fontWeight: 300, outline: 'none',
-    transition: 'border-color 0.2s ease, box-shadow 0.2s ease', boxSizing: 'border-box',
+    transition: 'border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease', boxSizing: 'border-box',
   }
   const onFocus = (e: React.FocusEvent<HTMLInputElement>) => {
     e.currentTarget.style.borderColor = 'hsl(var(--accent) / 0.6)'
     e.currentTarget.style.boxShadow   = '0 0 0 3px hsl(var(--accent) / 0.12)'
+    e.currentTarget.style.background  = 'hsl(var(--background))'
   }
   const onBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     e.currentTarget.style.borderColor = 'hsl(var(--input))'
     e.currentTarget.style.boxShadow   = 'none'
+    e.currentTarget.style.background  = 'hsl(var(--surface) / 0.6)'
   }
   const labelStyle: React.CSSProperties = {
     display: 'block', fontSize: 'var(--text-sm)', fontWeight: 500,
@@ -354,20 +367,41 @@ export default function SignUpPage() {
     border: '1px solid hsl(var(--destructive) / 0.20)',
     color: 'hsl(var(--destructive))', fontSize: 'var(--text-sm)',
     fontWeight: 400, lineHeight: 1.55,
+    display: 'flex', alignItems: 'flex-start', gap: '0.5rem',
   }
+  // Leading icon positioned inside an input — purely decorative
+  const inputIconStyle: React.CSSProperties = {
+    position: 'absolute', left: '0.875rem', top: '50%', transform: 'translateY(-50%)',
+    color: 'hsl(var(--muted-foreground))', pointerEvents: 'none', display: 'flex',
+  }
+  // Top edge-light hairline, same VOID UI signature used on the explore page's
+  // glass surfaces and on the sign-in card.
+  const EDGE_LIGHT = 'linear-gradient(90deg, transparent, hsl(var(--border)) 40%, transparent)'
 
   if (!clerk.loaded) return null
 
   if (syncing && !syncError) return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-4" style={{ background: 'hsl(var(--background))' }}>
-      <div className="w-10 h-10 rounded-full border-2 animate-spin" style={{ borderColor: 'hsl(var(--border))', borderTopColor: 'hsl(var(--accent))' }} />
+    <div className="min-h-screen flex flex-col items-center justify-center gap-5" style={{ background: 'hsl(var(--background))' }}>
+      <div style={{ position: 'relative', width: 48, height: 48 }}>
+        <motion.div
+          aria-hidden
+          className="absolute inset-0 rounded-full"
+          style={{ background: 'radial-gradient(circle, hsl(var(--accent) / 0.25) 0%, transparent 70%)' }}
+          animate={{ scale: [1, 1.3, 1], opacity: [0.4, 0.85, 0.4] }}
+          transition={{ duration: 2.6, repeat: Infinity, ease: 'easeInOut' }}
+        />
+        <div className="absolute inset-0 rounded-full border-2 animate-spin" style={{ borderColor: 'hsl(var(--border))', borderTopColor: 'hsl(var(--accent))' }} />
+      </div>
       <p className="text-sm" style={{ color: 'hsl(var(--muted))', fontWeight: 300 }}>Setting up your account…</p>
     </div>
   )
 
   if (syncError) return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-4" style={{ background: 'hsl(var(--background))' }}>
-      <div style={{ ...errorBoxStyle, maxWidth: 420, textAlign: 'center' }}>{syncError}</div>
+      <div style={{ ...errorBoxStyle, maxWidth: 420, textAlign: 'left' }}>
+        <AlertCircle size={16} style={{ flexShrink: 0, marginTop: '0.1rem' }} />
+        <span>{syncError}</span>
+      </div>
       {/* lastSyncedUserId reset so the sync effect can re-run after "Try again" */}
       <button className="btn-ghost" onClick={() => { setSyncError(''); lastSyncedUserId.current = null }}>
         Try again
@@ -385,190 +419,275 @@ export default function SignUpPage() {
         transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
         className="w-full max-w-md"
       >
-        <div style={{ background: 'hsl(var(--surface))', border: '1px solid hsl(var(--border))', borderRadius: 'var(--radius-2xl)', boxShadow: 'var(--shadow-float)', padding: '2.5rem 2rem' }}>
+        <div style={{ position: 'relative', overflow: 'hidden', background: 'hsl(var(--surface))', border: '1px solid hsl(var(--border))', borderRadius: 'var(--radius-2xl)', boxShadow: 'var(--shadow-float)', padding: '2.5rem 2rem' }}>
+
+          {/* Top edge-light — ties this card to the same glass system used
+              on the explore page and the sign-in card */}
+          <div aria-hidden style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '1px', background: EDGE_LIGHT }} />
 
           {/* Header */}
           <div className="flex flex-col items-center mb-8">
-            <div className="mb-5" style={{ position: 'relative', width: 40, height: 40, borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
-              <Image src="/logo.png" alt="Shoppin" fill sizes="40px" className="object-contain" priority />
+            <div className="relative mb-5" style={{ width: 52, height: 52 }}>
+              <motion.div
+                aria-hidden
+                className="absolute inset-0 rounded-full"
+                style={{ background: 'radial-gradient(circle, hsl(var(--accent) / 0.16) 0%, transparent 72%)' }}
+                animate={{ scale: [1, 1.18, 1], opacity: [0.5, 0.9, 0.5] }}
+                transition={{ duration: 3.4, repeat: Infinity, ease: 'easeInOut' }}
+              />
+              <div style={{ position: 'absolute', inset: 6, borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
+                <Image src="/logo.png" alt="Shoppin" fill sizes="40px" className="object-contain" priority />
+              </div>
             </div>
-            <h1 className="font-display font-bold" style={{ fontSize: 'clamp(1.4rem, 3vw, 1.75rem)', color: 'hsl(var(--foreground))', letterSpacing: '-0.03em', lineHeight: 1.1, marginBottom: '0.375rem' }}>
-              {stage === 'form' ? 'Create your account' : 'Verify your email'}
-            </h1>
-            <p className="text-sm" style={{ color: 'hsl(var(--muted))', fontWeight: 300 }}>
+
+            <AnimatePresence mode="wait">
+              <div key={stage} style={{ overflow: 'hidden', textAlign: 'center' }}>
+                <motion.h1
+                  className={greatVibes.className}
+                  initial={{ y: '105%' }}
+                  animate={{ y: '0%' }}
+                  exit={{ y: '-105%' }}
+                  transition={{ duration: 0.5, ease }}
+                  style={{
+                    fontSize: 'clamp(2.25rem, 6vw, 2.75rem)',
+                    fontWeight: 400,
+                    letterSpacing: '0.01em',
+                    color: 'hsl(var(--foreground))',
+                    lineHeight: 1.2,
+                    margin: 0,
+                    paddingBottom: '0.12em', // clears descenders from the mask
+                  }}
+                >
+                  {stage === 'form' ? 'Create your account' : 'Verify your email'}
+                </motion.h1>
+              </div>
+            </AnimatePresence>
+
+            <p className="text-sm" style={{ color: 'hsl(var(--muted))', fontWeight: 300, marginTop: '0.25rem' }}>
               {stage === 'form' ? 'Join Shoppin and start discovering' : `We sent a code to ${email}`}
             </p>
           </div>
 
-          {/* ── Form stage ─────────────────────────────────────────────────── */}
-          {stage === 'form' && (
-            <form onSubmit={handleRegister} noValidate>
+          <AnimatePresence mode="wait" initial={false}>
+            {/* ── Form stage ─────────────────────────────────────────────────── */}
+            {stage === 'form' && (
+              <motion.div
+                key="form"
+                initial={{ opacity: 0, x: -12 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -12 }}
+                transition={{ duration: 0.3, ease }}
+              >
+                <form onSubmit={handleRegister} noValidate>
 
-              {/* Name */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
-                <div>
-                  <label htmlFor="firstName" style={labelStyle}>First name</label>
-                  <input id="firstName" type="text" autoComplete="given-name" required
-                    value={firstName} onChange={e => setFirstName(e.target.value)}
-                    placeholder="Jane" style={inputStyle} onFocus={onFocus} onBlur={onBlur} />
-                </div>
-                <div>
-                  <label htmlFor="lastName" style={labelStyle}>Last name</label>
-                  <input id="lastName" type="text" autoComplete="family-name" required
-                    value={lastName} onChange={e => setLastName(e.target.value)}
-                    placeholder="Doe" style={inputStyle} onFocus={onFocus} onBlur={onBlur} />
-                </div>
-              </div>
+                  {/* Name */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
+                    <div>
+                      <label htmlFor="firstName" style={labelStyle}>First name</label>
+                      <div style={{ position: 'relative' }}>
+                        <span style={inputIconStyle}><User size={15} /></span>
+                        <input id="firstName" type="text" autoComplete="given-name" required
+                          value={firstName} onChange={e => setFirstName(e.target.value)}
+                          placeholder="Jane" style={inputStyle} onFocus={onFocus} onBlur={onBlur} />
+                      </div>
+                    </div>
+                    <div>
+                      <label htmlFor="lastName" style={labelStyle}>Last name</label>
+                      <div style={{ position: 'relative' }}>
+                        <span style={inputIconStyle}><User size={15} /></span>
+                        <input id="lastName" type="text" autoComplete="family-name" required
+                          value={lastName} onChange={e => setLastName(e.target.value)}
+                          placeholder="Doe" style={inputStyle} onFocus={onFocus} onBlur={onBlur} />
+                      </div>
+                    </div>
+                  </div>
 
-              {/* Email */}
-              <div style={{ marginBottom: '1rem' }}>
-                <label htmlFor="email" style={labelStyle}>Email</label>
-                <input id="email" type="email" autoComplete="email" required
-                  value={email} onChange={e => setEmail(e.target.value)}
-                  placeholder="you@example.com" style={inputStyle} onFocus={onFocus} onBlur={onBlur} />
-              </div>
+                  {/* Email */}
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label htmlFor="email" style={labelStyle}>Email</label>
+                    <div style={{ position: 'relative' }}>
+                      <span style={inputIconStyle}><Mail size={15} /></span>
+                      <input id="email" type="email" autoComplete="email" required
+                        value={email} onChange={e => setEmail(e.target.value)}
+                        placeholder="you@example.com" style={inputStyle} onFocus={onFocus} onBlur={onBlur} />
+                    </div>
+                  </div>
 
-              {/* Password + strength */}
-              <div style={{ marginBottom: '1.25rem' }}>
-                <label htmlFor="password" style={labelStyle}>Password</label>
-                <div style={{ position: 'relative' }}>
-                  <input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    autoComplete="new-password" required
-                    value={password} onChange={e => setPassword(e.target.value)}
-                    placeholder="Min. 8 characters"
-                    style={{ ...inputStyle, paddingRight: '2.75rem' }}
-                    onFocus={e => { onFocus(e); setPasswordFocused(true) }}
-                    onBlur={e  => { onBlur(e);  setPasswordFocused(false) }}
-                  />
-                  <button type="button" tabIndex={-1} onClick={() => setShowPassword(v => !v)}
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
-                    style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'hsl(var(--muted-foreground))', padding: 0, fontSize: '0.85rem', lineHeight: 1 }}>
-                    {showPassword ? '🙈' : '👁️'}
-                  </button>
-                </div>
-                <AnimatePresence>
-                  {(passwordFocused || password.length > 0) && (
-                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }}>
-                      <PasswordStrength password={password} />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+                  {/* Password + strength */}
+                  <div style={{ marginBottom: '1.25rem' }}>
+                    <label htmlFor="password" style={labelStyle}>Password</label>
+                    <div style={{ position: 'relative' }}>
+                      <span style={inputIconStyle}><Lock size={15} /></span>
+                      <input
+                        id="password"
+                        type={showPassword ? 'text' : 'password'}
+                        autoComplete="new-password" required
+                        value={password} onChange={e => setPassword(e.target.value)}
+                        placeholder="Min. 8 characters"
+                        style={{ ...inputStyle, paddingRight: '2.75rem' }}
+                        onFocus={e => { onFocus(e); setPasswordFocused(true) }}
+                        onBlur={e  => { onBlur(e);  setPasswordFocused(false) }}
+                      />
+                      <button type="button" tabIndex={-1} onClick={() => setShowPassword(v => !v)}
+                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                        style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'hsl(var(--muted-foreground))', padding: 0, display: 'flex', alignItems: 'center' }}>
+                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+                    <AnimatePresence>
+                      {(passwordFocused || password.length > 0) && (
+                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }}>
+                          <PasswordStrength password={password} />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
 
-              {/* Error banner */}
-              <AnimatePresence>
-                {error && (
-                  <motion.div key="err" initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} style={errorBoxStyle}>
-                    {errorKey === ERR.EMAIL_EXISTS ? (
-                      <>
-                        An account with this email already exists.{' '}
-                        <a href="/sign-in" rel="noopener noreferrer" style={{ color: 'hsl(var(--accent))', fontWeight: 500 }}>Sign in instead</a>
-                        {' '}— or use <strong>Continue with Google</strong> if you originally signed up that way.
-                      </>
-                    ) : errorKey === ERR.GOOGLE_EXISTS ? (
-                      <>
-                        This email is linked to a Google account.{' '}
-                        Please use <strong>Continue with Google</strong> below to sign in.
-                      </>
-                    ) : error}
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                  {/* Error banner */}
+                  <AnimatePresence>
+                    {error && (
+                      <motion.div key="err" initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} style={errorBoxStyle}>
+                        <AlertCircle size={15} style={{ flexShrink: 0, marginTop: '0.1rem' }} />
+                        <span>
+                          {errorKey === ERR.EMAIL_EXISTS ? (
+                            <>
+                              An account with this email already exists.{' '}
+                              <a href="/sign-in" rel="noopener noreferrer" style={{ color: 'hsl(var(--accent))', fontWeight: 500 }}>Sign in instead</a>
+                              {' '}— or use <strong>Continue with Google</strong> if you originally signed up that way.
+                            </>
+                          ) : errorKey === ERR.GOOGLE_EXISTS ? (
+                            <>
+                              This email is linked to a Google account.{' '}
+                              Please use <strong>Continue with Google</strong> below to sign in.
+                            </>
+                          ) : error}
+                        </span>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
 
-              <button type="submit" disabled={loading || googleLoading} className="btn-save"
-                style={{ width: '100%', justifyContent: 'center', fontSize: '0.9375rem', opacity: loading ? 0.7 : 1 }}>
-                {loading ? 'Creating account…' : 'Create account'}
-              </button>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', margin: '1.5rem 0' }}>
-                <div style={{ flex: 1, height: 1, background: 'hsl(var(--border))' }} />
-                <span style={{ fontSize: 'var(--text-xs)', color: 'hsl(var(--muted-foreground))', fontWeight: 400 }}>or</span>
-                <div style={{ flex: 1, height: 1, background: 'hsl(var(--border))' }} />
-              </div>
-
-              <button type="button" className="btn-ghost" disabled={googleLoading || loading}
-                style={{ width: '100%', justifyContent: 'center', opacity: googleLoading ? 0.7 : 1 }}
-                onClick={handleGoogleSignUp}>
-                {googleLoading
-                  ? <div className="w-4 h-4 rounded-full border-2 animate-spin" style={{ borderColor: 'hsl(var(--border))', borderTopColor: 'hsl(var(--foreground))', marginRight: 8 }} />
-                  : <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" style={{ marginRight: 8 }}>
-                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" />
-                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-                    </svg>
-                }
-                {googleLoading ? 'Redirecting…' : 'Continue with Google'}
-              </button>
-            </form>
-          )}
-
-          {/* ── Verify stage ───────────────────────────────────────────────── */}
-          {stage === 'verify' && (
-            <form onSubmit={handleVerify} noValidate>
-              <div style={{ marginBottom: '1.5rem' }}>
-                <label htmlFor="code" style={labelStyle}>Verification code</label>
-                <input id="code" type="text" inputMode="numeric" autoComplete="one-time-code"
-                  required maxLength={6}
-                  value={code} onChange={e => setCode(e.target.value.replace(/\D/g, ''))}
-                  placeholder="123456"
-                  style={{ ...inputStyle, letterSpacing: '0.2em', fontWeight: 500, textAlign: 'center', fontSize: '1.25rem' }}
-                  onFocus={onFocus} onBlur={onBlur} />
-
-                {/* resend row */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.5rem' }}>
-                  <p style={{ fontSize: '0.75rem', color: 'hsl(var(--muted-foreground))' }}>
-                    Didn't receive it? Check your spam folder.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={handleResend}
-                    disabled={resendLoading || resendCooldown > 0}
-                    style={{
-                      background: 'none', border: 'none', cursor: resendCooldown > 0 ? 'default' : 'pointer',
-                      fontSize: '0.75rem', fontWeight: 500, padding: 0, whiteSpace: 'nowrap', flexShrink: 0,
-                      color: resendCooldown > 0 ? 'hsl(var(--muted-foreground))' : 'hsl(var(--accent))',
-                      transition: 'color 0.2s ease',
-                    }}
+                  <motion.button
+                    whileHover={{ y: loading || googleLoading ? 0 : -1 }}
+                    whileTap={{ scale: loading || googleLoading ? 1 : 0.99 }}
+                    type="submit" disabled={loading || googleLoading} className="btn-save"
+                    style={{ width: '100%', justifyContent: 'center', fontSize: '0.9375rem', opacity: loading ? 0.7 : 1 }}
                   >
-                    {resendLoading ? 'Sending…' : resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend code'}
+                    {loading ? 'Creating account…' : 'Create account'}
+                  </motion.button>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', margin: '1.5rem 0' }}>
+                    <div style={{ flex: 1, height: 1, background: 'linear-gradient(90deg, transparent, hsl(var(--border)))' }} />
+                    <span style={{ fontSize: 'var(--text-xs)', color: 'hsl(var(--muted-foreground))', fontWeight: 400, letterSpacing: '0.08em', textTransform: 'uppercase' }}>or</span>
+                    <div style={{ flex: 1, height: 1, background: 'linear-gradient(90deg, hsl(var(--border)), transparent)' }} />
+                  </div>
+
+                  <motion.button
+                    whileHover={{ y: googleLoading || loading ? 0 : -1 }}
+                    whileTap={{ scale: googleLoading || loading ? 1 : 0.99 }}
+                    type="button" className="btn-ghost" disabled={googleLoading || loading}
+                    style={{ width: '100%', justifyContent: 'center', opacity: googleLoading ? 0.7 : 1 }}
+                    onClick={handleGoogleSignUp}>
+                    {googleLoading
+                      ? <div className="w-4 h-4 rounded-full border-2 animate-spin" style={{ borderColor: 'hsl(var(--border))', borderTopColor: 'hsl(var(--foreground))', marginRight: 8 }} />
+                      : <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" style={{ marginRight: 8 }}>
+                          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" />
+                          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                        </svg>
+                    }
+                    {googleLoading ? 'Redirecting…' : 'Continue with Google'}
+                  </motion.button>
+                </form>
+              </motion.div>
+            )}
+
+            {/* ── Verify stage ───────────────────────────────────────────────── */}
+            {stage === 'verify' && (
+              <motion.div
+                key="verify"
+                initial={{ opacity: 0, x: 12 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 12 }}
+                transition={{ duration: 0.3, ease }}
+              >
+                <form onSubmit={handleVerify} noValidate>
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <label htmlFor="code" style={labelStyle}>Verification code</label>
+                    <input id="code" type="text" inputMode="numeric" autoComplete="one-time-code"
+                      required maxLength={6}
+                      value={code} onChange={e => setCode(e.target.value.replace(/\D/g, ''))}
+                      placeholder="123456"
+                      style={{
+                        ...inputStyle,
+                        padding: '0.6875rem 1rem',
+                        letterSpacing: '0.35em',
+                        fontWeight: 500,
+                        textAlign: 'center',
+                        fontSize: '1.375rem',
+                      }}
+                      onFocus={onFocus} onBlur={onBlur} />
+
+                    {/* resend row */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.625rem' }}>
+                      <p style={{ fontSize: '0.75rem', color: 'hsl(var(--muted-foreground))' }}>
+                        Didn't receive it? Check your spam folder.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={handleResend}
+                        disabled={resendLoading || resendCooldown > 0}
+                        style={{
+                          background: 'none', border: 'none', cursor: resendCooldown > 0 ? 'default' : 'pointer',
+                          fontSize: '0.75rem', fontWeight: 500, padding: 0, whiteSpace: 'nowrap', flexShrink: 0,
+                          color: resendCooldown > 0 ? 'hsl(var(--muted-foreground))' : 'hsl(var(--accent))',
+                          transition: 'color 0.2s ease',
+                        }}
+                      >
+                        {resendLoading ? 'Sending…' : resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend code'}
+                      </button>
+                    </div>
+
+                    {/* success toast */}
+                    <AnimatePresence>
+                      {resendSuccess && (
+                        <motion.p key="resend-ok"
+                          initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                          style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.75rem', color: '#22c55e', marginTop: '0.5rem', fontWeight: 500 }}>
+                          <CheckCircle2 size={14} />
+                          New code sent — check your inbox.
+                        </motion.p>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  <AnimatePresence>
+                    {error && (
+                      <motion.div key="err" initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} style={errorBoxStyle}>
+                        <AlertCircle size={15} style={{ flexShrink: 0, marginTop: '0.1rem' }} />
+                        <span>{error}</span>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  <motion.button
+                    whileHover={{ y: (loading || code.length < 6) ? 0 : -1 }}
+                    whileTap={{ scale: (loading || code.length < 6) ? 1 : 0.99 }}
+                    type="submit" disabled={loading || code.length < 6} className="btn-save"
+                    style={{ width: '100%', justifyContent: 'center', fontSize: '0.9375rem', opacity: (loading || code.length < 6) ? 0.7 : 1 }}
+                  >
+                    {loading ? 'Verifying…' : 'Verify email'}
+                  </motion.button>
+
+                  <button type="button" className="btn-ghost"
+                    style={{ width: '100%', justifyContent: 'center', marginTop: '0.75rem' }}
+                    onClick={() => { setStage('form'); setError(''); setErrorKey(''); setCode(''); setResendCooldown(0); setResendSuccess(false) }}>
+                    Back
                   </button>
-                </div>
-
-                {/* success toast */}
-                <AnimatePresence>
-                  {resendSuccess && (
-                    <motion.p key="resend-ok"
-                      initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                      style={{ fontSize: '0.75rem', color: '#22c55e', marginTop: '0.375rem', fontWeight: 500 }}>
-                      ✓ New code sent — check your inbox.
-                    </motion.p>
-                  )}
-                </AnimatePresence>
-              </div>
-
-              <AnimatePresence>
-                {error && (
-                  <motion.div key="err" initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} style={errorBoxStyle}>
-                    {error}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              <button type="submit" disabled={loading || code.length < 6} className="btn-save"
-                style={{ width: '100%', justifyContent: 'center', fontSize: '0.9375rem', opacity: (loading || code.length < 6) ? 0.7 : 1 }}>
-                {loading ? 'Verifying…' : 'Verify email'}
-              </button>
-
-              <button type="button" className="btn-ghost"
-                style={{ width: '100%', justifyContent: 'center', marginTop: '0.75rem' }}
-                onClick={() => { setStage('form'); setError(''); setErrorKey(''); setCode(''); setResendCooldown(0); setResendSuccess(false) }}>
-                Back
-              </button>
-            </form>
-          )}
+                </form>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
         </div>
 

@@ -13,26 +13,38 @@ import { useSupportChat }   from '@/hooks/useSupportChat'
 import { useStreamContext } from '@/components/providers/StreamProvider'
 
 /**
- * All colours are CSS variables — define these in your global stylesheet
- * (or in a [data-theme] / .dark / .light block) so dark/light mode just
- * works by toggling the theme. This was already the right architecture in
- * the original file — untouched here, just extended with a couple more
- * tokens the new bits use:
+ * These used to be described as "define these yourself in your global
+ * stylesheet" — but nothing in this codebase ever actually defined them,
+ * so every var(--chat-*) reference below was resolving to nothing and
+ * the whole page looked hardcoded regardless of light/dark mode. Fixed
+ * by grounding them in the site's real, already-working theme tokens
+ * (the same ones Footer/Contact/Hero/the customer-facing chat use) and
+ * applying them as inline custom properties on every root this component
+ * can render — including the loading and "not found" screens, which
+ * previously had no variables defined at all since they're separate
+ * early returns that never touched the old component-local <style> tag.
  *
- *  --chat-bg              Page / chat area background
- *  --chat-surface         Bubble & input background (elevated)
- *  --chat-surface-hi      Hover / active surface
- *  --chat-border          Hairline borders
- *  --chat-text-primary    Main text
- *  --chat-text-secondary  Supporting text
- *  --chat-text-meta       Timestamps, icons, placeholders
- *  --chat-accent          Pinterest red — #e60023
- *  --chat-accent-hover    Pinterest red hover — #ff1a38
- *  --chat-bubble-out      Outgoing bubble bg  → var(--chat-accent)
- *  --chat-bubble-out-text Outgoing bubble text → #fff
- *  --chat-online          Online indicator dot / halo — #25d366
- *  --chat-tick-read       Read receipt blue
+ * Brand/functional colors (accent, online, tick-read) stay constant
+ * across light/dark on purpose — they're brand identity, not part of
+ * the adaptive surface system.
  */
+const PINTEREST_RED = '#E60023'
+
+const chatVars = {
+  '--chat-bg': 'hsl(var(--background))',
+  '--chat-surface': 'hsl(var(--surface-elevated))',
+  '--chat-surface-hi': 'hsl(var(--foreground) / 0.08)',
+  '--chat-border': 'hsl(var(--border))',
+  '--chat-text-primary': 'hsl(var(--foreground))',
+  '--chat-text-secondary': 'hsl(var(--muted-foreground, var(--muted)))',
+  '--chat-text-meta': 'hsl(var(--muted))',
+  '--chat-accent': PINTEREST_RED,
+  '--chat-accent-hover': '#ff1a38',
+  '--chat-bubble-out': PINTEREST_RED,
+  '--chat-bubble-out-text': '#ffffff',
+  '--chat-online': '#25d366',
+  '--chat-tick-read': '#53bdeb',
+} as React.CSSProperties
 
 const ease = [0.22, 1, 0.36, 1] as const
 
@@ -517,14 +529,14 @@ export default function AdminConversationPage() {
   )
 
   if (!loaded) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 'calc(100dvh - 64px)', background: 'var(--chat-bg)' }}>
+    <div style={{ ...chatVars, display: 'flex', alignItems: 'center', justifyContent: 'center', height: 'calc(100dvh - 64px)', background: 'var(--chat-bg)' }}>
       <Spinner />
       <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
     </div>
   )
 
   if (!convo) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 'calc(100dvh - 64px)', background: 'var(--chat-bg)' }}>
+    <div style={{ ...chatVars, display: 'flex', alignItems: 'center', justifyContent: 'center', height: 'calc(100dvh - 64px)', background: 'var(--chat-bg)' }}>
       <div style={{ textAlign: 'center' }}>
         <p style={{ ...DISPLAY, fontSize: 22, fontStyle: 'italic', fontWeight: 500, color: 'var(--chat-text-primary)', margin: '0 0 14px' }}>Conversation not found</p>
         <Link href="/admin/support" style={{ ...UTILITY, fontSize: 12, color: 'var(--chat-text-meta)', textDecoration: 'underline' }}>← Back to inbox</Link>
@@ -537,6 +549,7 @@ export default function AdminConversationPage() {
   return (
     <div style={{
       ...UTILITY,
+      ...chatVars,
       maxWidth: 760, margin: '0 auto',
       display: 'flex', flexDirection: 'column',
       height: 'calc(100dvh - 64px)',
@@ -563,23 +576,8 @@ export default function AdminConversationPage() {
           </svg>
         </Link>
 
-        <div style={{ position: 'relative', flexShrink: 0, width: 40, height: 40 }}>
-          {/* Rotating green halo — same "online" treatment as the
-              customer-facing chat, instead of a plain static dot */}
-          {user && (
-            <div
-              className="chat-avatar-halo"
-              aria-hidden
-              style={{
-                position: 'absolute', top: -3, left: -3, right: -3, bottom: -3,
-                borderRadius: '50%',
-                background: 'conic-gradient(from 0deg, var(--chat-online) 0deg, transparent 170deg, transparent 190deg, var(--chat-online) 360deg)',
-                filter: 'blur(2px)',
-              }}
-            />
-          )}
+        <div style={{ position: 'relative', flexShrink: 0 }}>
           <div style={{
-            position: 'relative',
             width: 40, height: 40, borderRadius: '50%',
             background: 'var(--chat-surface)', border: '0.5px solid var(--chat-border)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -591,6 +589,11 @@ export default function AdminConversationPage() {
               : (user?.displayName?.[0] ?? user?.username?.[0] ?? '?').toUpperCase()
             }
           </div>
+          <span style={{
+            position: 'absolute', bottom: 0, right: 0,
+            width: 10, height: 10, borderRadius: '50%',
+            background: 'var(--chat-online)', border: '2px solid var(--chat-bg)',
+          }} />
         </div>
 
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -727,9 +730,6 @@ export default function AdminConversationPage() {
       <style>{`
         @keyframes spin         { to { transform: rotate(360deg) } }
         @keyframes typingBounce { 0%,60%,100%{transform:translateY(0);opacity:.3} 30%{transform:translateY(-6px);opacity:1} }
-        @keyframes avatarHaloSpin { to { transform: rotate(360deg) } }
-
-        .chat-avatar-halo { animation: avatarHaloSpin 5s linear infinite; }
 
         .chat-input-wrap:focus-within { border-color: var(--chat-accent) !important; }
 
@@ -742,10 +742,6 @@ export default function AdminConversationPage() {
 
         .chat-retry-btn { transition: opacity 0.15s; }
         .chat-retry-btn:hover { opacity: 0.7; }
-
-        @media (prefers-reduced-motion: reduce) {
-          .chat-avatar-halo { animation: none; }
-        }
       `}</style>
     </div>
   )

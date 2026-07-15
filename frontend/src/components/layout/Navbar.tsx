@@ -1,60 +1,24 @@
 'use client'
 
 /**
- * Navbar — v10 · Shoppin
+ * Navbar — Shoppin
  *
- * v9 → v10: pixel-perfect alignment
- *  - Logo now a single fixed 32px size on every breakpoint instead of
- *    jumping at sm: — same look, same alignment, on any device
- *  - Nav pills (Explore, Women, Men, Categories) switched from
- *    padding-derived height to an explicit h-8, so they can't drift a
- *    pixel or two off from font-rendering differences across browsers
- *  - Search trigger bumped to the same h-8 so it sits exactly on the same
- *    line as the logo and pills, instead of floating slightly lower
- *  - Recalculated the scroll spacer / mobile backdrop offset against the
- *    real tallest row element (the 40px .btn-icon buttons, not the logo),
- *    since that's what actually determines the header's rendered height
- *
- * v8 → v9: smaller still
- *  - Header padding cut again (py-1.5/py-1 depending on scroll state)
- *  - Logo down to 32–36px
- *  - Nav pills, search trigger, icon glyphs, and avatars all a notch
- *    smaller across the board
- *  - Dropdown panels narrower to match the lighter overall scale
- *  - Spacer/backdrop offset recalculated again for the shorter header
- *
- * v7 → v8: cleanup
- *  - Fixed a real bug: usePathname() never includes the query string, so
- *    the Women/Men "active" check (pathname === '/explore?category=...')
- *    could never be true. Now reads the category via useSearchParams,
- *    scoped to when pathname is actually '/explore'.
- *  - Deduped the Explore / Women / Men / Categories pill styling into one
- *    navPillClass(active) helper instead of three copies of the same
- *    className string.
- *  - Hoisted the Women/Men subset (primaryCategories) to module scope
- *    instead of filtering the categories array on every render.
- *  - Fixed inconsistent JSX indentation around the logo block (it had
- *    drifted to a shallower indent than its siblings).
- *
- * v6 → v7: Women / Men surfaced in the nav
- *  - Added "Women" and "Men" as their own pills next to Explore, using the
- *    existing `categories` array entries (womenswear/menswear) and the
- *    same `/explore?category=...` route the Categories dropdown already
- *    used — no new links, copy, or routes, just the two most-clicked
- *    categories pulled up a level for faster access
- *  - Categories dropdown (all 7 categories, unchanged) still holds
- *    everything else, including Women/Men again for discoverability
- *
- * v5 → v6: slimmer + tighter
- *  - Reduced vertical padding (header is noticeably shorter now)
- *  - Logo dropped to 36–40px so it reads as a compact mark, not a hero logo
- *  - Nav pills, search trigger, and dropdown chrome all tightened to match
- *  - Spacer/drawer offset recalculated for the new, shorter header height
- *
- * v4 → v5: logo swap + header-height fit
- *  - New transparent-background logo.png (square canvas, no black fringe)
- *  - Fixed header-height/spacer mismatch between the fixed header and the
- *    scroll spacer / mobile drawer backdrop offset
+ * Layout notes:
+ *  - Every top-level row item (logo, Women/Men pills, Categories trigger,
+ *    Explore, search trigger) shares a fixed h-8 height and the
+ *    `navPillClass` helper for typography, so they render on one exact
+ *    line across breakpoints/browsers instead of drifting from
+ *    padding- or font-derived sizing.
+ *  - "Categories" is the only native <button> among the pills (the rest
+ *    are <Link>); it explicitly resets appearance/border/background/
+ *    font-family so it can't inherit different button chrome from the
+ *    browser's UA stylesheet.
+ *  - usePathname() excludes query strings, so the Women/Men active state
+ *    reads the category via useSearchParams instead of comparing hrefs.
+ *  - The below-header spacer and mobile drawer backdrop offset (52px)
+ *    are sized against the tallest row element — the 40px .btn-icon
+ *    buttons (cart/bell/hamburger, defined in global CSS) — not the
+ *    logo, since that's what actually sets the header's rendered height.
  */
 
 import { useState, useEffect, useRef } from 'react'
@@ -582,13 +546,8 @@ export function Navbar() {
                 </button>
 
                 {/* Desktop auth */}
-                <div className="hidden md:flex items-center gap-2 ml-2 pl-3 border-l border-[hsl(var(--border))]">
-                  <Link
-                    href="/sign-in"
-                    className="text-sm font-medium px-3 py-2
-                               text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]
-                               transition-colors duration-[var(--duration-hover)]"
-                  >
+                <div className="hidden md:flex items-center gap-1 ml-1 pl-2 border-l border-[hsl(var(--border))]">
+                  <Link href="/sign-in" className={navPillClass(false)}>
                     Sign in
                   </Link>
                   <Link href="/sign-up" className="btn-save text-sm">Join free</Link>

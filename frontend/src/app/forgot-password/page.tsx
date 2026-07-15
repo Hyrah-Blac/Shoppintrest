@@ -5,6 +5,13 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Great_Vibes } from 'next/font/google'
+import { Mail, Lock, CheckCircle2, AlertCircle } from 'lucide-react'
+
+// Same script family + loading strategy used across sign-in, sign-up, and
+// the rest of the app — self-hosted via next/font so it can't silently
+// fall back to generic cursive.
+const greatVibes = Great_Vibes({ weight: '400', subsets: ['latin'], display: 'swap' })
 
 // ── stage type ────────────────────────────────────────────────────────────────
 type Stage = 'request' | 'sent' | 'reset'
@@ -190,28 +197,32 @@ export default function ForgotPasswordPage() {
   }
 
   // ── Shared styles ─────────────────────────────────────────────────────────
+  // Base input reserves room for a leading icon — purely presentational;
+  // every id/name/value/handler stays exactly as it was.
   const inputStyle: React.CSSProperties = {
     width:        '100%',
-    padding:      '0.6875rem 1rem',
+    padding:      '0.6875rem 1rem 0.6875rem 2.75rem',
     borderRadius: 'var(--radius)',
     border:       '1.5px solid hsl(var(--input))',
-    background:   'hsl(var(--background))',
+    background:   'hsl(var(--surface) / 0.6)',
     color:        'hsl(var(--foreground))',
     fontSize:     'var(--text-body)',
     fontFamily:   "'DM Sans', sans-serif",
     fontWeight:   300,
     outline:      'none',
-    transition:   'border-color 0.2s ease, box-shadow 0.2s ease',
+    transition:   'border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease',
     boxSizing:    'border-box',
   }
 
   const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
     e.currentTarget.style.borderColor = 'hsl(var(--accent) / 0.6)'
     e.currentTarget.style.boxShadow   = '0 0 0 3px hsl(var(--accent) / 0.12)'
+    e.currentTarget.style.background  = 'hsl(var(--background))'
   }
   const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     e.currentTarget.style.borderColor = 'hsl(var(--input))'
     e.currentTarget.style.boxShadow   = 'none'
+    e.currentTarget.style.background  = 'hsl(var(--surface) / 0.6)'
   }
 
   const labelStyle: React.CSSProperties = {
@@ -232,7 +243,45 @@ export default function ForgotPasswordPage() {
     fontSize:     'var(--text-sm)',
     fontWeight:   400,
     lineHeight:   1.55,
+    display:      'flex',
+    alignItems:   'flex-start',
+    gap:          '0.5rem',
   }
+
+  // Leading icon positioned inside an input — purely decorative
+  const inputIconStyle: React.CSSProperties = {
+    position: 'absolute', left: '0.875rem', top: '50%', transform: 'translateY(-50%)',
+    color: 'hsl(var(--muted-foreground))', pointerEvents: 'none', display: 'flex',
+  }
+  // Top edge-light hairline, same VOID UI signature used on the explore page's
+  // glass surfaces and on the sign-in / sign-up cards.
+  const EDGE_LIGHT = 'linear-gradient(90deg, transparent, hsl(var(--border)) 40%, transparent)'
+
+  // Great Vibes script headline with the same curtain-lift reveal used
+  // throughout the app — key it so it re-plays whenever the stage changes.
+  const ScriptHeadline = ({ text }: { text: string }) => (
+    <div style={{ overflow: 'hidden' }}>
+      <motion.h1
+        key={text}
+        className={greatVibes.className}
+        initial={{ y: '105%' }}
+        animate={{ y: '0%' }}
+        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        style={{
+          fontSize:      'clamp(2rem, 5.5vw, 2.5rem)',
+          fontWeight:    400,
+          letterSpacing: '0.01em',
+          color:         'hsl(var(--foreground))',
+          lineHeight:    1.2,
+          textAlign:     'center',
+          margin:        0,
+          paddingBottom: '0.12em', // clears descenders from the mask
+        }}
+      >
+        {text}
+      </motion.h1>
+    </div>
+  )
 
   if (!clerk.loaded) return null
 
@@ -245,6 +294,7 @@ export default function ForgotPasswordPage() {
         {/* ── Card ── */}
         <div
           style={{
+            position:     'relative',
             background:   'hsl(var(--surface))',
             border:       '1px solid hsl(var(--border))',
             borderRadius: 'var(--radius-2xl)',
@@ -253,18 +303,23 @@ export default function ForgotPasswordPage() {
             overflow:     'hidden',
           }}
         >
-          {/* Logo */}
+          {/* Top edge-light — ties this card to the same glass system used
+              on the explore page and the sign-in / sign-up cards */}
+          <div aria-hidden style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '1px', background: EDGE_LIGHT }} />
+
+          {/* Logo — same breathing accent-glow vessel used elsewhere */}
           <div className="flex justify-center mb-6">
-            <div
-              style={{
-                position:     'relative',
-                width:        40,
-                height:       40,
-                borderRadius: 'var(--radius-sm)',
-                overflow:     'hidden',
-              }}
-            >
-              <Image src="/logo.png" alt="Shoppin" fill className="object-contain" priority />
+            <div className="relative" style={{ width: 52, height: 52 }}>
+              <motion.div
+                aria-hidden
+                className="absolute inset-0 rounded-full"
+                style={{ background: 'radial-gradient(circle, hsl(var(--accent) / 0.16) 0%, transparent 72%)' }}
+                animate={{ scale: [1, 1.18, 1], opacity: [0.5, 0.9, 0.5] }}
+                transition={{ duration: 3.4, repeat: Infinity, ease: 'easeInOut' }}
+              />
+              <div style={{ position: 'absolute', inset: 6, borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
+                <Image src="/logo.png" alt="Shoppin" fill className="object-contain" priority />
+              </div>
             </div>
           </div>
 
@@ -273,18 +328,9 @@ export default function ForgotPasswordPage() {
             {/* ── Stage 1: enter email ─────────────────────────────────── */}
             {stage === 'request' && (
               <motion.div key="request" {...fadeSlide}>
-                <h1
-                  className="font-display font-bold text-center"
-                  style={{
-                    fontSize:      'clamp(1.3rem, 3vw, 1.6rem)',
-                    color:         'hsl(var(--foreground))',
-                    letterSpacing: '-0.03em',
-                    lineHeight:    1.1,
-                    marginBottom:  '0.5rem',
-                  }}
-                >
-                  Reset your password
-                </h1>
+                <div style={{ marginBottom: '0.5rem' }}>
+                  <ScriptHeadline text="Reset your password" />
+                </div>
                 <p
                   className="text-sm text-center"
                   style={{
@@ -299,18 +345,21 @@ export default function ForgotPasswordPage() {
                 <form onSubmit={handleRequest} noValidate>
                   <div style={{ marginBottom: '1.5rem' }}>
                     <label htmlFor="email" style={labelStyle}>Email</label>
-                    <input
-                      id="email"
-                      type="email"
-                      autoComplete="email"
-                      required
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="you@example.com"
-                      style={inputStyle}
-                      onFocus={handleFocus}
-                      onBlur={handleBlur}
-                    />
+                    <div style={{ position: 'relative' }}>
+                      <span style={inputIconStyle}><Mail size={15} /></span>
+                      <input
+                        id="email"
+                        type="email"
+                        autoComplete="email"
+                        required
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="you@example.com"
+                        style={inputStyle}
+                        onFocus={handleFocus}
+                        onBlur={handleBlur}
+                      />
+                    </div>
                   </div>
 
                   {/* Error — Google-only or generic */}
@@ -323,14 +372,17 @@ export default function ForgotPasswordPage() {
                         exit={{ opacity: 0 }}
                         style={errorBoxStyle}
                       >
-                        {errorKey === ERR.GOOGLE_ONLY ? (
-                          <>
-                            This account was created using Google. Please continue
-                            with Google sign-in instead.
-                          </>
-                        ) : (
-                          error
-                        )}
+                        <AlertCircle size={15} style={{ flexShrink: 0, marginTop: '0.1rem' }} />
+                        <span>
+                          {errorKey === ERR.GOOGLE_ONLY ? (
+                            <>
+                              This account was created using Google. Please continue
+                              with Google sign-in instead.
+                            </>
+                          ) : (
+                            error
+                          )}
+                        </span>
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -344,7 +396,9 @@ export default function ForgotPasswordPage() {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0 }}
                       >
-                        <button
+                        <motion.button
+                          whileHover={{ y: -1 }}
+                          whileTap={{ scale: 0.99 }}
                           type="button"
                           className="btn-ghost"
                           style={{
@@ -364,19 +418,21 @@ export default function ForgotPasswordPage() {
                             <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
                           </svg>
                           Continue with Google
-                        </button>
+                        </motion.button>
                       </motion.div>
                     )}
                   </AnimatePresence>
 
-                  <button
+                  <motion.button
+                    whileHover={{ y: loading ? 0 : -1 }}
+                    whileTap={{ scale: loading ? 1 : 0.99 }}
                     type="submit"
                     disabled={loading}
                     className="btn-save"
                     style={{ width: '100%', justifyContent: 'center', fontSize: '0.9375rem' }}
                   >
                     {loading ? 'Sending…' : 'Send reset code'}
-                  </button>
+                  </motion.button>
                 </form>
               </motion.div>
             )}
@@ -385,40 +441,38 @@ export default function ForgotPasswordPage() {
             {stage === 'sent' && (
               <motion.div key="sent" {...fadeSlide}>
                 <div className="flex flex-col items-center text-center mb-8">
-                  {/* Envelope icon */}
-                  <div
-                    style={{
-                      width:          48,
-                      height:         48,
-                      borderRadius:   'var(--radius)',
-                      background:     'hsl(var(--background-secondary))',
-                      border:         '1px solid hsl(var(--border))',
-                      display:        'flex',
-                      alignItems:     'center',
-                      justifyContent: 'center',
-                      marginBottom:   '1.25rem',
-                    }}
-                  >
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--accent))" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="2" y="4" width="20" height="16" rx="2"/>
-                      <path d="m2 7 10 7 10-7"/>
-                    </svg>
+                  {/* Envelope icon — breathing accent glow, same language as
+                      the empty states on explore / cart */}
+                  <div className="relative mb-5" style={{ width: 48, height: 48 }}>
+                    <motion.div
+                      aria-hidden
+                      className="absolute inset-0 rounded-full"
+                      style={{ background: 'radial-gradient(circle, hsl(var(--accent) / 0.2) 0%, transparent 72%)' }}
+                      animate={{ scale: [1, 1.28, 1], opacity: [0.45, 0.85, 0.45] }}
+                      transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+                    />
+                    <div
+                      style={{
+                        position:       'relative',
+                        width:          48,
+                        height:         48,
+                        borderRadius:   'var(--radius)',
+                        background:     'hsl(var(--background-secondary))',
+                        border:         '1px solid hsl(var(--border))',
+                        display:        'flex',
+                        alignItems:     'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Mail size={20} color="hsl(var(--accent))" strokeWidth={1.75} />
+                    </div>
                   </div>
-                  <h1
-                    className="font-display font-bold"
-                    style={{
-                      fontSize:      'clamp(1.3rem, 3vw, 1.6rem)',
-                      color:         'hsl(var(--foreground))',
-                      letterSpacing: '-0.03em',
-                      lineHeight:    1.1,
-                      marginBottom:  '0.5rem',
-                    }}
-                  >
-                    Check your inbox
-                  </h1>
+
+                  <ScriptHeadline text="Check your inbox" />
+
                   <p
                     className="text-sm"
-                    style={{ color: 'hsl(var(--muted))', fontWeight: 300 }}
+                    style={{ color: 'hsl(var(--muted))', fontWeight: 300, marginTop: '0.375rem' }}
                   >
                     We sent a 6-digit code to{' '}
                     <span style={{ color: 'hsl(var(--foreground))', fontWeight: 500 }}>
@@ -440,9 +494,22 @@ export default function ForgotPasswordPage() {
                     border:         '1px solid hsl(var(--border))',
                   }}
                 >
-                  <p style={{ fontSize: '0.75rem', color: 'hsl(var(--muted-foreground))', margin: 0 }}>
-                    Didn't receive it? Check spam.
-                  </p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <motion.span
+                      aria-hidden
+                      style={{
+                        width: '5px', height: '5px', borderRadius: '50%',
+                        background: 'hsl(var(--accent))',
+                        boxShadow: '0 0 6px hsl(var(--accent) / 0.65)',
+                        flexShrink: 0,
+                      }}
+                      animate={{ opacity: [0.45, 1, 0.45] }}
+                      transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
+                    />
+                    <p style={{ fontSize: '0.75rem', color: 'hsl(var(--muted-foreground))', margin: 0 }}>
+                      Didn't receive it? Check spam.
+                    </p>
+                  </div>
                   <button
                     type="button"
                     onClick={handleResend}
@@ -477,9 +544,10 @@ export default function ForgotPasswordPage() {
                       initial={{ opacity: 0, y: -4 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0 }}
-                      style={{ fontSize: '0.75rem', color: '#22c55e', marginBottom: '0.75rem', fontWeight: 500 }}
+                      style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.75rem', color: '#22c55e', marginBottom: '0.75rem', fontWeight: 500 }}
                     >
-                      ✓ New code sent — check your inbox.
+                      <CheckCircle2 size={14} />
+                      New code sent — check your inbox.
                     </motion.p>
                   )}
                 </AnimatePresence>
@@ -494,19 +562,22 @@ export default function ForgotPasswordPage() {
                       exit={{ opacity: 0 }}
                       style={{ ...errorBoxStyle, marginBottom: '1rem' }}
                     >
-                      {error}
+                      <AlertCircle size={15} style={{ flexShrink: 0, marginTop: '0.1rem' }} />
+                      <span>{error}</span>
                     </motion.div>
                   )}
                 </AnimatePresence>
 
-                <button
+                <motion.button
+                  whileHover={{ y: -1 }}
+                  whileTap={{ scale: 0.99 }}
                   type="button"
                   className="btn-save"
                   style={{ width: '100%', justifyContent: 'center', fontSize: '0.9375rem' }}
                   onClick={() => { setError(''); setErrorKey(''); setStage('reset') }}
                 >
                   Enter code
-                </button>
+                </motion.button>
 
                 <button
                   type="button"
@@ -522,18 +593,9 @@ export default function ForgotPasswordPage() {
             {/* ── Stage 3: code + new password ─────────────────────────── */}
             {stage === 'reset' && (
               <motion.div key="reset" {...fadeSlide}>
-                <h1
-                  className="font-display font-bold text-center"
-                  style={{
-                    fontSize:      'clamp(1.3rem, 3vw, 1.6rem)',
-                    color:         'hsl(var(--foreground))',
-                    letterSpacing: '-0.03em',
-                    lineHeight:    1.1,
-                    marginBottom:  '0.5rem',
-                  }}
-                >
-                  Set new password
-                </h1>
+                <div style={{ marginBottom: '0.5rem' }}>
+                  <ScriptHeadline text="Set new password" />
+                </div>
                 <p
                   className="text-sm text-center"
                   style={{
@@ -580,7 +642,14 @@ export default function ForgotPasswordPage() {
                       value={code}
                       onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
                       placeholder="123456"
-                      style={{ ...inputStyle, letterSpacing: '0.2em', fontWeight: 500, textAlign: 'center', fontSize: '1.25rem' }}
+                      style={{
+                        ...inputStyle,
+                        padding: '0.6875rem 1rem',
+                        letterSpacing: '0.35em',
+                        fontWeight: 500,
+                        textAlign: 'center',
+                        fontSize: '1.375rem',
+                      }}
                       onFocus={handleFocus}
                       onBlur={handleBlur}
                     />
@@ -594,9 +663,10 @@ export default function ForgotPasswordPage() {
                         initial={{ opacity: 0, y: -4 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0 }}
-                        style={{ fontSize: '0.75rem', color: '#22c55e', marginBottom: '0.75rem', fontWeight: 500 }}
+                        style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.75rem', color: '#22c55e', marginBottom: '0.75rem', fontWeight: 500 }}
                       >
-                        ✓ New code sent — check your inbox.
+                        <CheckCircle2 size={14} />
+                        New code sent — check your inbox.
                       </motion.p>
                     )}
                   </AnimatePresence>
@@ -604,35 +674,41 @@ export default function ForgotPasswordPage() {
                   {/* New password */}
                   <div style={{ marginBottom: '1rem' }}>
                     <label htmlFor="password" style={labelStyle}>New password</label>
-                    <input
-                      id="password"
-                      type="password"
-                      autoComplete="new-password"
-                      required
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Min. 8 characters"
-                      style={inputStyle}
-                      onFocus={handleFocus}
-                      onBlur={handleBlur}
-                    />
+                    <div style={{ position: 'relative' }}>
+                      <span style={inputIconStyle}><Lock size={15} /></span>
+                      <input
+                        id="password"
+                        type="password"
+                        autoComplete="new-password"
+                        required
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="Min. 8 characters"
+                        style={inputStyle}
+                        onFocus={handleFocus}
+                        onBlur={handleBlur}
+                      />
+                    </div>
                   </div>
 
                   {/* Confirm */}
                   <div style={{ marginBottom: '1.5rem' }}>
                     <label htmlFor="confirm" style={labelStyle}>Confirm password</label>
-                    <input
-                      id="confirm"
-                      type="password"
-                      autoComplete="new-password"
-                      required
-                      value={confirm}
-                      onChange={(e) => setConfirm(e.target.value)}
-                      placeholder="Repeat password"
-                      style={inputStyle}
-                      onFocus={handleFocus}
-                      onBlur={handleBlur}
-                    />
+                    <div style={{ position: 'relative' }}>
+                      <span style={inputIconStyle}><Lock size={15} /></span>
+                      <input
+                        id="confirm"
+                        type="password"
+                        autoComplete="new-password"
+                        required
+                        value={confirm}
+                        onChange={(e) => setConfirm(e.target.value)}
+                        placeholder="Repeat password"
+                        style={inputStyle}
+                        onFocus={handleFocus}
+                        onBlur={handleBlur}
+                      />
+                    </div>
                   </div>
 
                   <AnimatePresence>
@@ -644,19 +720,22 @@ export default function ForgotPasswordPage() {
                         exit={{ opacity: 0 }}
                         style={errorBoxStyle}
                       >
-                        {error}
+                        <AlertCircle size={15} style={{ flexShrink: 0, marginTop: '0.1rem' }} />
+                        <span>{error}</span>
                       </motion.div>
                     )}
                   </AnimatePresence>
 
-                  <button
+                  <motion.button
+                    whileHover={{ y: loading ? 0 : -1 }}
+                    whileTap={{ scale: loading ? 1 : 0.99 }}
                     type="submit"
                     disabled={loading}
                     className="btn-save"
                     style={{ width: '100%', justifyContent: 'center', fontSize: '0.9375rem' }}
                   >
                     {loading ? 'Updating…' : 'Update password'}
-                  </button>
+                  </motion.button>
                 </form>
 
                 <button
