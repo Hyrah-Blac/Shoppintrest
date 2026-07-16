@@ -430,7 +430,7 @@ function Composer({ onSend, onTyping }: {
       style={{
         display: 'flex', alignItems: 'flex-end', gap: 8,
         padding: '8px 8px',
-        paddingBottom: '8px',
+        paddingBottom: 'calc(8px + env(safe-area-inset-bottom, 0px))',
         background: 'var(--wa-composer-bg)',
         flexShrink: 0,
         position: 'relative',
@@ -704,23 +704,38 @@ export default function SupportPage() {
 
   return (
     <div className="relative overflow-hidden" style={{ background: 'hsl(var(--background))' }}>
-      {/* Faint radial wash — same restrained-glow language as Contact/Hero */}
+      {/* Faint radial wash — same restrained-glow language as Contact/Hero.
+          Hidden on mobile since the chat card goes full-screen there and
+          would otherwise sit underneath it, unseen and wasted. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute -top-24 left-1/2 -translate-x-1/2 w-[720px] h-[420px] z-0"
+        className="pointer-events-none absolute -top-24 left-1/2 -translate-x-1/2 w-[720px] h-[420px] z-0 hidden sm:block"
         style={{ background: `radial-gradient(closest-side, ${PINTEREST_RED}14, transparent 70%)` }}
       />
 
-      <div className="container-narrow relative z-10" style={{ paddingBlock: 'clamp(1.25rem, 5vw, 4rem)' }}>
+      <div className="container-narrow relative z-10 sm:[padding-block:clamp(1.25rem,5vw,4rem)]">
 
-        {/* ── Chat card ── */}
+        {/* ── Chat card ──
+            Mobile (< sm): breaks out of the padded/max-width container via
+            `fixed inset-0` and fills the real device viewport edge-to-edge
+            (dvh-based, so it tracks the on-screen keyboard correctly) —
+            no dead space above/below, no squeezed typing area, no rounded
+            corners eating into it.
+            Tablet/desktop (>= sm): reverts to the original static, rounded,
+            height-capped card sitting inside the page layout. */}
         <motion.div
           initial={{ opacity: 0, y: 16, filter: 'blur(3px)' }}
           animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
           transition={{ duration: 0.5, delay: 0.1, ease }}
-          className="rounded-[28px] overflow-hidden h-[min(560px,80dvh)] sm:h-[min(600px,76dvh)] lg:h-[min(660px,72dvh)]"
+          className="
+            fixed inset-0 z-50 rounded-none overflow-hidden
+            sm:static sm:inset-auto sm:z-auto
+            sm:rounded-[28px]
+            sm:h-[min(600px,76dvh)] lg:h-[min(660px,72dvh)]
+          "
           style={{
             boxShadow: '0 20px 40px -20px hsl(0 0% 0% / 0.3)',
+            height: '100dvh',
           }}
         >
           <div
@@ -734,13 +749,17 @@ export default function SupportPage() {
           >
 
       {/* ── Header ── */}
-      <div className="wa-header" style={{
-        display: 'flex', alignItems: 'center', gap: 12,
-        padding: '10px 16px',
-        flexShrink: 0,
-        background: 'var(--wa-header-bg)',
-        zIndex: 2,
-      }}>
+      <div
+        className="wa-header"
+        style={{
+          display: 'flex', alignItems: 'center', gap: 12,
+          padding: '10px 16px',
+          paddingTop: 'calc(10px + env(safe-area-inset-top, 0px))',
+          flexShrink: 0,
+          background: 'var(--wa-header-bg)',
+          zIndex: 2,
+        }}
+      >
         <div style={{ position: 'relative', flexShrink: 0, width: 40, height: 40 }}>
           {/* Rotating half-green glow halo — a livelier "online" cue than
               a plain static dot */}
@@ -1070,9 +1089,9 @@ export default function SupportPage() {
 
         /* ── Small-screen polish ── */
         @media (max-width: 480px) {
-          .wa-header { padding: 8px 12px; }
+          .wa-header { padding-left: 12px; padding-right: 12px; }
           .wa-msg-list { padding: 8px 0 6px; }
-          .wa-composer { padding: 6px; }
+          .wa-composer { padding: 6px; padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px)); }
         }
 
         /* ── Respect reduced-motion preferences ── */

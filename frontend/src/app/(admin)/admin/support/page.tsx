@@ -120,18 +120,27 @@ function ConversationRow({ convo, isSelected, isFocused, onSelect, style, innerR
   const displayTime = convo.lastMessageAt ? timeAgo(convo.lastMessageAt) : timeAgo(convo.updatedAt)
 
   return (
-    <div ref={innerRef} onClick={() => onSelect(convo)} style={{
-      ...UTILITY,
-      display: 'flex', alignItems: 'center', gap: 13,
-      padding: '14px 18px',
-      borderBottom: '0.5px solid var(--chat-border)',
-      cursor: 'pointer', position: 'relative',
-      background: isSelected ? 'var(--chat-surface-hi)' : 'transparent',
-      outline: isFocused && !isSelected ? '1.5px solid var(--chat-border)' : 'none',
-      outlineOffset: -1,
-      transition: 'background 0.1s',
-      ...style,
-    }}
+    <div
+      ref={innerRef}
+      onClick={() => onSelect(convo)}
+      role="button"
+      tabIndex={0}
+      aria-label={`Open conversation with ${convo.userId?.displayName ?? convo.userId?.username ?? 'unknown user'}${hasUnread ? `, ${convo.unreadCount} unread` : ''}`}
+      onKeyDown={e => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(convo) }
+      }}
+      style={{
+        ...UTILITY,
+        display: 'flex', alignItems: 'center', gap: 13,
+        padding: '14px 18px',
+        borderBottom: '0.5px solid var(--chat-border)',
+        cursor: 'pointer', position: 'relative',
+        background: isSelected ? 'var(--chat-surface-hi)' : 'transparent',
+        boxShadow: isFocused && !isSelected ? 'inset 0 0 0 1.5px var(--chat-border)' : 'none',
+        transition: 'background 0.1s',
+        ...style,
+      }}
+      className="inbox-row"
       onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = 'var(--chat-surface)' }}
       onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent' }}
     >
@@ -146,7 +155,7 @@ function ConversationRow({ convo, isSelected, isFocused, onSelect, style, innerR
 
       {/* Unread dot */}
       {hasUnread ? (
-        <span style={{ position: 'relative', width: 8, height: 8, flexShrink: 0 }}>
+        <span aria-hidden style={{ position: 'relative', width: 8, height: 8, flexShrink: 0 }}>
           <span style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: 'var(--chat-unread)', animation: 'unreadPulse 2.4s ease-in-out infinite' }} />
           <span style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: 'var(--chat-unread)' }} />
         </span>
@@ -220,7 +229,7 @@ function PreviewPane({ convo, onClose }: { convo: MergedConversation; onClose: (
         <span style={{ flex: 1, fontSize: 9, fontWeight: 600, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--chat-text-meta)' }}>
           Details
         </span>
-        <button onClick={onClose} aria-label="Close" style={{
+        <button onClick={onClose} aria-label="Close" className="inbox-icon-btn" style={{
           background: 'none', border: 'none', cursor: 'pointer',
           color: 'var(--chat-text-meta)', padding: 5,
           display: 'flex', alignItems: 'center', borderRadius: 6,
@@ -229,7 +238,7 @@ function PreviewPane({ convo, onClose }: { convo: MergedConversation; onClose: (
           onMouseEnter={e => { e.currentTarget.style.color = 'var(--chat-text-primary)'; e.currentTarget.style.background = 'var(--chat-surface-hi)' }}
           onMouseLeave={e => { e.currentTarget.style.color = 'var(--chat-text-meta)';    e.currentTarget.style.background = 'none' }}
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+          <svg aria-hidden width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
             <path d="M18 6 6 18M6 6l12 12"/>
           </svg>
         </button>
@@ -265,7 +274,7 @@ function PreviewPane({ convo, onClose }: { convo: MergedConversation; onClose: (
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 11.5, color: 'var(--chat-text-meta)' }}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg aria-hidden width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
             </svg>
             Started {formatDate(convo.createdAt)}
@@ -281,6 +290,7 @@ function PreviewPane({ convo, onClose }: { convo: MergedConversation; onClose: (
 
       <div style={{ padding: '16px', marginTop: 'auto' }}>
         <Link href={`/admin/support/${convo._id}`}
+          className="inbox-icon-btn"
           onMouseEnter={() => setHover(true)}
           onMouseLeave={() => setHover(false)}
           style={{
@@ -294,7 +304,7 @@ function PreviewPane({ convo, onClose }: { convo: MergedConversation; onClose: (
           }}
         >
           Open conversation
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+          <svg aria-hidden width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
             style={{ transform: hover ? 'translateX(2px)' : 'none', transition: 'transform 0.15s' }}>
             <path d="M5 12h14M12 5l7 7-7 7"/>
           </svg>
@@ -307,8 +317,8 @@ function PreviewPane({ convo, onClose }: { convo: MergedConversation; onClose: (
 // ─── Empty state ──────────────────────────────────────────────────────────────
 function EmptyState({ icon, title, body }: { icon: React.ReactNode; title: string; body: string }) {
   return (
-    <div style={{ ...UTILITY, textAlign: 'center', padding: '5rem 1.5rem' }}>
-      <div style={{
+    <div data-empty-state style={{ ...UTILITY, textAlign: 'center', padding: '5rem 1.5rem' }}>
+      <div aria-hidden style={{
         width: 46, height: 46, borderRadius: 12, margin: '0 auto 1.5rem',
         border: '0.5px solid var(--chat-border)', background: 'var(--chat-surface)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -457,59 +467,68 @@ export default function AdminSupportPage() {
       }}>
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
 
-          {/* Search */}
-          <div style={{ padding: '11px 14px', borderBottom: '0.5px solid var(--chat-border)' }}>
-            <div className="inbox-search-wrap" style={{
-              display: 'flex', alignItems: 'center', gap: 9,
-              background: 'var(--chat-surface)', borderRadius: 9, padding: '8px 13px',
-              border: '0.5px solid var(--chat-border)', transition: 'border-color 0.15s',
-            }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--chat-text-meta)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-              </svg>
-              <input ref={searchRef} value={search} onChange={e => setSearch(e.target.value)}
-                placeholder="Search by name, email or message…"
-                style={{ ...UTILITY, flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 13, color: 'var(--chat-text-primary)' }}
-              />
-              {search ? (
-                <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--chat-text-meta)', padding: 0, display: 'flex' }}>
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
-                </button>
-              ) : (
-                <kbd style={{ fontSize: 10, color: 'var(--chat-text-meta)', background: 'var(--chat-surface-hi)', border: '0.5px solid var(--chat-border)', borderRadius: 4, padding: '1px 5px', fontFamily: 'inherit' }}>/</kbd>
-              )}
+          {/* Search + filters — sticky so they stay visible while scrolling a long list */}
+          <div style={{ position: 'sticky', top: 0, zIndex: 2, background: 'var(--chat-bg)' }}>
+            {/* Search */}
+            <div style={{ padding: '11px 14px', borderBottom: '0.5px solid var(--chat-border)' }}>
+              <div className="inbox-search-wrap" style={{
+                display: 'flex', alignItems: 'center', gap: 9,
+                background: 'var(--chat-surface)', borderRadius: 9, padding: '8px 13px',
+                border: '0.5px solid var(--chat-border)', transition: 'border-color 0.15s',
+              }}>
+                <svg aria-hidden width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--chat-text-meta)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                </svg>
+                <input ref={searchRef} value={search} onChange={e => setSearch(e.target.value)}
+                  placeholder="Search by name, email or message…"
+                  aria-label="Search conversations"
+                  style={{ ...UTILITY, flex: 1, minWidth: 0, border: 'none', outline: 'none', background: 'transparent', fontSize: 16, color: 'var(--chat-text-primary)' }}
+                />
+                {search ? (
+                  <button
+                    onClick={() => setSearch('')}
+                    aria-label="Clear search"
+                    className="inbox-icon-btn"
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--chat-text-meta)', padding: 6, margin: -6, borderRadius: 6, display: 'flex' }}
+                  >
+                    <svg aria-hidden width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                  </button>
+                ) : (
+                  <kbd aria-hidden style={{ fontSize: 10, color: 'var(--chat-text-meta)', background: 'var(--chat-surface-hi)', border: '0.5px solid var(--chat-border)', borderRadius: 4, padding: '1px 5px', fontFamily: 'inherit' }}>/</kbd>
+                )}
+              </div>
             </div>
-          </div>
 
-          {/* Filter tabs */}
-          <div style={{ display: 'flex', gap: 4, padding: '9px 14px', borderBottom: '0.5px solid var(--chat-border)' }}>
-            {([
-              { key: 'all',    label: 'All',    count: merged.length },
-              { key: 'unread', label: 'Unread', count: unreadTotal   },
-            ] as const).map(tab => {
-              const active = filter === tab.key
-              return (
-                <button key={tab.key} onClick={() => setFilter(tab.key)} style={{
-                  display: 'flex', alignItems: 'center', gap: 7,
-                  padding: '5px 12px', borderRadius: 8,
-                  fontSize: 12.5, fontWeight: active ? 600 : 400,
-                  color: active ? 'var(--chat-text-primary)' : 'var(--chat-text-secondary)',
-                  background: active ? 'var(--chat-surface)' : 'transparent',
-                  border: `0.5px solid ${active ? 'var(--chat-border)' : 'transparent'}`,
-                  cursor: 'pointer', transition: 'all 0.1s',
-                }}
-                  onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'var(--chat-surface)' }}
-                  onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}
-                >
-                  {tab.label}
-                  {tab.count > 0 && (
-                    <span style={{ fontSize: 11, fontWeight: 600, color: tab.key === 'unread' ? 'var(--chat-unread)' : 'var(--chat-text-meta)' }}>
-                      {tab.count}
-                    </span>
-                  )}
-                </button>
-              )
-            })}
+            {/* Filter tabs */}
+            <div style={{ display: 'flex', gap: 4, padding: '9px 14px', borderBottom: '0.5px solid var(--chat-border)' }}>
+              {([
+                { key: 'all',    label: 'All',    count: merged.length },
+                { key: 'unread', label: 'Unread', count: unreadTotal   },
+              ] as const).map(tab => {
+                const active = filter === tab.key
+                return (
+                  <button key={tab.key} onClick={() => setFilter(tab.key)} aria-pressed={active} className="inbox-icon-btn" style={{
+                    display: 'flex', alignItems: 'center', gap: 7,
+                    padding: '5px 12px', borderRadius: 8,
+                    fontSize: 12.5, fontWeight: active ? 600 : 400,
+                    color: active ? 'var(--chat-text-primary)' : 'var(--chat-text-secondary)',
+                    background: active ? 'var(--chat-surface)' : 'transparent',
+                    border: `0.5px solid ${active ? 'var(--chat-border)' : 'transparent'}`,
+                    cursor: 'pointer', transition: 'all 0.1s',
+                  }}
+                    onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'var(--chat-surface)' }}
+                    onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}
+                  >
+                    {tab.label}
+                    {tab.count > 0 && (
+                      <span style={{ fontSize: 11, fontWeight: 600, color: tab.key === 'unread' ? 'var(--chat-unread)' : 'var(--chat-text-meta)' }}>
+                        {tab.count}
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
           </div>
 
           {/* List */}
@@ -557,9 +576,30 @@ export default function AdminSupportPage() {
           70%  { transform: scale(2.5); opacity: 0   }
           100% { transform: scale(2.5); opacity: 0   }
         }
+
         .inbox-search-wrap:focus-within { border-color: var(--chat-accent) !important; }
         input::placeholder { color: var(--chat-text-meta) !important }
         input:focus        { outline: none }
+
+        /* Consistent focus-visible ring, matching the accent used
+           everywhere else on the site, for every interactive control
+           added in this pass (rows, icon buttons, filter tabs, the
+           "Open conversation" link). */
+        .inbox-row:focus-visible,
+        .inbox-icon-btn:focus-visible {
+          outline: 2px solid var(--chat-accent);
+          outline-offset: -2px;
+        }
+
+        [data-empty-state] { animation: fadeInUp 0.3s ease both; }
+
+        @media (prefers-reduced-motion: reduce) {
+          *, *::before, *::after {
+            animation-duration: 0.001ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.001ms !important;
+          }
+        }
       `}</style>
     </div>
   )
