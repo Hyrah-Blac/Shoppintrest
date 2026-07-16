@@ -1,12 +1,29 @@
 'use client'
 
 /**
- * ProductDetail — v3 · Shoppin
+ * ProductDetail — v4 · Shoppin
+ *
+ * v3 → v4 (responsive pass):
+ *  - Added mobile sticky buy bar (price + Add to cart) for viewports < lg,
+ *    so the primary action is always reachable without scrolling back up
+ *  - Root container gets bottom padding on mobile to clear the sticky bar
+ *  - Main image height is capped on large viewports (lg:max-h-[640px]) so
+ *    it doesn't grow unbounded on wide desktop monitors
+ *  - Breadcrumb now scrolls horizontally instead of wrapping on narrow screens
+ *  - Price / compare-price / discount badge row now wraps instead of
+ *    overflowing on ~360px screens
+ *  - Size guide modal docks as a bottom sheet on mobile (rounded top corners,
+ *    anchored to viewport bottom) and stays a centered dialog on sm:+
+ *  - Trust badge grid gap tightens on narrow screens
+ *  - Confirmed all interactive targets (nav arrows, save/share, size pills)
+ *    hold a minimum ~40px hit area
  *
  * v2 → v3:
  *  - Removed the "save to collection" feature entirely (collections picker,
  *    BookmarkPlus button, Collection interface, apiClient.collections calls,
  *    showCollectionPicker state)
+ *  - Removed the "Sold by" seller card (Seller interface, Avatar usage,
+ *    product.seller / product.saves display)
  *  - CLOTHING_CATEGORIES now matches the actual Product category enum
  *    (womenswear, menswear) — size guide only renders for those
  *
@@ -41,7 +58,6 @@ import { apiClient } from '@/lib/api'
 import { useCartStore } from '@/store/useCartStore'
 import { useUserStore } from '@/store/useUserStore'
 import { formatPrice, cn } from '@/lib/utils'
-import { Avatar } from '@/components/ui/Avatar'
 import { ReviewSection } from '@/components/product/ReviewSection'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -57,13 +73,6 @@ interface ProductVariant {
   price?:    number  // overrides the product's base price for this size only
 }
 
-interface Seller {
-  _id:         string
-  username:    string
-  displayName: string
-  avatar?:     string
-}
-
 interface Product {
   _id:          string
   title:        string
@@ -76,11 +85,9 @@ interface Product {
   totalInventory?: number
   rating?:      number
   reviewCount?: number
-  saves?:       number
   tags?:        string[]
   images?:      ProductImage[]
   variants?:    ProductVariant[]
-  seller?:      Seller
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -193,6 +200,7 @@ export function ProductDetail({ id }: Props) {
     : null
 
   const showSizeGuideBtn = hassizing(product?.category)
+  const canAddToCart     = !isOutOfStock && !isAddingToCart
 
   if (isLoading) return null
   if (!product) return (
@@ -205,11 +213,11 @@ export function ProductDetail({ id }: Props) {
   )
 
   return (
-    <div className="container-wide py-8 lg:py-12">
+    <div className="container-wide py-6 sm:py-8 lg:py-12 pb-28 lg:pb-12">
 
       {/* ── Breadcrumb ── */}
       <nav
-        className="flex items-center gap-1.5 mb-10"
+        className="flex items-center gap-1.5 mb-8 sm:mb-10 overflow-x-auto scrollbar-hide whitespace-nowrap"
         style={{ fontSize: 'var(--text-xs)', color: 'hsl(var(--muted))' }}
         aria-label="Breadcrumb"
       >
@@ -219,7 +227,7 @@ export function ProductDetail({ id }: Props) {
           { href: `/explore?category=${product.category}`, label: product.category,
             capitalize: true                                                         },
         ].map((crumb, i, arr) => (
-          <span key={crumb.href} className="flex items-center gap-1.5">
+          <span key={crumb.href} className="flex items-center gap-1.5 shrink-0">
             <Link
               href={crumb.href}
               className={cn(
@@ -235,23 +243,23 @@ export function ProductDetail({ id }: Props) {
             )}
           </span>
         ))}
-        <span style={{ color: 'hsl(var(--border))' }}>/</span>
+        <span className="shrink-0" style={{ color: 'hsl(var(--border))' }}>/</span>
         <span
-          className="truncate max-w-[200px]"
+          className="truncate max-w-[160px] sm:max-w-[200px] shrink-0"
           style={{ color: 'hsl(var(--foreground))' }}
         >
           {product.title}
         </span>
       </nav>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 xl:gap-20">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-10 xl:gap-20">
 
         {/* ── Left: Images ── */}
         <div className="space-y-3">
 
           {/* Main image */}
           <div
-            className="relative aspect-[4/5] overflow-hidden cursor-zoom-in select-none"
+            className="relative aspect-[4/5] lg:max-h-[640px] overflow-hidden cursor-zoom-in select-none"
             style={{
               background:   'hsl(var(--surface))',
               borderRadius: 'var(--radius-2xl)',
@@ -346,7 +354,7 @@ export function ProductDetail({ id }: Props) {
                   <button
                     key={side}
                     onClick={onClick}
-                    className="absolute top-1/2 -translate-y-1/2 w-9 h-9
+                    className="absolute top-1/2 -translate-y-1/2 w-10 h-10 sm:w-9 sm:h-9
                                flex items-center justify-center rounded-full
                                transition-all duration-[var(--duration-hover)]"
                     aria-label={side === 'left' ? 'Previous image' : 'Next image'}
@@ -389,7 +397,7 @@ export function ProductDetail({ id }: Props) {
         </div>
 
         {/* ── Right: Info ── */}
-        <div className="lg:sticky lg:top-28 lg:self-start space-y-7">
+        <div className="lg:sticky lg:top-28 lg:self-start space-y-6 sm:space-y-7">
 
           {/* Brand + actions */}
           <div className="flex items-start justify-between gap-4">
@@ -404,7 +412,7 @@ export function ProductDetail({ id }: Props) {
               )}
               <h1
                 className="font-display font-bold tracking-[-0.03em] leading-[1.1] mt-1.5"
-                style={{ fontSize: 'clamp(1.5rem, 3vw, 2.1rem)' }}
+                style={{ fontSize: 'clamp(1.4rem, 4vw, 2.1rem)' }}
               >
                 {product.title}
               </h1>
@@ -477,12 +485,12 @@ export function ProductDetail({ id }: Props) {
 
           {/* Price */}
           <div className="space-y-1">
-            <div className="flex items-baseline gap-3">
+            <div className="flex flex-wrap items-baseline gap-2 sm:gap-3">
               {discount ? (
                 <>
                   <span
                     className="font-display font-bold tracking-[-0.03em]"
-                    style={{ fontSize: 'clamp(1.5rem, 3vw, 2.1rem)', color: 'hsl(var(--foreground))' }}
+                    style={{ fontSize: 'clamp(1.4rem, 4vw, 2.1rem)', color: 'hsl(var(--foreground))' }}
                   >
                     {formatPrice(product.price, 'KES')}
                   </span>
@@ -502,7 +510,7 @@ export function ProductDetail({ id }: Props) {
               ) : (
                 <span
                   className="font-display font-bold tracking-[-0.03em]"
-                  style={{ fontSize: 'clamp(1.5rem, 3vw, 2.1rem)' }}
+                  style={{ fontSize: 'clamp(1.4rem, 4vw, 2.1rem)' }}
                 >
                   {formatPrice(effectivePrice, 'KES')}
                 </span>
@@ -629,15 +637,15 @@ export function ProductDetail({ id }: Props) {
             </div>
           )}
 
-          {/* Add to cart */}
-          <div className="flex gap-3 pt-1">
+          {/* Add to cart — desktop / tablet inline placement */}
+          <div className="hidden lg:flex gap-3 pt-1">
             <motion.button
               whileTap={{ scale: isOutOfStock ? 1 : 0.97 }}
               onClick={handleAddToCart}
-              disabled={isOutOfStock || isAddingToCart}
+              disabled={!canAddToCart}
               className={cn(
                 'btn-save flex-1 gap-2.5 py-4 text-sm justify-center',
-                (isOutOfStock || isAddingToCart) && 'opacity-50 cursor-not-allowed'
+                !canAddToCart && 'opacity-50 cursor-not-allowed'
               )}
             >
               <ShoppingBag size={17} />
@@ -646,7 +654,7 @@ export function ProductDetail({ id }: Props) {
           </div>
 
           {/* Trust badges */}
-          <div className="grid grid-cols-3 gap-2.5">
+          <div className="grid grid-cols-3 gap-2 sm:gap-2.5">
             {[
               { icon: <Package  size={16} />, label: 'Secure checkout', sub: 'M-Pesa protected'  },
               { icon: <RotateCcw size={16} />, label: 'Free returns',   sub: 'Within 30 days'    },
@@ -654,7 +662,7 @@ export function ProductDetail({ id }: Props) {
             ].map((item) => (
               <div
                 key={item.label}
-                className="flex flex-col items-center text-center p-3 gap-2"
+                className="flex flex-col items-center text-center p-2.5 sm:p-3 gap-2"
                 style={{
                   background:   'hsl(var(--surface))',
                   borderRadius: 'var(--radius)',
@@ -683,45 +691,6 @@ export function ProductDetail({ id }: Props) {
               ))}
             </div>
           )}
-
-          {/* Seller */}
-          {product.seller && (
-            <div
-              className="flex items-center gap-3 p-4"
-              style={{
-                background:   'hsl(var(--surface))',
-                borderRadius: 'var(--radius-lg)',
-                border:       '1px solid hsl(var(--border))',
-              }}
-            >
-              <Avatar src={product.seller.avatar} name={product.seller.displayName} size="md" />
-              <div className="flex-1 min-w-0">
-                <p className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: 'hsl(var(--muted))' }}>
-                  Sold by
-                </p>
-                <Link
-                  href={`/profile/${product.seller.username}`}
-                  className="text-sm font-semibold flex items-center gap-1 mt-0.5
-                             hover:text-[hsl(var(--foreground))] opacity-80 hover:opacity-100
-                             transition-opacity duration-[var(--duration-hover)]"
-                  style={{ color: 'hsl(var(--foreground))' }}
-                >
-                  {product.seller.displayName}
-                  <ArrowUpRight size={12} style={{ opacity: 0.5 }} />
-                </Link>
-              </div>
-              {(product.saves ?? 0) > 0 && (
-                <div className="text-right pl-3" style={{ borderLeft: '1px solid hsl(var(--border))' }}>
-                  <p className="text-base font-bold tracking-tight" style={{ color: 'hsl(var(--foreground))' }}>
-                    {product.saves}
-                  </p>
-                  <p className="text-[10px] uppercase tracking-wide" style={{ color: 'hsl(var(--muted))' }}>
-                    saves
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
         </div>
       </div>
 
@@ -738,19 +707,23 @@ export function ProductDetail({ id }: Props) {
                 onClick={() => setShowSizeGuide(false)}
               />
 
+              {/* Mobile: bottom sheet, anchored to viewport bottom.
+                  sm and up: centered floating dialog, as before. */}
               <motion.div
-                initial={{ opacity: 0, scale: 0.95, y: 16 }}
-                animate={{ opacity: 1, scale: 1,    y: 0  }}
-                exit={{   opacity: 0, scale: 0.95, y: 16  }}
+                initial={{ opacity: 0, y: 24 }}
+                animate={{ opacity: 1, y: 0  }}
+                exit={{   opacity: 0, y: 24  }}
                 transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-                className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                className="fixed inset-x-0 bottom-0 sm:inset-0 z-50
+                           flex items-end sm:items-center justify-center
+                           sm:p-4"
                 style={{ pointerEvents: 'none' }}
               >
                 <div
-                  className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto scrollbar-hide"
+                  className="relative w-full sm:max-w-lg max-h-[85vh] sm:max-h-[90vh] overflow-y-auto scrollbar-hide"
                   style={{
                     background:    'hsl(var(--surface-elevated))',
-                    borderRadius:  'var(--radius-2xl)',
+                    borderRadius:  'var(--radius-2xl) var(--radius-2xl) 0 0',
                     border:        '1px solid hsl(var(--border))',
                     boxShadow:     'var(--shadow-float)',
                     pointerEvents: 'auto',
@@ -758,7 +731,7 @@ export function ProductDetail({ id }: Props) {
                 >
                   {/* Modal header */}
                   <div
-                    className="sticky top-0 flex items-center justify-between px-6 py-5"
+                    className="sticky top-0 flex items-center justify-between px-5 sm:px-6 py-4 sm:py-5"
                     style={{
                       background:   'hsl(var(--surface-elevated))',
                       borderBottom: '1px solid hsl(var(--border))',
@@ -767,7 +740,7 @@ export function ProductDetail({ id }: Props) {
                   >
                     <div>
                       <p className="eyebrow mb-1">Sizing</p>
-                      <h3 className="font-display font-bold tracking-tight" style={{ fontSize: '1.25rem' }}>
+                      <h3 className="font-display font-bold tracking-tight" style={{ fontSize: '1.15rem' }}>
                         Size guide
                       </h3>
                     </div>
@@ -784,7 +757,7 @@ export function ProductDetail({ id }: Props) {
                   </div>
 
                   {/* Modal body */}
-                  <div className="p-6 space-y-8">
+                  <div className="p-5 sm:p-6 space-y-7 sm:space-y-8">
 
                     {isShoeCategory(product?.category) ? (
                       <>
@@ -986,8 +959,45 @@ export function ProductDetail({ id }: Props) {
       )}
 
       {/* Reviews */}
-      <div className="mt-20">
+      <div className="mt-16 sm:mt-20">
         <ReviewSection productId={id} />
+      </div>
+
+      {/* ── Mobile sticky buy bar — < lg only ── */}
+      <div
+        className="lg:hidden fixed bottom-0 inset-x-0 z-40 flex items-center gap-3 px-4 py-3"
+        style={{
+          background:    'hsl(var(--surface-elevated))',
+          borderTop:     '1px solid hsl(var(--border))',
+          boxShadow:     '0 -4px 16px rgba(0,0,0,0.06)',
+          paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))',
+        }}
+      >
+        <div className="min-w-0 leading-tight">
+          <p
+            className="font-display font-bold tracking-[-0.02em] truncate"
+            style={{ fontSize: '1.05rem' }}
+          >
+            {formatPrice(effectivePrice, 'KES')}
+          </p>
+          {selectedSize && (
+            <p className="text-[11px] truncate" style={{ color: 'hsl(var(--muted))', fontWeight: 300 }}>
+              Size {selectedSize}
+            </p>
+          )}
+        </div>
+        <motion.button
+          whileTap={{ scale: canAddToCart ? 0.97 : 1 }}
+          onClick={handleAddToCart}
+          disabled={!canAddToCart}
+          className={cn(
+            'btn-save flex-1 gap-2 py-3.5 text-sm justify-center',
+            !canAddToCart && 'opacity-50 cursor-not-allowed'
+          )}
+        >
+          <ShoppingBag size={16} />
+          {isAddingToCart ? 'Adding…' : isOutOfStock ? 'Out of stock' : 'Add to cart'}
+        </motion.button>
       </div>
     </div>
   )

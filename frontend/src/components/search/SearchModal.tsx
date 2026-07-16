@@ -199,7 +199,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
                                 </p>
                                 <p className="eyebrow mt-0.5">{product.brand}</p>
                               </div>
-                              <p className="price shrink-0">{formatPrice(product.price)}</p>
+                              <p className="price shrink-0">{formatPrice(product.price, 'KES')}</p>
                               <ArrowRight
                                 size={14}
                                 className="shrink-0 opacity-0 group-hover:opacity-100
