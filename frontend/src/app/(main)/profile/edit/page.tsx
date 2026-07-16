@@ -29,6 +29,13 @@ export default function ProfileEditPage() {
 
   const isDirty = JSON.stringify(form) !== JSON.stringify(initialForm)
 
+  // NOTE: previously this effect ran on every change of `user` (object
+  // reference), which meant any background refresh/update of the store
+  // (e.g. a session revalidation, another component calling updateUser,
+  // a refetch) would re-sync `form` from `user` and silently overwrite
+  // the freshly-uploaded avatar before the user hit "Save changes".
+  // Keying on `user?.id` instead means we only (re)sync when we're
+  // actually looking at a different user, not on every store update.
   useEffect(() => {
     if (user) {
       const loaded = {
@@ -39,7 +46,8 @@ export default function ProfileEditPage() {
       setForm(loaded)
       setInitialForm(loaded)
     }
-  }, [user])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id])
 
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {

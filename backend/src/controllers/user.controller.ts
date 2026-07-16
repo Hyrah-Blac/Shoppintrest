@@ -145,12 +145,25 @@ export const syncClerkUser = asyncHandler(async (req: Request, res: Response, ne
     clerkUser.username ||
     `${email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '')}${Math.floor(Math.random() * 1000)}`
 
+  // NOTE: `avatar` must only ever be set on first creation (via
+  // $setOnInsert). It used to live in $set, which meant every sync call
+  // (e.g. on each page load / auth check) would overwrite a user's
+  // custom-uploaded avatar with their Clerk profile picture, even if
+  // nothing about the Clerk profile changed. Moving it into
+  // $setOnInsert means it's only written once, when the user document
+  // is first created.
   try {
     const user = await User.findOneAndUpdate(
       { clerkId: userId },
       {
-        $set:         { email, displayName, avatar: clerkUser.imageUrl, isActive: true },
-        $setOnInsert: { clerkId: userId, username: generatedUsername, role: 'user', isVerified: false },
+        $set:         { email, displayName, isActive: true },
+        $setOnInsert: {
+          clerkId: userId,
+          username: generatedUsername,
+          role: 'user',
+          isVerified: false,
+          avatar: clerkUser.imageUrl,
+        },
       },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     )
@@ -160,8 +173,14 @@ export const syncClerkUser = asyncHandler(async (req: Request, res: Response, ne
       const user = await User.findOneAndUpdate(
         { clerkId: userId },
         {
-          $set:         { email, displayName, avatar: clerkUser.imageUrl, isActive: true },
-          $setOnInsert: { clerkId: userId, username: `${generatedUsername}${Date.now()}`, role: 'user', isVerified: false },
+          $set:         { email, displayName, isActive: true },
+          $setOnInsert: {
+            clerkId: userId,
+            username: `${generatedUsername}${Date.now()}`,
+            role: 'user',
+            isVerified: false,
+            avatar: clerkUser.imageUrl,
+          },
         },
         { upsert: true, new: true, setDefaultsOnInsert: true }
       )
