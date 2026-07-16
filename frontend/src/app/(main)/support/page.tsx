@@ -430,10 +430,18 @@ function Composer({ onSend, onTyping }: {
       style={{
         display: 'flex', alignItems: 'flex-end', gap: 8,
         padding: '8px 8px',
-        paddingBottom: 'calc(8px + env(safe-area-inset-bottom, 0px))',
+        // Reserve extra bottom clearance (via --fab-clearance, set to 0 on
+        // this route by hiding the global floating chat button — see the
+        // root-layout note at the bottom of this file) so the send button
+        // is never geometrically covered by a floating action button.
+        paddingBottom: 'calc(8px + env(safe-area-inset-bottom, 0px) + var(--fab-clearance, 0px))',
         background: 'var(--wa-composer-bg)',
         flexShrink: 0,
         position: 'relative',
+        // Own stacking context above everything else in the chat card,
+        // so nothing inside this component tree can ever render on top
+        // of the input or the send button.
+        zIndex: 10,
       }}
     >
       {/* Emoji button */}
@@ -509,6 +517,8 @@ function Composer({ onSend, onTyping }: {
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           transition: 'opacity 0.15s, box-shadow 0.2s',
           opacity: canSend || sending ? 1 : 0.5,
+          position: 'relative',
+          zIndex: 1,
         }}
         animate={{ scale: canSend ? 1 : 0.92 }}
         transition={{ duration: 0.15 }}
@@ -716,11 +726,12 @@ export default function SupportPage() {
       <div className="container-narrow relative z-10 sm:[padding-block:clamp(1.25rem,5vw,4rem)]">
 
         {/* ── Chat card ──
-            Mobile (< sm): breaks out of the padded/max-width container via
-            `fixed inset-0` and fills the real device viewport edge-to-edge
-            (dvh-based, so it tracks the on-screen keyboard correctly) —
-            no dead space above/below, no squeezed typing area, no rounded
-            corners eating into it.
+            Mobile (< sm): breaks out of the padded/max-width container and
+            fills the viewport *below the navbar* edge-to-edge, using
+            `--navbar-height` (set in the root layout / globals.css) rather
+            than a hardcoded offset, and `100dvh` math so it tracks the
+            on-screen keyboard correctly. It sits under the navbar in the
+            stacking order (z-40 vs. the navbar's z-50) and never overlaps it.
             Tablet/desktop (>= sm): reverts to the original static, rounded,
             height-capped card sitting inside the page layout. */}
         <motion.div
@@ -728,14 +739,14 @@ export default function SupportPage() {
           animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
           transition={{ duration: 0.5, delay: 0.1, ease }}
           className="
-            fixed inset-0 z-50 rounded-none overflow-hidden
+            wa-chat-card
+            fixed inset-x-0 bottom-0 z-40 rounded-none overflow-hidden
             sm:static sm:inset-auto sm:z-auto
             sm:rounded-[28px]
             sm:h-[min(600px,76dvh)] lg:h-[min(660px,72dvh)]
           "
           style={{
             boxShadow: '0 20px 40px -20px hsl(0 0% 0% / 0.3)',
-            height: '100dvh',
           }}
         >
           <div
@@ -1087,11 +1098,23 @@ export default function SupportPage() {
           opacity: 0.7;
         }
 
+        /* ── Mobile: sit below the navbar, never over/under it ──
+           --navbar-height should be defined once globally (see globals.css
+           note below); 64px is just the fallback if that variable is
+           missing. z-40 here assumes the navbar itself uses z-50 — if your
+           navbar uses a different z-index, keep this one lower than it. */
+        @media (max-width: 639px) {
+          .wa-chat-card {
+            top: var(--navbar-height, 64px);
+            height: calc(100dvh - var(--navbar-height, 64px));
+          }
+        }
+
         /* ── Small-screen polish ── */
         @media (max-width: 480px) {
           .wa-header { padding-left: 12px; padding-right: 12px; }
           .wa-msg-list { padding: 8px 0 6px; }
-          .wa-composer { padding: 6px; padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px)); }
+          .wa-composer { padding: 6px; padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px) + var(--fab-clearance, 0px)); }
         }
 
         /* ── Respect reduced-motion preferences ── */
@@ -1107,3 +1130,4 @@ export default function SupportPage() {
     </div>
   )
 }
+
