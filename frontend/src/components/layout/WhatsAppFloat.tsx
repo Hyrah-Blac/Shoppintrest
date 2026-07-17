@@ -7,7 +7,15 @@
  * the Footer, so it stays visible on scroll). Keeps the little "online"
  * ping badge and hover lift from the old footer CTA, just distilled down
  * to a single round icon button instead of a full-width bar.
+ *
+ * Hidden on /support: that route is already a full WhatsApp-style chat
+ * panel with its own composer and send button pinned bottom-right, and
+ * this button (same corner, same z-50) was rendering directly on top of
+ * it on mobile. Since /support already *is* "chat with us," a second
+ * floating trigger there has nothing to open.
  */
+
+import { usePathname } from 'next/navigation'
 
 function WhatsAppIcon({ size = 26 }: { size?: number }) {
   return (
@@ -18,6 +26,9 @@ function WhatsAppIcon({ size = 26 }: { size?: number }) {
 }
 
 export function WhatsAppFloat() {
+  const pathname = usePathname()
+  if (pathname === '/support') return null
+
   return (
     <a
       href="https://wa.me/254731786491"

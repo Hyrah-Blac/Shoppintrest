@@ -488,7 +488,7 @@ export default function SignUpPage() {
                         <span style={inputIconStyle}><User size={15} /></span>
                         <input id="firstName" type="text" autoComplete="given-name" required
                           value={firstName} onChange={e => setFirstName(e.target.value)}
-                          placeholder="Jane" style={inputStyle} onFocus={onFocus} onBlur={onBlur} />
+                          placeholder="Faith" style={inputStyle} onFocus={onFocus} onBlur={onBlur} />
                       </div>
                     </div>
                     <div>
@@ -497,7 +497,7 @@ export default function SignUpPage() {
                         <span style={inputIconStyle}><User size={15} /></span>
                         <input id="lastName" type="text" autoComplete="family-name" required
                           value={lastName} onChange={e => setLastName(e.target.value)}
-                          placeholder="Doe" style={inputStyle} onFocus={onFocus} onBlur={onBlur} />
+                          placeholder="Morgan" style={inputStyle} onFocus={onFocus} onBlur={onBlur} />
                       </div>
                     </div>
                   </div>

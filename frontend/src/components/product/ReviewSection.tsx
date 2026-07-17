@@ -13,7 +13,9 @@ import { formatRelativeTime, cn } from '@/lib/utils'
 
 // Same face as the hero/homepage sections, self-hosted via next/font so it
 // can't silently fall back to a generic serif (see HeroSection's v13
-// changelog for the bug this pattern avoids).
+// changelog for the bug this pattern avoids). Used sparingly — editorial
+// moments only (section heading, empty state) — never on buttons or
+// functional copy, where script fonts hurt legibility.
 const greatVibes = Great_Vibes({ weight: '400', subsets: ['latin'], display: 'swap' })
 
 interface Props { productId: string }
@@ -66,11 +68,11 @@ export function ReviewSection({ productId }: Props) {
 
   return (
     <div
-      className="border-t pt-16"
+      className="border-t pt-12 sm:pt-16"
       style={{ borderColor: 'hsl(var(--border))' }}
     >
       {/* ── Header ── */}
-      <div className="flex items-center justify-between mb-10">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8 sm:mb-10">
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -80,7 +82,7 @@ export function ReviewSection({ productId }: Props) {
           <h2
             className={greatVibes.className}
             style={{
-              fontSize: 'clamp(2.25rem, 4vw, 3.25rem)',
+              fontSize: 'clamp(2rem, 7vw, 3.25rem)',
               fontWeight: 400,
               lineHeight: 1.15,
               color: 'hsl(var(--foreground))',
@@ -101,7 +103,7 @@ export function ReviewSection({ productId }: Props) {
         {isSignedIn && (
           <button
             onClick={() => setShowForm(!showForm)}
-            className={showForm ? 'btn-ghost' : 'btn-save'}
+            className={cn(showForm ? 'btn-ghost' : 'btn-save', 'w-full sm:w-auto shrink-0')}
           >
             {showForm ? 'Cancel' : 'Write a Review'}
           </button>
@@ -111,18 +113,22 @@ export function ReviewSection({ productId }: Props) {
       {/* ── Rating Summary ── */}
       {reviews.length > 0 && (
         <div
-          className="grid grid-cols-1 sm:grid-cols-2 gap-8 mb-12
-                     p-6 rounded-[var(--radius-xl)] border shadow-[var(--shadow-card)]"
+          className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8 mb-10 sm:mb-12
+                     p-5 sm:p-6 rounded-[var(--radius-xl)] border shadow-[var(--shadow-card)]"
           style={{
             background:  'hsl(var(--surface))',
             borderColor: 'hsl(var(--border))',
           }}
         >
           {/* Average score */}
-          <div className="flex flex-col items-center justify-center gap-2">
+          <div
+            className="flex flex-col items-center justify-center gap-2 pb-6 sm:pb-0
+                       border-b sm:border-b-0 sm:border-r"
+            style={{ borderColor: 'hsl(var(--border))' }}
+          >
             <span
               className="font-display"
-              style={{ fontWeight: 600, letterSpacing: '-0.035em', fontSize: 'clamp(3rem, 6vw, 4rem)' }}
+              style={{ fontWeight: 600, letterSpacing: '-0.035em', fontSize: 'clamp(2.75rem, 8vw, 4rem)' }}
             >
               {avgRating.toFixed(1)}
             </span>
@@ -141,7 +147,7 @@ export function ReviewSection({ productId }: Props) {
               ))}
             </div>
             <p
-              className="text-sm"
+              className="text-sm text-center"
               style={{ color: 'hsl(var(--muted))' }}
             >
               Based on {reviews.length} reviews
@@ -149,11 +155,11 @@ export function ReviewSection({ productId }: Props) {
           </div>
 
           {/* Breakdown bars */}
-          <div className="space-y-2.5">
+          <div className="space-y-2.5 flex flex-col justify-center">
             {ratingBreakdown.map(({ star, count, pct }) => (
-              <div key={star} className="flex items-center gap-3">
+              <div key={star} className="flex items-center gap-2.5 sm:gap-3">
                 <span
-                  className="text-xs w-4 text-right"
+                  className="text-xs w-4 text-right shrink-0"
                   style={{ color: 'hsl(var(--muted))' }}
                 >
                   {star}
@@ -176,7 +182,7 @@ export function ReviewSection({ productId }: Props) {
                   />
                 </div>
                 <span
-                  className="text-xs w-4 text-right"
+                  className="text-xs w-4 text-right shrink-0"
                   style={{ color: 'hsl(var(--muted))' }}
                 >
                   {count}
@@ -198,7 +204,7 @@ export function ReviewSection({ productId }: Props) {
             className="overflow-hidden mb-10"
           >
             <div
-              className="p-6 rounded-[var(--radius-xl)] border shadow-[var(--shadow-card)]
+              className="p-5 sm:p-6 rounded-[var(--radius-xl)] border shadow-[var(--shadow-card)]
                          space-y-4"
               style={{
                 background:  'hsl(var(--surface))',
@@ -213,12 +219,13 @@ export function ReviewSection({ productId }: Props) {
               </h3>
 
               {/* Star picker */}
-              <div className="flex gap-1">
+              <div className="flex gap-1 -ml-1.5">
                 {[1, 2, 3, 4, 5].map((star) => (
                   <button
                     key={star}
                     onClick={() => setForm((f) => ({ ...f, rating: star }))}
-                    className="p-1 transition-transform duration-[var(--duration-fast)]
+                    aria-label={`${star} star${star > 1 ? 's' : ''}`}
+                    className="p-1.5 transition-transform duration-[var(--duration-fast)]
                                hover:scale-110"
                   >
                     <Star
@@ -283,7 +290,7 @@ export function ReviewSection({ productId }: Props) {
                 onClick={handleSubmit}
                 disabled={isSubmitting}
                 className={cn(
-                  'btn-save gap-2',
+                  'btn-save gap-2 w-full sm:w-auto justify-center',
                   isSubmitting && 'opacity-60 cursor-not-allowed'
                 )}
               >
@@ -309,13 +316,17 @@ export function ReviewSection({ productId }: Props) {
           ))}
         </div>
       ) : reviews.length === 0 ? (
-        <div className="text-center py-16">
-          <p className="text-4xl mb-4">✦</p>
+        <div className="text-center py-14 sm:py-16">
           <p
-            className="font-medium mb-1"
-            style={{ color: 'hsl(var(--foreground))' }}
+            className={greatVibes.className}
+            style={{
+              fontSize: 'clamp(1.75rem, 5vw, 2.25rem)',
+              fontWeight: 400,
+              color: 'hsl(var(--foreground))',
+              marginBottom: '0.5rem',
+            }}
           >
-            No reviews yet
+            Nothing here yet
           </p>
           <p
             className="text-sm"
@@ -325,7 +336,7 @@ export function ReviewSection({ productId }: Props) {
           </p>
         </div>
       ) : (
-        <div className="space-y-8">
+        <div className="space-y-6 sm:space-y-8">
           {reviews.map((review, i) => (
             <motion.div
               key={review._id}
@@ -333,17 +344,17 @@ export function ReviewSection({ productId }: Props) {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.04, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-              className="pb-8 border-b last:border-0"
+              className="pb-6 sm:pb-8 border-b last:border-0"
               style={{ borderColor: 'hsl(var(--border))' }}
             >
-              <div className="flex items-start gap-4">
+              <div className="flex items-start gap-3 sm:gap-4">
                 <Avatar
                   src={review.user?.avatar}
                   name={review.user?.displayName}
                   size="sm"
                 />
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center gap-x-2 gap-y-1 flex-wrap">
                     <p
                       className="text-sm font-medium"
                       style={{ color: 'hsl(var(--foreground))' }}
@@ -360,7 +371,7 @@ export function ReviewSection({ productId }: Props) {
                       </span>
                     )}
                     <span
-                      className="text-[10px] ml-auto"
+                      className="text-[10px] sm:ml-auto"
                       style={{ color: 'hsl(var(--muted-foreground))' }}
                     >
                       {formatRelativeTime(review.createdAt)}
@@ -368,7 +379,7 @@ export function ReviewSection({ productId }: Props) {
                   </div>
 
                   {/* Stars */}
-                  <div className="flex gap-0.5 mt-1 mb-2">
+                  <div className="flex gap-0.5 mt-1.5 mb-2">
                     {Array.from({ length: 5 }).map((_, i) => (
                       <Star
                         key={i}
@@ -398,7 +409,7 @@ export function ReviewSection({ productId }: Props) {
 
                   <button
                     onClick={() => apiClient.reviews.markHelpful(review._id)}
-                    className="mt-3 flex items-center gap-1.5 text-xs
+                    className="mt-3 flex items-center gap-1.5 text-xs py-1
                                transition-colors duration-[var(--duration-hover)]"
                     style={{ color: 'hsl(var(--muted))' }}
                     onMouseEnter={(e) =>
